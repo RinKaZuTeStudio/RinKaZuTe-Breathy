@@ -6,6 +6,7 @@ import com.breathy.data.models.HealthMilestone
 import com.breathy.data.models.PublicProfile
 import com.breathy.data.models.QuitStats
 import com.breathy.data.models.User
+import com.breathy.utils.CloudinaryUploader
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
@@ -13,7 +14,6 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
@@ -26,7 +26,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.util.Calendar
 import java.util.Date
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
@@ -40,7 +39,7 @@ import java.util.concurrent.TimeUnit
 class UserRepository(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
-    private val storage: FirebaseStorage
+    private val cloudinaryUploader: CloudinaryUploader
 ) {
 
     companion object {
@@ -136,12 +135,14 @@ class UserRepository(
 
     /** Upload a new avatar photo and update both user and publicProfile documents. */
     suspend fun updatePhoto(userId: String, photoUri: Uri): Result<String> = runCatching {
-        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val ref = storage.reference.child("avatars/$userId/${UUID.randomUUID()}.jpg")
-            ref.putFile(photoUri).await()
-            val downloadUrl = ref.downloadUrl.await()
-            val urlString = downloadUrl.toString()
+        val uploadResult = cloudinaryUploader.uploadProfileImageFromUri(
+            imageUri = photoUri,
+            userId = userId
+        ) ?: throw IllegalStateException("Failed to upload photo to Cloudinary")
 
+        val urlString = uploadResult.secureUrl
+
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             val batch = firestore.batch()
             batch.update(
                 firestore.collection(USERS_COLLECTION).document(userId),
@@ -153,7 +154,7 @@ class UserRepository(
             )
             batch.commit().await()
             urlString
-        } ?: throw IllegalStateException("Photo upload timed out after 30 seconds")
+        } ?: throw IllegalStateException("Firestore update timed out after 30 seconds")
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to update photo for user: %s", userId)
     }

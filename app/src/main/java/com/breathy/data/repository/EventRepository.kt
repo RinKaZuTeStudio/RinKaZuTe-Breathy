@@ -6,12 +6,12 @@ import com.breathy.data.models.Event
 import com.breathy.data.models.EventCheckin
 import com.breathy.data.models.EventParticipant
 import com.breathy.data.models.PublicProfile
+import com.breathy.utils.CloudinaryUploader
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -41,7 +41,7 @@ import timber.log.Timber
 class EventRepository(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
-    private val storage: FirebaseStorage
+    private val cloudinaryUploader: CloudinaryUploader
 ) {
 
     companion object {
@@ -171,7 +171,7 @@ class EventRepository(
 
     /**
      * Submit a video check-in for an event.
-     * Uploads the video to Firebase Storage and creates a check-in document.
+     * Uploads the video to Cloudinary and creates a check-in document.
      */
     suspend fun submitCheckin(
         eventId: String,
@@ -181,12 +181,15 @@ class EventRepository(
         val uid = currentUserId
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            // Upload video to Firebase Storage
-            val videoRef = storage.reference
-                .child("checkins/$eventId/${uid}_${System.currentTimeMillis()}.mp4")
-            videoRef.putFile(videoUri).await()
-            Unit
-            val downloadUrl = videoRef.downloadUrl.await().toString()
+            // Upload video to Cloudinary
+            val uploadResult = cloudinaryUploader.uploadEventVideo(
+                videoUri = videoUri,
+                userId = uid,
+                eventId = eventId,
+                dayNumber = dayNumber
+            ) ?: throw IllegalStateException("Failed to upload check-in video to Cloudinary")
+
+            val downloadUrl = uploadResult.secureUrl
 
             val checkinData = mapOf(
                 "userId" to uid,

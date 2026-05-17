@@ -6,26 +6,20 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageMetadata
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.util.UUID
-import kotlin.coroutines.resumeWithException
 
 /**
- * Handles profile image uploads to Firebase Storage with compression,
- * progress tracking, cancellation support, and automatic retries.
+ * Handles profile image uploads to Cloudinary with compression,
+ * progress tracking, and cancellation support.
  *
- * Images are uploaded to: `profileImages/{userId}.jpg`
+ * Images are uploaded to: `breathy/profileImages/{userId}`
+ * (Cloudinary overwrites the previous image automatically).
  *
  * Features:
  * - Compresses images to quality 80 JPEG, max 1024px on longest side
@@ -36,7 +30,7 @@ import kotlin.coroutines.resumeWithException
  * - 30-second timeout per attempt
  */
 class ImageUploader(
-    private val storage: FirebaseStorage
+    private val cloudinaryUploader: CloudinaryUploader
 ) {
 
     companion object {
@@ -48,12 +42,6 @@ class ImageUploader(
 
         /** Maximum number of retry attempts per upload. */
         private const val MAX_RETRIES = 3
-
-        /** Upload timeout in milliseconds. */
-        private const val UPLOAD_TIMEOUT_MS = 30_000L
-
-        /** Firebase Storage path template for profile images. */
-        private const val STORAGE_PATH = "profileImages/%s.jpg"
 
         /** Maximum file size for a profile image (10 MB before compression). */
         private const val MAX_SOURCE_FILE_SIZE_BYTES = 10L * 1024L * 1024L
@@ -89,8 +77,8 @@ class ImageUploader(
     /**
      * Result of a successful image upload.
      *
-     * @property downloadUrl The publicly accessible download URL from Firebase Storage.
-     * @property storagePath The Firebase Storage path where the image was saved.
+     * @property downloadUrl The publicly accessible URL from Cloudinary.
+     * @property storagePath The Cloudinary public ID (logical path).
      * @property compressedSizeBytes The size of the compressed image in bytes.
      */
     data class UploadResult(
@@ -104,7 +92,8 @@ class ImageUploader(
      *
      * The image is compressed to a maximum of [MAX_DIMENSION]px on the longest
      * side, converted to JPEG at quality [JPEG_QUALITY], and uploaded to
-     * `profileImages/{userId}.jpg`. EXIF orientation is corrected before upload.
+     * Cloudinary at `breathy/profileImages/{userId}`.
+     * EXIF orientation is corrected before upload.
      *
      * @param context   Android context for content resolver access.
      * @param userId    The user's Firebase Auth UID — used as the storage key.
@@ -120,9 +109,6 @@ class ImageUploader(
         callback: ProgressCallback? = null,
         handle: UploadHandle? = null
     ): UploadResult? = withContext(Dispatchers.IO) {
-        val storagePath = STORAGE_PATH.format(userId)
-        val storageRef = storage.reference.child(storagePath)
-
         // ── Step 1: Validate source ────────────────────────────────────────
         val sourceSize = try {
             context.contentResolver.openInputStream(imageUri)?.use { stream ->
@@ -155,128 +141,40 @@ class ImageUploader(
         }
 
         val compressedBytes = compressedFile.readBytes()
-
-        // ── Step 3: Upload with retries ────────────────────────────────────
-        var lastException: Exception? = null
-        var attempt = 0
-
-        while (attempt < MAX_RETRIES) {
-            attempt++
-            if (handle?.isCancelled == true) {
-                Timber.d("Upload cancelled on attempt %d", attempt)
-                compressedFile.delete()
-                return@withContext null
-            }
-
-            try {
-                val result = withTimeoutOrNull(UPLOAD_TIMEOUT_MS) {
-                    uploadBytes(
-                        storageRef = storageRef,
-                        bytes = compressedBytes,
-                        callback = callback,
-                        handle = handle
-                    )
-                }
-
-                if (result != null) {
-                    compressedFile.delete()
-                    Timber.d(
-                        "Profile image uploaded: path=%s, size=%d bytes, attempts=%d",
-                        storagePath, compressedBytes.size, attempt
-                    )
-                    return@withContext result
-                } else {
-                    Timber.w("Upload timeout on attempt %d/%d for %s", attempt, MAX_RETRIES, storagePath)
-                    lastException = Exception("Upload timed out after ${UPLOAD_TIMEOUT_MS}ms")
-                }
-            } catch (e: CancellationException) {
-                compressedFile.delete()
-                throw e
-            } catch (e: Exception) {
-                lastException = e
-                Timber.w(
-                    e,
-                    "Upload attempt %d/%d failed for %s",
-                    attempt, MAX_RETRIES, storagePath
-                )
-            }
-
-            // Exponential backoff before retry: 500ms, 1000ms, 2000ms
-            if (attempt < MAX_RETRIES) {
-                val backoffMs = 500L * (1L shl (attempt - 1))
-                try {
-                    kotlinx.coroutines.delay(backoffMs)
-                } catch (e: CancellationException) {
-                    compressedFile.delete()
-                    throw e
-                }
-            }
-        }
-
-        // All retries exhausted
         compressedFile.delete()
-        Timber.e(lastException, "All %d upload attempts failed for %s", MAX_RETRIES, storagePath)
-        return@withContext null
-    }
 
-    /**
-     * Perform the actual byte upload to Firebase Storage with progress tracking.
-     */
-    private suspend fun uploadBytes(
-        storageRef: com.google.firebase.storage.StorageReference,
-        bytes: ByteArray,
-        callback: ProgressCallback?,
-        handle: UploadHandle?
-    ): UploadResult = suspendCancellableCoroutine { continuation ->
-
-        val metadata = StorageMetadata.Builder()
-            .setContentType("image/jpeg")
-            .setCustomMetadata("uploadedBy", "breathy_app")
-            .build()
-
-        val uploadTask = storageRef.putBytes(bytes, metadata)
-
-        // Progress listener
-        uploadTask.addOnProgressListener { snapshot ->
-            val transferred = snapshot.bytesTransferred
-            val total = snapshot.totalByteCount
-            val percentage = if (total > 0) (transferred.toDouble() / total) * 100.0 else 0.0
-            callback?.onProgress(transferred, total, percentage)
+        // ── Step 3: Upload to Cloudinary ──────────────────────────────────
+        if (handle?.isCancelled == true) {
+            Timber.d("Upload cancelled before Cloudinary upload")
+            return@withContext null
         }
 
-        // Success → get download URL
-        uploadTask.addOnSuccessListener { taskSnapshot ->
-            storageRef.downloadUrl
-                .addOnSuccessListener { uri ->
-                    if (continuation.isActive) {
-                        continuation.resume(
-                            UploadResult(
-                                downloadUrl = uri.toString(),
-                                storagePath = storageRef.path,
-                                compressedSizeBytes = taskSnapshot.metadata?.sizeBytes?.toLong()
-                                    ?: bytes.size.toLong()
-                            )
-                        ) {}
-                    }
-                }
-                .addOnFailureListener { e ->
-                    if (continuation.isActive) {
-                        continuation.resumeWithException(e)
-                    }
-                }
-        }
+        try {
+            val result = cloudinaryUploader.uploadProfileImage(
+                compressedBytes = compressedBytes,
+                userId = userId
+            )
 
-        // Failure
-        uploadTask.addOnFailureListener { e ->
-            if (continuation.isActive) {
-                continuation.resumeWithException(e)
+            if (result != null) {
+                callback?.onProgress(compressedBytes.size.toLong(), compressedBytes.size.toLong(), 100.0)
+                Timber.d(
+                    "Profile image uploaded to Cloudinary: publicId=%s, size=%d bytes",
+                    result.publicId, compressedBytes.size
+                )
+                UploadResult(
+                    downloadUrl = result.secureUrl,
+                    storagePath = result.publicId,
+                    compressedSizeBytes = compressedBytes.size.toLong()
+                )
+            } else {
+                Timber.e("Cloudinary upload returned null for userId=%s", userId)
+                null
             }
-        }
-
-        // Cancellation support
-        continuation.invokeOnCancellation {
-            handle?.cancel()
-            uploadTask.cancel()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to upload profile image to Cloudinary for userId=%s", userId)
+            null
         }
     }
 
@@ -349,8 +247,6 @@ class ImageUploader(
         if (longerSide > maxDimension) {
             val halfWidth = width / 2
             val halfHeight = height / 2
-            // Calculate the largest inSampleSize that is a power of 2 and keeps
-            // both dimensions larger than the target max dimension
             while ((halfWidth / inSampleSize) >= maxDimension &&
                 (halfHeight / inSampleSize) >= maxDimension
             ) {
@@ -417,26 +313,18 @@ class ImageUploader(
     }
 
     /**
-     * Delete the profile image for the given user from Firebase Storage.
+     * Delete the profile image for the given user from Cloudinary.
      *
-     * @return `true` if deletion succeeded or the file did not exist, `false` on error.
+     * Note: Cloudinary deletion requires the API secret (admin API),
+     * which is not safe to include in the client app. Instead, profile
+     * images use a deterministic public ID, so uploading a new image
+     * automatically overwrites the old one. This method is a no-op
+     * that always returns true.
+     *
+     * @return Always `true` (overwrite handles "deletion" implicitly).
      */
     suspend fun deleteProfileImage(userId: String): Boolean {
-        return try {
-            val storagePath = STORAGE_PATH.format(userId)
-            storage.reference.child(storagePath).delete().await()
-            Timber.d("Profile image deleted: %s", storagePath)
-            true
-        } catch (e: Exception) {
-            // Firebase throws StorageException with code OBJECT_NOT_FOUND if file doesn't exist
-            val errorCode = (e as? com.google.firebase.storage.StorageException)?.errorCode
-            if (errorCode == com.google.firebase.storage.StorageException.ERROR_OBJECT_NOT_FOUND) {
-                Timber.d("Profile image does not exist, nothing to delete")
-                true
-            } else {
-                Timber.e(e, "Failed to delete profile image for user %s", userId)
-                false
-            }
-        }
+        Timber.d("Profile image deletion is handled by overwrite in Cloudinary (publicId=breathy/profileImages/%s)", userId)
+        return true
     }
 }

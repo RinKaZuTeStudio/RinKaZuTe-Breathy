@@ -11,6 +11,7 @@ import com.breathy.data.repository.StoryRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.util.AdManager
 import com.breathy.util.NotificationHelper
+import com.breathy.utils.CloudinaryUploader
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -18,8 +19,6 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.ktx.storage
 import timber.log.Timber
 
 /**
@@ -62,10 +61,10 @@ class AppModule(
         Firebase.firestore
     }
 
-    /** Cloud Storage for Firebase instance. */
-    val firebaseStorage: FirebaseStorage by lazy {
-        Timber.d("Initializing FirebaseStorage")
-        Firebase.storage
+    /** Cloudinary uploader instance — replaces Firebase Storage for file uploads. */
+    val cloudinaryUploader: CloudinaryUploader by lazy {
+        Timber.d("Initializing CloudinaryUploader")
+        CloudinaryUploader(applicationContext)
     }
 
     /** Cloud Functions for Firebase instance. */
@@ -99,7 +98,7 @@ class AppModule(
         UserRepository(
             firestore = firestore,
             auth = firebaseAuth,
-            storage = firebaseStorage
+            cloudinaryUploader = cloudinaryUploader
         )
     }
 
@@ -147,7 +146,7 @@ class AppModule(
         EventRepository(
             firestore = firestore,
             auth = firebaseAuth,
-            storage = firebaseStorage
+            cloudinaryUploader = cloudinaryUploader
         )
     }
 
@@ -219,7 +218,7 @@ class AppModule(
     fun createUserRepository(): UserRepository = UserRepository(
         firestore = firestore,
         auth = firebaseAuth,
-        storage = firebaseStorage
+        cloudinaryUploader = cloudinaryUploader
     )
 
     /**
@@ -252,7 +251,7 @@ class AppModule(
     fun createEventRepository(): EventRepository = EventRepository(
         firestore = firestore,
         auth = firebaseAuth,
-        storage = firebaseStorage
+        cloudinaryUploader = cloudinaryUploader
     )
 
     /**
