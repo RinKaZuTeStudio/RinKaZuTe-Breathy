@@ -65,13 +65,17 @@ class StoryRepository(
                 .limit(limit.toLong())
 
             if (lastDocumentId != null) {
-                val lastDoc = firestore.collection(STORIES_COLLECTION)
-                    .document(lastDocumentId)
-                    .get(Source.SERVER)
-                    .await()
-                    Unit
-                if (lastDoc.exists()) {
-                    query = query.startAfter(lastDoc)
+                try {
+                    val lastDoc = firestore.collection(STORIES_COLLECTION)
+                        .document(lastDocumentId)
+                        .get()
+                        .await()
+                    if (lastDoc.exists()) {
+                        query = query.startAfter(lastDoc)
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to get cursor document for pagination — starting fresh")
+                    // If cursor fetch fails, just start from the beginning
                 }
             }
 
@@ -109,11 +113,18 @@ class StoryRepository(
     /** Fetch a single story by ID. */
     suspend fun getStory(storyId: String): Result<Story> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val document = firestore.collection(STORIES_COLLECTION)
-                .document(storyId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val document = try {
+                firestore.collection(STORIES_COLLECTION)
+                    .document(storyId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed for story %s — trying cache", storyId)
+                firestore.collection(STORIES_COLLECTION)
+                    .document(storyId)
+                    .get(Source.CACHE)
+                    .await()
+            }
             if (!document.exists()) {
                 throw NoSuchElementException("Story not found: $storyId")
             }
@@ -316,14 +327,17 @@ class StoryRepository(
                 .limit(limit.toLong())
 
             if (lastDocumentId != null) {
-                val lastDoc = firestore.collection(STORIES_COLLECTION).document(storyId)
-                    .collection(REPLIES_SUBCOLLECTION)
-                    .document(lastDocumentId)
-                    .get(Source.SERVER)
-                    .await()
-                    Unit
-                if (lastDoc.exists()) {
-                    query = query.startAfter(lastDoc)
+                try {
+                    val lastDoc = firestore.collection(STORIES_COLLECTION).document(storyId)
+                        .collection(REPLIES_SUBCOLLECTION)
+                        .document(lastDocumentId)
+                        .get()
+                        .await()
+                    if (lastDoc.exists()) {
+                        query = query.startAfter(lastDoc)
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to get cursor document for replies pagination — starting fresh")
                 }
             }
 

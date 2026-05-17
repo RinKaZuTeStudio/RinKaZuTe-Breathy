@@ -167,6 +167,12 @@ dependencies {
     // ── Timber (Logging) ───────────────────────────────────────────────────
     implementation(libs.timber)
 
+    // ── OkHttp (explicit for CloudinaryUploader) ───────────────────────────
+    implementation(libs.okhttp)
+
+    // ── ExifInterface (for ImageUploader EXIF orientation) ────────────────
+    implementation(libs.exifinterface)
+
     // ── Testing ────────────────────────────────────────────────────────────
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)

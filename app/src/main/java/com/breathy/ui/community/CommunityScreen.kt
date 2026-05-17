@@ -557,7 +557,8 @@ class CommunityViewModel(
     }
 
     fun loadStories() {
-        if (_uiState.value.isLoading && _uiState.value.stories.isNotEmpty()) return
+        // Prevent duplicate loads
+        if (_uiState.value.isLoading) return
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
