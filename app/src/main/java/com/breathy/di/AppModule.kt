@@ -58,10 +58,26 @@ class AppModule(
     /** Cloud Firestore instance — uses the named database for this Firebase project. */
     val firestore: FirebaseFirestore by lazy {
         Timber.d("Initializing FirebaseFirestore with named database")
-        FirebaseFirestore.getInstance(
-            com.google.firebase.FirebaseApp.getInstance(),
-            "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7"
-        )
+        try {
+            val options = com.google.firebase.firestore.FirebaseFirestoreOptions.Builder()
+                .setDatabaseId("ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7")
+                .build()
+            FirebaseFirestore.getInstance(
+                com.google.firebase.FirebaseApp.getInstance(),
+                options
+            )
+        } catch (e: NoSuchMethodError) {
+            // Fallback for older Firebase SDK versions that don't have the new API
+            Timber.w(e, "New Firestore API not available, using legacy getInstance")
+            @Suppress("DEPRECATION")
+            FirebaseFirestore.getInstance(
+                com.google.firebase.FirebaseApp.getInstance(),
+                "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7"
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to initialize Firestore with named database, falling back to default")
+            FirebaseFirestore.getInstance()
+        }
     }
 
     /** Cloudinary uploader instance — replaces Firebase Storage for file uploads. */
