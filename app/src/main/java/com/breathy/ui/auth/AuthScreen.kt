@@ -151,11 +151,21 @@ class AuthViewModel(
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    /** Tracks whether we've already auto-navigated to prevent re-triggering. */
+    private var hasAutoNavigated = false
+
     init {
-        // Observe auth state for automatic navigation on returning users
+        // Auto-navigate already-authenticated users on app reopen.
+        // This is the fix for the "instant crash on reopen" — previously,
+        // returning users saw the Auth screen instead of being routed to
+        // Home or Onboarding, causing them to get stuck or re-onboard.
         viewModelScope.launch {
             authRepository.currentUser.collect { user ->
                 Timber.d("$TAG: Auth state changed — user=%s", user?.uid ?: "null")
+                if (user != null && !hasAutoNavigated && _uiState.value.navigationEvent == null) {
+                    hasAutoNavigated = true
+                    checkUserProfileAndNavigate(user.uid)
+                }
             }
         }
     }
@@ -326,9 +336,24 @@ class AuthViewModel(
     private fun checkUserProfileAndNavigate(userId: String) {
         viewModelScope.launch {
             try {
-                // Use a timeout so the user isn't stuck loading forever
-                val document = withTimeoutOrNull(8_000L) {
-                    firestore.collection("users").document(userId).get().await()
+                // Try SERVER source first, fall back to CACHE if rules deny access.
+                // Use a timeout so the user isn't stuck loading forever.
+                var document = withTimeoutOrNull(8_000L) {
+                    try {
+                        firestore.collection("users").document(userId)
+                            .get(com.google.firebase.firestore.Source.SERVER)
+                            .await()
+                    } catch (e: Exception) {
+                        Timber.w(e, "$TAG: Server read failed for uid=%s — trying cache", userId)
+                        try {
+                            firestore.collection("users").document(userId)
+                                .get(com.google.firebase.firestore.Source.CACHE)
+                                .await()
+                        } catch (cacheEx: Exception) {
+                            Timber.w(cacheEx, "$TAG: Cache read also failed for uid=%s", userId)
+                            null
+                        }
+                    }
                 }
 
                 _uiState.update { it.copy(isLoading = false) }
@@ -340,11 +365,13 @@ class AuthViewModel(
                     && (document.getString("nickname")?.isNotBlank() == true)
                 ) {
                     // User has completed onboarding (has quitDate + quitType + nickname)
+                    Timber.i("$TAG: User uid=%s has completed onboarding — navigating to Home", userId)
                     _uiState.update {
                         it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
                     }
                 } else {
                     // New user or incomplete profile — go to onboarding
+                    Timber.i("$TAG: User uid=%s needs onboarding — navigating to Onboarding", userId)
                     _uiState.update {
                         it.copy(navigationEvent = AuthNavigationEvent.NavigateToOnboarding)
                     }

@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
+import kotlinx.coroutines.CoroutineExceptionHandler
 import timber.log.Timber
 
 /**
@@ -17,6 +18,7 @@ import timber.log.Timber
  * - Enables/disables Crashlytics based on build type
  * - Plants Timber logging trees (debug tree or Crashlytics-forwarding tree)
  * - Creates the manual dependency injection [AppModule]
+ * - Installs a global uncaught-exception handler to prevent hard crashes
  */
 class BreathyApplication : Application() {
 
@@ -27,6 +29,17 @@ class BreathyApplication : Application() {
      */
     val appModule: AppModule by lazy {
         AppModule(this)
+    }
+
+    /**
+     * Global coroutine exception handler that logs errors instead of crashing.
+     * This prevents uncaught coroutine exceptions from killing the app process.
+     */
+    val globalExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Timber.e(throwable, "Uncaught coroutine exception")
+        try {
+            FirebaseCrashlytics.getInstance().recordException(throwable)
+        } catch (_: Exception) { /* Crashlytics not available */ }
     }
 
     override fun onCreate() {
@@ -59,7 +72,11 @@ class BreathyApplication : Application() {
 
         // ── Notification Channels ────────────────────────────────────────────
         // Created eagerly so channels exist before any notification is posted.
-        appModule.notificationHelper // triggers lazy init of AppModule → NotificationHelper
+        try {
+            appModule.notificationHelper // triggers lazy init of AppModule → NotificationHelper
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to initialize notification helper")
+        }
     }
 
     /**
@@ -151,9 +168,9 @@ class BreathyApplication : Application() {
      * instead of letting it crash the app. This is a safety net for any
      * exceptions that escape the per-feature try-catch blocks.
      *
-     * For Firestore PERMISSION_DENIED errors (which happen when security rules
-     * aren't deployed yet), the app survives instead of crashing. All other
-     * uncaught exceptions fall through to the original handler.
+     * For Firestore errors (PERMISSION_DENIED, UNAVAILABLE, etc.) and other
+     * recoverable errors, the app survives instead of crashing. Critical
+     * errors (OutOfMemoryError, StackOverflowError) still crash.
      */
     private fun installUncaughtExceptionHandler() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -163,16 +180,32 @@ class BreathyApplication : Application() {
             try {
                 FirebaseCrashlytics.getInstance().recordException(throwable)
             } catch (_: Exception) { /* Crashlytics not available */ }
-            // Check if this is a Firestore permission error — survive those
+
+            // Check if this is a recoverable error — survive those
             val message = throwable.message ?: ""
-            val isFirestorePermissionError =
-                message.contains("PERMISSION_DENIED", ignoreCase = true) ||
-                message.contains("Missing or insufficient permissions", ignoreCase = true)
-            if (!isFirestorePermissionError) {
-                // Not a permission error — let the default handler crash the app
+            val causeMessage = throwable.cause?.message ?: ""
+            val fullMessage = "$message $causeMessage"
+            val isRecoverableError =
+                fullMessage.contains("PERMISSION_DENIED", ignoreCase = true) ||
+                fullMessage.contains("Missing or insufficient permissions", ignoreCase = true) ||
+                fullMessage.contains("UNAVAILABLE", ignoreCase = true) ||
+                fullMessage.contains("DEADLINE_EXCEEDED", ignoreCase = true) ||
+                fullMessage.contains("RESOURCE_EXHAUSTED", ignoreCase = true) ||
+                fullMessage.contains("ABORTED", ignoreCase = true) ||
+                fullMessage.contains("INTERNAL", ignoreCase = true) && fullMessage.contains("firestore", ignoreCase = true) ||
+                fullMessage.contains("FirebaseFirestoreException", ignoreCase = true) ||
+                // Also survive Firestore callback errors on main thread
+                fullMessage.contains("Could not reach Cloud Firestore backend", ignoreCase = true)
+
+            val isCriticalError = throwable is OutOfMemoryError ||
+                    throwable is StackOverflowError ||
+                    throwable is ThreadDeath
+
+            if (isCriticalError || !isRecoverableError) {
+                // Critical or unknown error — let the default handler crash the app
                 defaultHandler?.uncaughtException(thread, throwable)
             }
-            // For Firestore permission errors, just log — don't crash.
+            // For recoverable errors, just log — don't crash.
             // The app can still function with local/cached data.
         }
     }

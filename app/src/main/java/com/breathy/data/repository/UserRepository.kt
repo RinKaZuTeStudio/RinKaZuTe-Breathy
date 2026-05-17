@@ -5,6 +5,7 @@ import com.breathy.data.models.CopingMethod
 import com.breathy.data.models.HealthMilestone
 import com.breathy.data.models.PublicProfile
 import com.breathy.data.models.QuitStats
+import com.breathy.data.models.QuitType
 import com.breathy.data.models.User
 import com.breathy.utils.CloudinaryUploader
 import com.google.firebase.Timestamp
@@ -82,10 +83,26 @@ class UserRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "Error listening to user document: %s", uid)
+                    // Don't clear the user on error — keep the last known value or fallback
+                    if (_currentUser.value == null) {
+                        _currentUser.value = createFallbackUser()
+                    }
                     return@addSnapshotListener
                 }
                 if (snapshot != null && snapshot.exists()) {
-                    _currentUser.value = User.fromFirestoreMap(snapshot.data ?: emptyMap())
+                    try {
+                        _currentUser.value = User.fromFirestoreMap(snapshot.data ?: emptyMap())
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to parse user document for %s", uid)
+                        if (_currentUser.value == null) {
+                            _currentUser.value = createFallbackUser()
+                        }
+                    }
+                } else {
+                    // Document doesn't exist — keep fallback instead of null
+                    if (_currentUser.value == null) {
+                        _currentUser.value = createFallbackUser()
+                    }
                 }
             }
     }
@@ -97,14 +114,27 @@ class UserRepository(
     //  Single-read operations
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /** Fetch a user by ID. Uses server source to ensure fresh data. */
+    /** Fetch a user by ID. Uses server source to ensure fresh data, falls back to cache. */
     suspend fun getUser(userId: String): Result<User> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val document = firestore.collection(USERS_COLLECTION)
-                .document(userId)
-                .get(Source.SERVER)
-                .await()
-            if (!document.exists()) throw NoSuchElementException("User not found: $userId")
+            val document = try {
+                firestore.collection(USERS_COLLECTION)
+                    .document(userId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed for user %s — trying cache", userId)
+                try {
+                    firestore.collection(USERS_COLLECTION)
+                        .document(userId)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed for user %s", userId)
+                    null
+                }
+            }
+            if (document == null || !document.exists()) throw NoSuchElementException("User not found: $userId")
             User.fromFirestoreMap(document.data ?: emptyMap())
         } ?: throw IllegalStateException("Get user timed out after 30 seconds")
     }.onFailure { e ->
@@ -571,19 +601,38 @@ class UserRepository(
                     // Don't close the flow on error — emit a fallback User so the UI
                     // can still render instead of crashing. The listener stays active
                     // and will retry on the next Firestore sync.
-                    trySend(User(nickname = "Quitter", email = ""))
+                    trySend(createFallbackUser())
                     return@addSnapshotListener
                 }
                 if (snapshot != null && snapshot.exists()) {
-                    trySend(User.fromFirestoreMap(snapshot.data ?: emptyMap()))
+                    try {
+                        trySend(User.fromFirestoreMap(snapshot.data ?: emptyMap()))
+                    } catch (e: Exception) {
+                        Timber.e(e, "observeUser: Failed to parse user document for %s — emitting fallback", userId)
+                        trySend(createFallbackUser())
+                    }
                 } else {
                     // Document doesn't exist yet (e.g. Firestore rules blocked the read
                     // or onboarding hasn't completed). Emit a fallback user.
-                    trySend(User(nickname = "Quitter", email = ""))
+                    Timber.w("observeUser: No document for %s — emitting fallback user", userId)
+                    trySend(createFallbackUser())
                 }
             }
         awaitClose { registration.remove() }
     }
+
+    /** Create a safe fallback User for when Firestore data is unavailable. */
+    private fun createFallbackUser(): User = User(
+        nickname = "Quitter",
+        email = "",
+        quitDate = Timestamp.now(),
+        quitType = QuitType.INSTANT,
+        cigarettesPerDay = 0,
+        pricePerPack = 0.0,
+        cigarettesPerPack = 20,
+        xp = 0,
+        coins = 0
+    )
 
     /** Observe public profiles ordered by XP (leaderboard). */
     @OptIn(ExperimentalCoroutinesApi::class)

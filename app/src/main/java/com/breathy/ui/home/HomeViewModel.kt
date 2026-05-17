@@ -77,6 +77,10 @@ class HomeViewModel(
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
+    companion object {
+        private const val TAG = "HomeViewModel"
+    }
+
     private val userId: String?
         get() = auth.currentUser?.uid
 
@@ -107,83 +111,26 @@ class HomeViewModel(
                     .debounce(300L) // Prevent rapid-fire updates from Firestore
                     .collect { user ->
                         try {
-                            // User is never null now since observeUser emits fallback User
-                            val daysSmokeFree = user.daysSmokeFree
-                        val moneySaved = user.moneySaved()
-                        val cigarettesAvoided = user.cigarettesAvoided()
-                        val lifeRegained = cigarettesAvoided * 11 // 11 minutes per cigarette
-
-                        val milestones = try {
-                            userRepository.getCurrentMilestones(user.quitDate.toDate())
-                        } catch (e: Exception) {
-                            Timber.w(e, "Failed to get health milestones")
-                            emptyList()
-                        }
-
-                        val level = rewardRepository.calculateLevel(user.xp)
-                        val xpForNextLevel = rewardRepository.getXPForNextLevel(user.xp)
-                        val levelProgress = rewardRepository.getLevelProgress(user.xp)
-
-                        val lastClaim = user.lastDailyClaim?.toDate()
-                        val now = Calendar.getInstance()
-                        val dailyClaimed = lastClaim?.let {
-                            val cal = Calendar.getInstance().apply { time = it }
-                            cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
-                                    cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)
-                        } ?: false
-
-                        // Calculate countdown to next midnight (when reward resets)
-                        val countdownSeconds = if (dailyClaimed) {
-                            val nextMidnight = Calendar.getInstance().apply {
-                                add(Calendar.DAY_OF_YEAR, 1)
-                                set(Calendar.HOUR_OF_DAY, 0)
-                                set(Calendar.MINUTE, 0)
-                                set(Calendar.SECOND, 0)
-                                set(Calendar.MILLISECOND, 0)
-                            }
-                            (nextMidnight.timeInMillis - System.currentTimeMillis()) / 1000
-                        } else 0L
-
-                        val successfulCravings = try {
-                            userRepository.getSuccessfulCravingCount(uid)
-                        } catch (_: Exception) { 0 }
-
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoading = false,
-                                nickname = user.nickname.ifBlank { "Quitter" },
-                                photoURL = user.photoURL,
-                                daysSmokeFree = daysSmokeFree,
-                                moneySaved = moneySaved,
-                                cigarettesAvoided = cigarettesAvoided,
-                                lifeRegainedMinutes = lifeRegained,
-                                xp = user.xp,
-                                coins = user.coins,
-                                level = level,
-                                xpForNextLevel = xpForNextLevel,
-                                levelProgress = levelProgress,
-                                healthMilestones = milestones,
-                                dailyRewardClaimed = dailyClaimed,
-                                dailyRewardCountdownSeconds = countdownSeconds.coerceAtLeast(0),
-                                successfulCravings = successfulCravings,
-                                errorMessage = null
-                            )
-                        }
-
-                        // Check for achievements on data change
-                        checkAchievements()
+                            processUserUpdate(user, uid)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
                             // Individual emission processing failed — log but keep
                             // the flow alive so future emissions can still update UI
-                            Timber.e(e, "Error processing user data emission")
+                            Timber.e(e, "$TAG: Error processing user data emission")
+                            // Ensure loading is turned off even on error
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    nickname = it.nickname.ifBlank { "Quitter" }
+                                )
+                            }
                         }
                     }
             } catch (e: CancellationException) {
                 // Don't treat cancellation as an error
             } catch (e: Exception) {
-                Timber.e(e, "Failed to load user data")
+                Timber.e(e, "$TAG: Failed to load user data")
                 // Show a user-friendly error with fallback data instead of crashing
                 _uiState.update {
                     it.copy(
@@ -196,6 +143,82 @@ class HomeViewModel(
         }
 
         loadLastCravingTime(uid)
+    }
+
+    /**
+     * Process a user data update from Firestore safely.
+     * All calculations are wrapped in try-catch to prevent any single
+     * calculation from crashing the entire app.
+     */
+    private suspend fun processUserUpdate(user: User, uid: String) {
+        val daysSmokeFree = try { user.daysSmokeFree } catch (_: Exception) { 0 }
+        val moneySaved = try { user.moneySaved() } catch (_: Exception) { 0.0 }
+        val cigarettesAvoided = try { user.cigarettesAvoided() } catch (_: Exception) { 0 }
+        val lifeRegained = cigarettesAvoided * 11 // 11 minutes per cigarette
+
+        val milestones = try {
+            userRepository.getCurrentMilestones(user.quitDate.toDate())
+        } catch (e: Exception) {
+            Timber.w(e, "$TAG: Failed to get health milestones")
+            emptyList()
+        }
+
+        val level = try { rewardRepository.calculateLevel(user.xp) } catch (_: Exception) { 1 }
+        val xpForNextLevel = try { rewardRepository.getXPForNextLevel(user.xp) } catch (_: Exception) { 100 }
+        val levelProgress = try { rewardRepository.getLevelProgress(user.xp) } catch (_: Exception) { 0f }
+
+        val lastClaim = user.lastDailyClaim?.toDate()
+        val now = Calendar.getInstance()
+        val dailyClaimed = lastClaim?.let {
+            val cal = Calendar.getInstance().apply { time = it }
+            cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+                    cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)
+        } ?: false
+
+        // Calculate countdown to next midnight (when reward resets)
+        val countdownSeconds = if (dailyClaimed) {
+            val nextMidnight = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            (nextMidnight.timeInMillis - System.currentTimeMillis()) / 1000
+        } else 0L
+
+        val successfulCravings = try {
+            userRepository.getSuccessfulCravingCount(uid)
+        } catch (_: Exception) { 0 }
+
+        _uiState.update { state ->
+            state.copy(
+                isLoading = false,
+                nickname = user.nickname.ifBlank { "Quitter" },
+                photoURL = user.photoURL,
+                daysSmokeFree = daysSmokeFree,
+                moneySaved = moneySaved,
+                cigarettesAvoided = cigarettesAvoided,
+                lifeRegainedMinutes = lifeRegained,
+                xp = user.xp,
+                coins = user.coins,
+                level = level,
+                xpForNextLevel = xpForNextLevel,
+                levelProgress = levelProgress,
+                healthMilestones = milestones,
+                dailyRewardClaimed = dailyClaimed,
+                dailyRewardCountdownSeconds = countdownSeconds.coerceAtLeast(0),
+                successfulCravings = successfulCravings,
+                errorMessage = null
+            )
+        }
+
+        // Check for achievements on data change (best-effort, don't crash)
+        try {
+            checkAchievements()
+        } catch (e: Exception) {
+            Timber.w(e, "$TAG: Achievement check failed — non-critical")
+        }
     }
 
     private fun loadLastCravingTime(uid: String) {
