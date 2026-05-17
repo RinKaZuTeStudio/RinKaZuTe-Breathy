@@ -128,8 +128,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // ── Coil 2.7 (Image Loading) ──────────────────────────────────────────
-    implementation(libs.coil.compose)
+    // ── Coil (Image Loading) ───────────────────────────────────────────
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // ── Accompanist ────────────────────────────────────────────────────────
     implementation(libs.accompanist.permissions)
