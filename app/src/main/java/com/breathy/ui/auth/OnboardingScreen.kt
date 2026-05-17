@@ -381,13 +381,42 @@ class OnboardingViewModel(
      * Best-effort Firestore write with its own timeout.
      * Catches ALL exceptions (including FirebaseFirestoreException with
      * permission-denied) and never re-throws — the caller always navigates.
+     *
+     * If the initial write fails, schedules a background retry after 5 seconds
+     * so the data is eventually persisted even if rules take time to propagate.
      */
     private suspend fun saveProfileToFirestore(
         userProfile: User,
         publicProfile: PublicProfile,
         userId: String
     ) {
-        try {
+        val success = tryWriteToFirestore(userProfile, publicProfile, userId)
+        if (!success) {
+            // Schedule a background retry after a delay — rules may not have propagated yet
+            viewModelScope.launch {
+                repeat(3) { attempt ->
+                    delay(5_000L * (attempt + 1)) // 5s, 10s, 15s
+                    Timber.d("$TAG: Retrying Firestore write (attempt %d) for uid=%s", attempt + 1, userId)
+                    if (tryWriteToFirestore(userProfile, publicProfile, userId)) {
+                        Timber.i("$TAG: Retry succeeded for uid=%s on attempt %d", userId, attempt + 1)
+                        return@launch
+                    }
+                }
+                Timber.e("$TAG: All retries exhausted for uid=%s — data may be missing from Firestore", userId)
+            }
+        }
+    }
+
+    /**
+     * Attempt a single Firestore write. Returns true on success, false on failure.
+     * Never throws — all exceptions are caught and logged.
+     */
+    private suspend fun tryWriteToFirestore(
+        userProfile: User,
+        publicProfile: PublicProfile,
+        userId: String
+    ): Boolean {
+        return try {
             val userMap = userProfile.toFirestoreMap()
             val publicMap = mapOf<String, Any?>(
                 "nickname" to publicProfile.nickname,
@@ -408,8 +437,10 @@ class OnboardingViewModel(
             }
             if (result == null) {
                 Timber.w("$TAG: Firestore write timed out during onboarding — continuing")
+                false
             } else {
                 Timber.i("$TAG: Onboarding profile saved for uid=%s", userId)
+                true
             }
         } catch (e: CancellationException) {
             throw e // Propagate cancellation
@@ -417,6 +448,7 @@ class OnboardingViewModel(
             // Firestore write failed (e.g. rules not deployed yet, permission denied).
             // Don't block the user — they can still use the app.
             Timber.w(e, "$TAG: Firestore write failed during onboarding — continuing")
+            false
         }
     }
 

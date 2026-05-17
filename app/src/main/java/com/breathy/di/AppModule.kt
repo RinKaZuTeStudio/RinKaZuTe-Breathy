@@ -9,8 +9,8 @@ import com.breathy.data.repository.FriendRepository
 import com.breathy.data.repository.RewardRepository
 import com.breathy.data.repository.StoryRepository
 import com.breathy.data.repository.UserRepository
-import com.breathy.util.AdManager
-import com.breathy.util.NotificationHelper
+import com.breathy.utils.AdManager
+import com.breathy.utils.NotificationHelper
 import com.breathy.utils.CloudinaryUploader
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth

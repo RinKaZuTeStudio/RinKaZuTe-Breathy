@@ -261,7 +261,13 @@ fun BreathyNavHost(
             // ── Auth ────────────────────────────────────────────────────
             composable(BreathyRoutes.AUTH) {
                 AuthScreen(
-                    onNavigateToHome = { navigateTo(BreathyRoutes.HOME) },
+                    onNavigateToHome = {
+                        // Clear the entire back stack so the user can't go back to Auth
+                        navController.navigate(BreathyRoutes.HOME) {
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                     onNavigateToOnboarding = { navigateTo(BreathyRoutes.ONBOARDING) },
                     onGoogleSignInRequest = onGoogleSignInRequest,
                     googleIdToken = googleIdToken,
@@ -272,7 +278,14 @@ fun BreathyNavHost(
             // ── Onboarding ──────────────────────────────────────────────
             composable(BreathyRoutes.ONBOARDING) {
                 OnboardingScreen(
-                    onNavigateToHome = { navigateTo(BreathyRoutes.HOME) }
+                    onNavigateToHome = {
+                        // Clear the entire back stack (Auth + Onboarding) so the
+                        // user can't go back to those screens after completing setup.
+                        navController.navigate(BreathyRoutes.HOME) {
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
 
