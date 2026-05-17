@@ -71,13 +71,13 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read:   if isOwner(userId);
+      // CREATE is permissive to allow the initial sparse document during signup
+      // (before onboarding is complete). The document may lack quitDate/quitType.
       allow create: if isOwner(userId)
                      && isNonEmptyString(request.resource.data.email)
-                     && isNonEmptyString(request.resource.data.nickname)
-                     && request.resource.data.quitDate is timestamp
-                     && isNonEmptyString(request.resource.data.quitType)
-                     && isNonNegative(request.resource.data.cigarettesPerDay)
                      && request.resource.data.createdAt is timestamp;
+      // UPDATE requires the full set of fields after onboarding is complete.
+      // This ensures that once the user profile is set up, it stays valid.
       allow update: if isOwner(userId)
                      && request.resource.data.email is string
                      && isNonEmptyString(request.resource.data.nickname)
@@ -93,11 +93,11 @@ service cloud.firestore {
 
     match /publicProfiles/{userId} {
       allow read:   if isAuthenticated();
+      // CREATE is permissive to allow the initial sparse profile during signup
+      // (before onboarding). The document may lack quitDate.
       allow create: if isOwner(userId)
                      && isNonEmptyString(request.resource.data.nickname)
-                     && isNonNegative(request.resource.data.daysSmokeFree)
-                     && isNonNegative(request.resource.data.xp)
-                     && request.resource.data.quitDate is timestamp;
+                     && isNonNegative(request.resource.data.xp);
       allow update: if isOwner(userId)
                      && isNonEmptyString(request.resource.data.nickname)
                      && isNonNegative(request.resource.data.daysSmokeFree)

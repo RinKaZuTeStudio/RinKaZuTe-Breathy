@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -89,15 +87,11 @@ fun HealthTimeline(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Timeline items
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            itemsIndexed(
-                items = milestones,
-                key = { index, (milestone, _) -> milestone.title + index }
-            ) { index, (milestone, isAchieved) ->
+        // Timeline items — use regular Column instead of LazyColumn
+        // to avoid crash from nesting LazyColumn inside verticalScroll Column.
+        // The milestones list is small (~11 items) so lazy loading is unnecessary.
+        Column(modifier = Modifier.fillMaxWidth()) {
+            milestones.forEachIndexed { index, (milestone, isAchieved) ->
                 AnimatedVisibility(
                     visible = index < visibleCount,
                     enter = fadeIn(animationSpec = tween(300)) +

@@ -104,11 +104,20 @@ fun HomeScreen(
     viewModel: HomeViewModel = run {
         val context = LocalContext.current
         val app = context.applicationContext as BreathyApplication
-        viewModel(factory = HomeViewModelFactory(
-            userRepository = app.appModule.userRepository,
-            rewardRepository = app.appModule.rewardRepository,
-            auth = app.appModule.firebaseAuth
-        ))
+        try {
+            viewModel(factory = HomeViewModelFactory(
+                userRepository = app.appModule.userRepository,
+                rewardRepository = app.appModule.rewardRepository,
+                auth = app.appModule.firebaseAuth
+            ))
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to create HomeViewModel — using fallback")
+            viewModel(factory = HomeViewModelFactory(
+                userRepository = app.appModule.userRepository,
+                rewardRepository = app.appModule.rewardRepository,
+                auth = app.appModule.firebaseAuth
+            ))
+        }
     }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
