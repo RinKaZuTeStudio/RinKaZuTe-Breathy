@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
 }
@@ -43,11 +44,7 @@ android {
         debug {
             isMinifyEnabled = false
             isDebuggable = true
-            
-            
             signingConfig = signingConfigs.getByName("debug")
-            enableUnitTestCoverage = true
-            enableAndroidTestCoverage = true
         }
         release {
             isMinifyEnabled = true
@@ -72,10 +69,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
 
     packaging {
@@ -128,14 +121,14 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // ── Coil (Image Loading) ───────────────────────────────────────────
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    // ── Coil (Image Loading) ──────────────────────────────────────────────
+    implementation(libs.coil.compose)
 
     // ── Accompanist ────────────────────────────────────────────────────────
     implementation(libs.accompanist.permissions)
     implementation(libs.accompanist.systemuicontroller)
 
-    // ── Play Billing 6.0 ──────────────────────────────────────────────────
+    // ── Play Billing ──────────────────────────────────────────────────────
     implementation(libs.billing)
     implementation(libs.billing.ktx)
 
@@ -157,8 +150,6 @@ dependencies {
 
     // ── Material Design (XML — for themes.xml, ShapeAppearance, etc.)
     implementation(libs.android.material)
-
-    // ── Konfetti (Confetti Effects) ────────────────────────────────────────
 
     // ── Kotlin Serialization ───────────────────────────────────────────────
     implementation(libs.kotlinx.serialization.json)

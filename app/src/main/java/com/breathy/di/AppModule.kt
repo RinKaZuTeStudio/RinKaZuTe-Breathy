@@ -12,13 +12,10 @@ import com.breathy.data.repository.UserRepository
 import com.breathy.utils.AdManager
 import com.breathy.utils.NotificationHelper
 import com.breathy.utils.CloudinaryUploader
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.ktx.functions
-import com.google.firebase.ktx.Firebase
 import timber.log.Timber
 
 /**
@@ -52,7 +49,7 @@ class AppModule(
     /** Firebase Authentication instance. */
     val firebaseAuth: FirebaseAuth by lazy {
         Timber.d("Initializing FirebaseAuth")
-        Firebase.auth
+        FirebaseAuth.getInstance()
     }
 
     /** Cloud Firestore instance — uses the named database for this Firebase project. */
@@ -61,7 +58,7 @@ class AppModule(
         Timber.d("Initializing FirebaseFirestore with named database")
         try {
             FirebaseFirestore.getInstance(
-                com.google.firebase.FirebaseApp.getInstance(),
+                FirebaseApp.getInstance(),
                 "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7"
             )
         } catch (e: Exception) {
@@ -79,7 +76,7 @@ class AppModule(
     /** Cloud Functions for Firebase instance. */
     val firebaseFunctions: FirebaseFunctions by lazy {
         Timber.d("Initializing FirebaseFunctions")
-        Firebase.functions
+        FirebaseFunctions.getInstance()
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

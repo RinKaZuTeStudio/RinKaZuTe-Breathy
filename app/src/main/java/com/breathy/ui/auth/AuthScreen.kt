@@ -96,7 +96,6 @@ import com.breathy.ui.theme.TextPrimary
 import com.breathy.ui.theme.TextSecondary
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
-import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestore
@@ -432,8 +431,6 @@ class AuthViewModel(
                 "Password is too weak. Use at least 6 characters with a mix of letters and numbers."
             is FirebaseAuthUserCollisionException ->
                 "An account with this email already exists. Please sign in instead."
-            is FirebaseAuthRecentLoginRequiredException ->
-                "Please sign in again for security."
             is IllegalArgumentException ->
                 exception.message ?: "Invalid input. Please check your details."
             else -> {
