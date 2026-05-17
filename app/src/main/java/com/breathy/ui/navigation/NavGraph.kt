@@ -348,7 +348,11 @@ fun BreathyNavHost(
             composable(BreathyRoutes.POST_STORY) {
                 PostStoryScreen(
                     onNavigateBack = { navigateBack() },
-                    onStoryPosted = { navigateBack() }
+                    onStoryPosted = {
+                        // Pre-load interstitial ad, then navigate back to community
+                        app.appModule.adManager.loadInterstitialAd()
+                        navigateBack()
+                    }
                 )
             }
 

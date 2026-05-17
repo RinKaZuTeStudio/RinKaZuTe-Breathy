@@ -521,7 +521,7 @@ private fun TopBar(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 onClick = onAvatarClick
             ) {
-                if (photoURL != null) {
+                if (!photoURL.isNullOrBlank()) {
                     AsyncImage(
                         model = photoURL,
                         contentDescription = "Your avatar",

@@ -123,6 +123,12 @@ fun CommunityScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
+    // ── Refresh when returning from PostStory ──────────────────────────
+    LaunchedEffect(Unit) {
+        // Refresh stories when screen is first composed (e.g., after back navigation)
+        viewModel.refresh()
+    }
+
     // ── Lifecycle cleanup ─────────────────────────────────────────────────
     DisposableEffect(viewModel) {
         onDispose { Timber.d("CommunityScreen disposed") }

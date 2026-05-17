@@ -170,7 +170,8 @@ data class OnboardingUiState(
 
 class OnboardingViewModel(
     private val firestore: FirebaseFirestore,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val cloudinaryUploader: com.breathy.utils.CloudinaryUploader
 ) : ViewModel() {
 
     companion object {
@@ -325,12 +326,29 @@ class OnboardingViewModel(
                 val userId = currentUser.uid
                 val quitTimestamp = Timestamp(Date(state.quitDate))
 
-                // Safely resolve photo URL — avoid crashes from invalid URIs
+                // Upload photo to Cloudinary first, then save the remote URL
+                // This ensures the URL persists across app restarts
                 val resolvedPhotoUrl: String? = try {
-                    state.photoUri?.toString() ?: currentUser.photoUrl?.toString()
+                    if (state.photoUri != null) {
+                        Timber.d("$TAG: Uploading profile photo to Cloudinary...")
+                        val uploadResult = cloudinaryUploader.uploadProfileImageFromUri(
+                            imageUri = state.photoUri,
+                            userId = userId
+                        )
+                        uploadResult?.secureUrl.also {
+                            if (it != null) {
+                                Timber.i("$TAG: Profile photo uploaded: %s", it)
+                            } else {
+                                Timber.w("$TAG: Cloudinary upload returned null — falling back to Google photo")
+                            }
+                        }
+                    } else {
+                        // No local photo selected — use Google account photo if available
+                        currentUser.photoUrl?.toString()
+                    }
                 } catch (e: Exception) {
-                    Timber.w(e, "$TAG: Failed to resolve photo URI — using null")
-                    null
+                    Timber.w(e, "$TAG: Failed to upload photo to Cloudinary — using null")
+                    currentUser.photoUrl?.toString()
                 }
 
                 // Build the typed User model — matching the Firestore schema
@@ -484,14 +502,15 @@ class OnboardingViewModel(
 
 class OnboardingViewModelFactory(
     private val firestore: FirebaseFirestore,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val cloudinaryUploader: com.breathy.utils.CloudinaryUploader
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(OnboardingViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
-        return OnboardingViewModel(firestore, firebaseAuth) as T
+        return OnboardingViewModel(firestore, firebaseAuth, cloudinaryUploader) as T
     }
 }
 
@@ -552,7 +571,7 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = run {
         val context = LocalContext.current
         val appModule = (context.applicationContext as BreathyApplication).appModule
-        viewModel(factory = OnboardingViewModelFactory(appModule.firestore, appModule.firebaseAuth))
+        viewModel(factory = OnboardingViewModelFactory(appModule.firestore, appModule.firebaseAuth, appModule.cloudinaryUploader))
     }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

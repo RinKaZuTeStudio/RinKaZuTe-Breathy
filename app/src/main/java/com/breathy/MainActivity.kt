@@ -99,6 +99,9 @@ class MainActivity : ComponentActivity() {
         // Handle deep link from intent extras (e.g., from push notifications)
         handleDeepLinkFromIntent(intent)
 
+        // Mark first launch complete so onResume can show app-open ads
+        isFirstLaunch = false
+
         setContent {
             BreathyTheme {
                 Surface(
@@ -118,13 +121,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Show app-open ad when app comes to foreground, but only if user
-        // is already past the auth screen (not on login/signup)
+        // Show app-open ad only when coming back from background (not on first launch)
+        // The AdManager handles frequency capping and premium exemption
         val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
         if (currentUser != null) {
-            appModule.adManager.showAppOpenAd(this) {}
+            // Only show on resume, not on initial create (onCreate handles that)
+            if (!isFirstLaunch) {
+                appModule.adManager.showAppOpenAd(this) {}
+            }
         }
     }
+
+    /** Track whether this is the first launch to avoid showing app-open ad twice */
+    private var isFirstLaunch = true
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

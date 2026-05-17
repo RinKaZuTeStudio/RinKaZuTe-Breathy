@@ -563,7 +563,7 @@ private fun ProfileHeader(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 onClick = onAvatarClick
             ) {
-                if (photoURL != null) {
+                if (!photoURL.isNullOrBlank()) {
                     AsyncImage(
                         model = photoURL,
                         contentDescription = "Your avatar",
@@ -718,26 +718,30 @@ private fun ProfileStatsSection(
     level: Int,
     levelProgress: Float
 ) {
+    // Row of 3 stat cards
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         StatMiniCard(
-            label = "Days Free",
-            value = daysSmokeFree.toString(),
+            label = "Smoke Free",
+            value = if (daysSmokeFree == 0) "Day 1" else "${daysSmokeFree}d",
             icon = "🌬️",
+            accentColor = AccentPrimary,
             modifier = Modifier.weight(1f)
         )
         StatMiniCard(
             label = "Saved",
             value = formatMoney(moneySaved),
             icon = "💰",
+            accentColor = AccentPrimary,
             modifier = Modifier.weight(1f)
         )
         StatMiniCard(
             label = "Level",
-            value = level.toString(),
+            value = "$level",
             icon = "⭐",
+            accentColor = AccentPurple,
             modifier = Modifier.weight(1f)
         )
     }
@@ -794,6 +798,7 @@ private fun StatMiniCard(
     label: String,
     value: String,
     icon: String,
+    accentColor: Color = AccentPrimary,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -805,7 +810,7 @@ private fun StatMiniCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = icon, fontSize = 20.sp)
@@ -813,7 +818,7 @@ private fun StatMiniCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = accentColor,
                     fontWeight = FontWeight.Bold
                 ),
                 maxLines = 1,
@@ -823,7 +828,8 @@ private fun StatMiniCard(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = TextSecondary,
-                    fontSize = 11.sp
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium
                 )
             )
         }

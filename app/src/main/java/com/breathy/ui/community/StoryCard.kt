@@ -157,25 +157,52 @@ private fun StoryCardHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Avatar
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(story.photoURL?.takeIf { it.isNotBlank() })
-                
-                .build(),
-            contentDescription = "${story.nickname}'s avatar",
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onAvatarClick)
-                .semantics {
-                    contentDescription = "View ${story.nickname}'s profile"
-                    role = Role.Button
-                },
-            contentScale = ContentScale.Crop,
-            placeholder = null,
-            error = null,
-            fallback = null
-        )
+        val photoUrl = story.photoURL?.takeIf { it.isNotBlank() }
+        if (photoUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photoUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "${story.nickname}'s avatar",
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onAvatarClick)
+                    .semantics {
+                        contentDescription = "View ${story.nickname}'s profile"
+                        role = Role.Button
+                    },
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Fallback avatar with initial letter
+            Surface(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onAvatarClick)
+                    .semantics {
+                        contentDescription = "View ${story.nickname}'s profile"
+                        role = Role.Button
+                    },
+                shape = CircleShape,
+                color = AccentPrimary.copy(alpha = 0.15f)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = story.nickname.take(1).uppercase(),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            color = AccentPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.width(12.dp))
 

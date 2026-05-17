@@ -148,7 +148,7 @@ class StoryRepository(
             val storyData = mapOf(
                 "userId" to uid,
                 "nickname" to user.nickname,
-                "photoURL" to (user.photoURL ?: ""),
+                "photoURL" to user.photoURL,
                 "content" to content,
                 "lifeChanges" to lifeChanges,
                 "daysSmokeFree" to user.daysSmokeFree,
@@ -360,7 +360,7 @@ class StoryRepository(
                 "storyId" to storyId,
                 "userId" to uid,
                 "nickname" to user.nickname,
-                "photoURL" to (user.photoURL ?: ""),
+                "photoURL" to user.photoURL,
                 "content" to content,
                 "createdAt" to FieldValue.serverTimestamp()
             )
