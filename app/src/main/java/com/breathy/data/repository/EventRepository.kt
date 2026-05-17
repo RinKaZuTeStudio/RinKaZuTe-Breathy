@@ -381,7 +381,9 @@ class EventRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeActiveEvents error")
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -401,7 +403,8 @@ class EventRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeEvent error for %s", eventId)
-                    close(error)
+                    // Don't close the flow on transient errors — the listener stays
+                    // active and will retry on the next Firestore sync.
                     return@addSnapshotListener
                 }
                 if (snapshot != null && snapshot.exists()) {
@@ -423,7 +426,9 @@ class EventRepository(
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         Timber.e(error, "observeEventParticipants error for %s", eventId)
-                        close(error)
+                        // Don't close the flow on transient errors — emit empty list
+                        // as fallback so the UI can still render.
+                        trySend(emptyList())
                         return@addSnapshotListener
                     }
                     if (snapshot != null) {

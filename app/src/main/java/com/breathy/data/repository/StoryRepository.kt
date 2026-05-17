@@ -408,7 +408,9 @@ class StoryRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeStories error")
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -429,7 +431,8 @@ class StoryRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeStory error for %s", storyId)
-                    close(error)
+                    // Don't close the flow on transient errors — the listener stays
+                    // active and will retry on the next Firestore sync.
                     return@addSnapshotListener
                 }
                 if (snapshot != null && snapshot.exists()) {
@@ -453,7 +456,9 @@ class StoryRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeReplies error for story: %s", storyId)
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {

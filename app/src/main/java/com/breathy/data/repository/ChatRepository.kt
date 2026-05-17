@@ -288,7 +288,10 @@ class ChatRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeChats error")
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render. The listener stays
+                    // active and will retry on the next Firestore sync.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -314,7 +317,9 @@ class ChatRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeMessages error for chat: %s", chatId)
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {

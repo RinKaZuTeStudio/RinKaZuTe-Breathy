@@ -252,7 +252,9 @@ class CoachRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeConversation error for user: %s", uid)
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {

@@ -448,7 +448,9 @@ class RewardRepository(
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         Timber.e(error, "observeUnlockedAchievements error for %s", userId)
-                        close(error)
+                        // Don't close the flow on transient errors — emit empty list
+                        // as fallback so the UI can still render.
+                        trySend(emptyList())
                         return@addSnapshotListener
                     }
                     if (snapshot != null && snapshot.exists()) {

@@ -18,8 +18,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
@@ -351,7 +349,9 @@ class FriendRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeIncomingRequests error")
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -375,7 +375,9 @@ class FriendRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeOutgoingRequests error")
-                    close(error)
+                    // Don't close the flow on transient errors — emit empty list
+                    // as fallback so the UI can still render.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -400,7 +402,9 @@ class FriendRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeFriends error")
-                    close(error)
+                    // Don't close the flow on error — emit empty list as fallback
+                    // so the UI can still render instead of crashing.
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -409,15 +413,17 @@ class FriendRepository(
                         userIds?.filterIsInstance<String>()?.firstOrNull { it != uid }
                     }
 
-                    // Launch a coroutine to fetch profiles without blocking
-                    GlobalScope.launch(Dispatchers.IO) {
+                    // Launch a coroutine to fetch profiles without blocking.
+                    // Use the callbackFlow's producer scope (not GlobalScope)
+                    // so the coroutine is cancelled when the flow is collected.
+                    launch {
                         val profiles = friendIds.mapNotNull { id ->
                             try {
                                 val profileDoc = firestore.collection(PUBLIC_PROFILES_COLLECTION)
                                     .document(id)
                                     .get()
                                     .await()
-                                    Unit
+                                Unit
                                 if (profileDoc.exists()) {
                                     PublicProfile.fromFirestoreMap(profileDoc.data ?: emptyMap())
                                 } else null
