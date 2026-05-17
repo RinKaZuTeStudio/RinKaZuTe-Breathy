@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
@@ -100,8 +101,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.text.NumberFormat
 import java.util.Currency
@@ -762,10 +764,12 @@ class SubscriptionViewModel(
     }
 
     private fun loadSubscriptionStatus() {
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
-                val doc = firestore.collection("subscriptions").document(uid).get().await()
-                if (doc.exists()) {
+                val doc = withTimeoutOrNull(10_000L) {
+                    firestore.collection("subscriptions").document(uid).get().await()
+                }
+                if (doc != null && doc.exists()) {
                     val sub = Subscription.fromFirestoreMap(doc.data ?: emptyMap())
                     _uiState.update {
                         it.copy(
@@ -932,7 +936,7 @@ class SubscriptionViewModel(
     }
 
     private fun recordPurchaseInFirestore(purchase: Purchase) {
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 val subscriptionData = mapOf(
                     "active" to true,
@@ -940,7 +944,9 @@ class SubscriptionViewModel(
                     "purchaseToken" to purchase.purchaseToken,
                     "expiresAt" to com.google.firebase.Timestamp.now()
                 )
-                firestore.collection("subscriptions").document(uid).set(subscriptionData).await()
+                withTimeoutOrNull(10_000L) {
+                    firestore.collection("subscriptions").document(uid).set(subscriptionData).await()
+                }
 
                 _uiState.update {
                     it.copy(

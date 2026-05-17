@@ -83,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.breathy.BreathyApplication
@@ -109,8 +110,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -1338,8 +1340,11 @@ class ProfileViewModel(
     }
 
     private fun loadProfile() {
-        val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        val userId = auth.currentUser?.uid ?: run {
+            _uiState.update { it.copy(isLoading = false, errorMessage = "Not authenticated") }
+            return
+        }
+        viewModelScope.launch {
             try {
                 userRepository.observeUser(userId).collect { user ->
                     _uiState.update { state ->
@@ -1361,7 +1366,7 @@ class ProfileViewModel(
 
     private fun loadAchievements() {
         val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 rewardRepository.observeUnlockedAchievements(userId).collect { unlocked ->
                     val allWithState = Achievement.ALL_DEFINITIONS.map { def ->
@@ -1379,10 +1384,12 @@ class ProfileViewModel(
 
     private fun loadSubscription() {
         val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
-                val doc = firestore.collection("subscriptions").document(userId).get().await()
-                if (doc.exists()) {
+                val doc = withTimeoutOrNull(10_000L) {
+                    firestore.collection("subscriptions").document(userId).get().await()
+                }
+                if (doc != null && doc.exists()) {
                     val sub = Subscription.fromFirestoreMap(doc.data ?: emptyMap())
                     _uiState.update { it.copy(subscription = sub) }
                 }
@@ -1396,7 +1403,7 @@ class ProfileViewModel(
 
     fun updateNickname(nickname: String) {
         val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 userRepository.updateUserFields(userId, mapOf("nickname" to nickname))
                 userRepository.updatePublicProfileFields(userId, mapOf("nickname" to nickname))
@@ -1405,13 +1412,14 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update nickname")
+                _uiState.update { it.copy(errorMessage = "Failed to update nickname") }
             }
         }
     }
 
     fun updateAge(age: Int?) {
         val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 val updates = mutableMapOf<String, Any>("age" to (age ?: com.google.firebase.firestore.FieldValue.delete()))
                 userRepository.updateUserFields(userId, updates)
@@ -1420,13 +1428,14 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update age")
+                _uiState.update { it.copy(errorMessage = "Failed to update age") }
             }
         }
     }
 
     fun updateQuitDate(quitDate: Timestamp) {
         val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 userRepository.updateUserFields(userId, mapOf("quitDate" to quitDate))
                 userRepository.updatePublicProfileFields(userId, mapOf("quitDate" to quitDate))
@@ -1435,13 +1444,14 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update quit date")
+                _uiState.update { it.copy(errorMessage = "Failed to update quit date") }
             }
         }
     }
 
     fun updatePhoto(uri: Uri) {
         val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 userRepository.updatePhoto(userId, uri)
                 Timber.i("Photo updated")
@@ -1449,6 +1459,7 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update photo")
+                _uiState.update { it.copy(errorMessage = "Failed to update photo") }
             }
         }
     }
@@ -1470,7 +1481,7 @@ class ProfileViewModel(
     }
 
     fun deleteAccount() {
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 authRepository.deleteAccount()
                 Timber.i("Account deleted")
@@ -1478,6 +1489,7 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to delete account")
+                _uiState.update { it.copy(errorMessage = "Failed to delete account. Please try again.") }
             }
         }
     }

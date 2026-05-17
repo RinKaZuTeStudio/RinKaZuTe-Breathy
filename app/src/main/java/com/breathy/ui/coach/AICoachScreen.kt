@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breathy.BreathyApplication
 import com.breathy.data.models.CoachMessage
@@ -833,7 +834,7 @@ class AICoachViewModel(
     }
 
     private fun loadConversation() {
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 coachRepository.observeConversation(limit = 100).collect { messages ->
                     _uiState.update { it.copy(messages = messages, isLoading = false) }
@@ -853,7 +854,7 @@ class AICoachViewModel(
     }
 
     private fun loadContextSuggestions() {
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 val userId = auth.currentUser?.uid ?: return@launch
                 val userResult = userRepository.getUser(userId)
@@ -908,7 +909,7 @@ class AICoachViewModel(
         }
         messageTimestamps.add(now)
 
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             _uiState.update { it.copy(isSending = true, errorMessage = null) }
             val result = coachRepository.sendMessage(content)
             result.onSuccess {
@@ -927,7 +928,7 @@ class AICoachViewModel(
 
     private fun startRateLimitCountdown() {
         rateLimitJob?.cancel()
-        rateLimitJob = kotlinx.coroutines.MainScope().launch {
+        rateLimitJob = viewModelScope.launch {
             while (_uiState.value.rateLimitSecondsRemaining > 0) {
                 delay(1000)
                 _uiState.update {
@@ -940,7 +941,7 @@ class AICoachViewModel(
     }
 
     fun clearHistory() {
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 coachRepository.clearHistory()
                 messageTimestamps.clear()

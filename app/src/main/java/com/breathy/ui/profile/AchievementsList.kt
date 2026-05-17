@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Achievement
@@ -716,7 +717,7 @@ class AchievementsListViewModel(
 
     private fun loadAchievements() {
         val userId = auth.currentUser?.uid ?: return
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
                 rewardRepository.observeUnlockedAchievements(userId).collect { unlocked ->
                     val allWithState = Achievement.ALL_DEFINITIONS.map { def ->

@@ -113,6 +113,7 @@ import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.ui.graphics.Color
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -161,16 +162,18 @@ class AdminReviewViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                val snapshot = firestore.collection(EVENT_CHECKINS_COLLECTION)
-                    .whereEqualTo("status", CheckinStatus.PENDING.value)
-                    .orderBy("submittedAt", Query.Direction.DESCENDING)
-                    .limit(50)
-                    .get()
-                    .await()
-
-                val checkins = snapshot.documents.mapNotNull { doc ->
-                    doc.data?.let { EventCheckin.fromFirestoreMap(doc.id, it) }
+                val snapshot = withTimeoutOrNull(15_000L) {
+                    firestore.collection(EVENT_CHECKINS_COLLECTION)
+                        .whereEqualTo("status", CheckinStatus.PENDING.value)
+                        .orderBy("submittedAt", Query.Direction.DESCENDING)
+                        .limit(50)
+                        .get()
+                        .await()
                 }
+
+                val checkins = snapshot?.documents?.mapNotNull { doc ->
+                    doc.data?.let { EventCheckin.fromFirestoreMap(doc.id, it) }
+                } ?: emptyList()
 
                 _uiState.update {
                     it.copy(
