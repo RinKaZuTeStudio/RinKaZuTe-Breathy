@@ -67,36 +67,76 @@ class FriendRepository(
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             // Check if a request already exists in either direction
-            val existingOutgoing = firestore.collection(FRIEND_REQUESTS_COLLECTION)
-                .whereEqualTo("fromUserId", uid)
-                .whereEqualTo("toUserId", toUserId)
-                .limit(1)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val existingOutgoing = try {
+                firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                    .whereEqualTo("fromUserId", uid)
+                    .whereEqualTo("toUserId", toUserId)
+                    .limit(1)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                        .whereEqualTo("fromUserId", uid)
+                        .whereEqualTo("toUserId", toUserId)
+                        .limit(1)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
 
             if (!existingOutgoing.isEmpty) {
                 throw IllegalStateException("Friend request already sent")
             }
 
-            val existingIncoming = firestore.collection(FRIEND_REQUESTS_COLLECTION)
-                .whereEqualTo("fromUserId", toUserId)
-                .whereEqualTo("toUserId", uid)
-                .limit(1)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val existingIncoming = try {
+                firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                    .whereEqualTo("fromUserId", toUserId)
+                    .whereEqualTo("toUserId", uid)
+                    .limit(1)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                        .whereEqualTo("fromUserId", toUserId)
+                        .whereEqualTo("toUserId", uid)
+                        .limit(1)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
 
             if (!existingIncoming.isEmpty) {
                 throw IllegalStateException("This user already sent you a friend request")
             }
 
             // Check if already friends
-            val existingFriendship = firestore.collection(FRIENDSHIPS_COLLECTION)
-                .whereArrayContains("userIds", uid)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val existingFriendship = try {
+                firestore.collection(FRIENDSHIPS_COLLECTION)
+                    .whereArrayContains("userIds", uid)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIENDSHIPS_COLLECTION)
+                        .whereArrayContains("userIds", uid)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
 
             val alreadyFriends = existingFriendship.documents.any { doc ->
                 val userIds = doc.get("userIds") as? List<*>
@@ -139,11 +179,23 @@ class FriendRepository(
         val uid = currentUserId
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val requestDoc = firestore.collection(FRIEND_REQUESTS_COLLECTION)
-                .document(requestId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val requestDoc = try {
+                firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                    .document(requestId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                        .document(requestId)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
             if (!requestDoc.exists()) {
                 throw NoSuchElementException("Friend request not found")
             }
@@ -192,11 +244,23 @@ class FriendRepository(
         val uid = currentUserId
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val requestDoc = firestore.collection(FRIEND_REQUESTS_COLLECTION)
-                .document(requestId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val requestDoc = try {
+                firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                    .document(requestId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                        .document(requestId)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
 
             if (requestDoc.exists()) {
                 val toUserId = requestDoc.getString("toUserId")
@@ -221,13 +285,27 @@ class FriendRepository(
     /** Get all incoming (pending) friend requests for the current user. */
     suspend fun getIncomingRequests(): Result<List<FriendRequest>> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val snapshot = firestore.collection(FRIEND_REQUESTS_COLLECTION)
-                .whereEqualTo("toUserId", currentUserId)
-                .whereEqualTo("status", RequestStatus.PENDING.value)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val snapshot = try {
+                firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                    .whereEqualTo("toUserId", currentUserId)
+                    .whereEqualTo("status", RequestStatus.PENDING.value)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                        .whereEqualTo("toUserId", currentUserId)
+                        .whereEqualTo("status", RequestStatus.PENDING.value)
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
             snapshot.documents.mapNotNull { doc ->
                 doc.data?.let { FriendRequest.fromFirestoreMap(doc.id, it) }
             }
@@ -239,13 +317,27 @@ class FriendRepository(
     /** Get all outgoing (pending) friend requests from the current user. */
     suspend fun getOutgoingRequests(): Result<List<FriendRequest>> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val snapshot = firestore.collection(FRIEND_REQUESTS_COLLECTION)
-                .whereEqualTo("fromUserId", currentUserId)
-                .whereEqualTo("status", RequestStatus.PENDING.value)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val snapshot = try {
+                firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                    .whereEqualTo("fromUserId", currentUserId)
+                    .whereEqualTo("status", RequestStatus.PENDING.value)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIEND_REQUESTS_COLLECTION)
+                        .whereEqualTo("fromUserId", currentUserId)
+                        .whereEqualTo("status", RequestStatus.PENDING.value)
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
             snapshot.documents.mapNotNull { doc ->
                 doc.data?.let { FriendRequest.fromFirestoreMap(doc.id, it) }
             }
@@ -264,11 +356,23 @@ class FriendRepository(
      */
     suspend fun getFriends(): Result<List<PublicProfile>> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val friendships = firestore.collection(FRIENDSHIPS_COLLECTION)
-                .whereArrayContains("userIds", currentUserId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val friendships = try {
+                firestore.collection(FRIENDSHIPS_COLLECTION)
+                    .whereArrayContains("userIds", currentUserId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIENDSHIPS_COLLECTION)
+                        .whereArrayContains("userIds", currentUserId)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
 
             val friendIds = friendships.documents.mapNotNull { doc ->
                 val userIds = doc.get("userIds") as? List<*>
@@ -280,11 +384,23 @@ class FriendRepository(
                 friendIds.map { id ->
                     async {
                         try {
-                            val profileDoc = firestore.collection(PUBLIC_PROFILES_COLLECTION)
-                                .document(id)
-                                .get(Source.SERVER)
-                                .await()
-                                Unit
+                            val profileDoc = try {
+                                firestore.collection(PUBLIC_PROFILES_COLLECTION)
+                                    .document(id)
+                                    .get(Source.SERVER)
+                                    .await()
+                            } catch (e: Exception) {
+                                Timber.w(e, "Server read failed for profile %s — trying cache", id)
+                                try {
+                                    firestore.collection(PUBLIC_PROFILES_COLLECTION)
+                                        .document(id)
+                                        .get(Source.CACHE)
+                                        .await()
+                                } catch (cacheEx: Exception) {
+                                    Timber.w(cacheEx, "Cache read also failed for profile %s", id)
+                                    throw e
+                                }
+                            }
                             if (profileDoc.exists()) {
                                 PublicProfile.fromFirestoreMap(profileDoc.data ?: emptyMap())
                             } else null
@@ -320,11 +436,23 @@ class FriendRepository(
      */
     suspend fun isFriend(otherUserId: String): Result<Boolean> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val snapshot = firestore.collection(FRIENDSHIPS_COLLECTION)
-                .whereArrayContains("userIds", currentUserId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val snapshot = try {
+                firestore.collection(FRIENDSHIPS_COLLECTION)
+                    .whereArrayContains("userIds", currentUserId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed — trying cache")
+                try {
+                    firestore.collection(FRIENDSHIPS_COLLECTION)
+                        .whereArrayContains("userIds", currentUserId)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
             snapshot.documents.any { doc ->
                 val userIds = doc.get("userIds") as? List<*>
                 userIds?.contains(otherUserId) == true

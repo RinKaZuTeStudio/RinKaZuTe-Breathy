@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -111,7 +112,8 @@ import timber.log.Timber
 fun CommunityScreen(
     onNavigateToStoryDetail: (String) -> Unit,
     onNavigateToPostStory: () -> Unit,
-    onNavigateToProfile: (String) -> Unit
+    onNavigateToProfile: (String) -> Unit,
+    onNavigateToFriends: () -> Unit = {}
 ) {
     val application = LocalContext.current.applicationContext as BreathyApplication
     val viewModel: CommunityViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
@@ -128,7 +130,7 @@ fun CommunityScreen(
 
     Scaffold(
         topBar = {
-            CommunityTopBar()
+            CommunityTopBar(onNavigateToFriends = onNavigateToFriends)
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -210,7 +212,7 @@ fun CommunityScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CommunityTopBar() {
+private fun CommunityTopBar(onNavigateToFriends: () -> Unit = {}) {
     TopAppBar(
         title = {
             Text(
@@ -218,6 +220,22 @@ private fun CommunityTopBar() {
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
+        },
+        actions = {
+            IconButton(
+                onClick = onNavigateToFriends,
+                modifier = Modifier.semantics {
+                    contentDescription = "Friends"
+                    role = Role.Button
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.People,
+                    contentDescription = "Friends",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = BgPrimary,

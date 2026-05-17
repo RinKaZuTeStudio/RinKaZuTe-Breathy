@@ -55,10 +55,13 @@ class AppModule(
         Firebase.auth
     }
 
-    /** Cloud Firestore instance. */
+    /** Cloud Firestore instance — uses the named database for this Firebase project. */
     val firestore: FirebaseFirestore by lazy {
-        Timber.d("Initializing FirebaseFirestore")
-        Firebase.firestore
+        Timber.d("Initializing FirebaseFirestore with named database")
+        FirebaseFirestore.getInstance(
+            com.google.firebase.FirebaseApp.getInstance(),
+            "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7"
+        )
     }
 
     /** Cloudinary uploader instance — replaces Firebase Storage for file uploads. */

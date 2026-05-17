@@ -38,6 +38,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import android.app.Activity
+import androidx.compose.ui.platform.LocalContext
 import com.breathy.BreathyApplication
 import com.breathy.ui.auth.AuthScreen
 import com.breathy.ui.auth.OnboardingScreen
@@ -186,6 +188,8 @@ fun BreathyNavHost(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val context = LocalContext.current
+    val app = context.applicationContext as BreathyApplication
 
     // ── Deep link routing ───────────────────────────────────────────────────
     LaunchedEffect(deepLinkRoute) {
@@ -223,6 +227,17 @@ fun BreathyNavHost(
             }
             launchSingleTop = true
             restoreState = true
+        }
+    }
+
+    fun navigateToWithAd(route: String) {
+        val activity = context as? Activity
+        if (activity != null) {
+            app.appModule.adManager.showInterstitialAd(activity) {
+                navigateTo(route)
+            }
+        } else {
+            navigateTo(route)
         }
     }
 
@@ -301,12 +316,13 @@ fun BreathyNavHost(
             composable(BreathyRoutes.COMMUNITY) {
                 CommunityScreen(
                     onNavigateToStoryDetail = { storyId ->
-                        navController.navigate(BreathyRoutes.storyDetail(storyId))
+                        navigateToWithAd(BreathyRoutes.storyDetail(storyId))
                     },
                     onNavigateToPostStory = { navigateTo(BreathyRoutes.POST_STORY) },
                     onNavigateToProfile = { userId ->
-                        navController.navigate(BreathyRoutes.publicProfile(userId))
-                    }
+                        navigateToWithAd(BreathyRoutes.publicProfile(userId))
+                    },
+                    onNavigateToFriends = { navController.navigate(BreathyRoutes.FRIENDS) }
                 )
             }
 
@@ -323,7 +339,7 @@ fun BreathyNavHost(
                     storyId = storyId,
                     onNavigateBack = { navigateBack() },
                     onNavigateToProfile = { userId ->
-                        navController.navigate(BreathyRoutes.publicProfile(userId))
+                        navigateToWithAd(BreathyRoutes.publicProfile(userId))
                     }
                 )
             }
@@ -352,7 +368,7 @@ fun BreathyNavHost(
                         navController.navigate(BreathyRoutes.storyDetail(sId))
                     },
                     onNavigateToChat = { chatId ->
-                        navController.navigate(BreathyRoutes.chat(chatId))
+                        navigateToWithAd(BreathyRoutes.chat(chatId))
                     }
                 )
             }
@@ -362,7 +378,7 @@ fun BreathyNavHost(
                 FriendsScreen(
                     onNavigateBack = { navigateBack() },
                     onNavigateToChat = { chatId ->
-                        navController.navigate(BreathyRoutes.chat(chatId))
+                        navigateToWithAd(BreathyRoutes.chat(chatId))
                     }
                 )
             }
@@ -387,7 +403,7 @@ fun BreathyNavHost(
                 LeaderboardScreen(
                     onNavigateBack = { navigateBack() },
                     onNavigateToProfile = { userId ->
-                        navController.navigate(BreathyRoutes.publicProfile(userId))
+                        navigateToWithAd(BreathyRoutes.publicProfile(userId))
                     }
                 )
             }
@@ -397,7 +413,7 @@ fun BreathyNavHost(
                 EventsScreen(
                     onNavigateBack = { navigateBack() },
                     onNavigateToEventDetail = { eventId ->
-                        navController.navigate(BreathyRoutes.eventChallenge(eventId))
+                        navigateToWithAd(BreathyRoutes.eventChallenge(eventId))
                     }
                 )
             }
@@ -452,6 +468,7 @@ fun BreathyNavHost(
                     onNavigateToAchievements = { navigateTo(BreathyRoutes.ACHIEVEMENTS) },
                     onNavigateToSubscription = { navigateTo(BreathyRoutes.SUBSCRIPTION) },
                     onNavigateToAICoach = { navigateTo(BreathyRoutes.AI_COACH) },
+                    onNavigateToFriends = { navController.navigate(BreathyRoutes.FRIENDS) },
                     onSignOut = { signOutAndNavigateToAuth() }
                 )
             }

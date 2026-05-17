@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Settings
@@ -129,6 +130,7 @@ fun ProfileScreen(
     onNavigateToAchievements: () -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
     onNavigateToAICoach: () -> Unit = {},
+    onNavigateToFriends: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: ProfileViewModel = run {
         val context = LocalContext.current
@@ -258,7 +260,8 @@ fun ProfileScreen(
                         privacyEnabled = uiState.privacyEnabled,
                         onNotificationsToggle = { viewModel.toggleNotifications(it) },
                         onDarkModeToggle = { viewModel.toggleDarkMode(it) },
-                        onPrivacyToggle = { viewModel.togglePrivacy(it) }
+                        onPrivacyToggle = { viewModel.togglePrivacy(it) },
+                        onNavigateToFriends = onNavigateToFriends
                     )
                 }
 
@@ -1015,7 +1018,8 @@ private fun SettingsSection(
     privacyEnabled: Boolean,
     onNotificationsToggle: (Boolean) -> Unit,
     onDarkModeToggle: (Boolean) -> Unit,
-    onPrivacyToggle: (Boolean) -> Unit
+    onPrivacyToggle: (Boolean) -> Unit,
+    onNavigateToFriends: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1079,6 +1083,63 @@ private fun SettingsSection(
                 checked = privacyEnabled,
                 onCheckedChange = onPrivacyToggle
             )
+
+            HorizontalDivider(color = BgSurfaceVariant, thickness = 1.dp)
+
+            // Friends navigation row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.People,
+                        contentDescription = "Friends",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Friends",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                        Text(
+                            text = "View and manage friends",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.1f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    onClick = onNavigateToFriends
+                ) {
+                    Text(
+                        text = "View",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = AccentPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+            }
         }
     }
 }

@@ -64,11 +64,18 @@ class EventRepository(
     /** Fetch all currently active events. */
     suspend fun getActiveEvents(): Result<List<Event>> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val snapshot = firestore.collection(EVENTS_COLLECTION)
-                .whereEqualTo("active", true)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val snapshot = try {
+                firestore.collection(EVENTS_COLLECTION)
+                    .whereEqualTo("active", true)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server fetch failed for events — trying cache")
+                firestore.collection(EVENTS_COLLECTION)
+                    .whereEqualTo("active", true)
+                    .get(Source.CACHE)
+                    .await()
+            }
             snapshot.documents.mapNotNull { doc ->
                 doc.data?.let { Event.fromFirestoreMap(doc.id, it) }
             }
@@ -80,10 +87,16 @@ class EventRepository(
     /** Fetch a single event by ID. */
     suspend fun getEvent(eventId: String): Result<Event> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val document = firestore.collection(EVENTS_COLLECTION).document(eventId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val document = try {
+                firestore.collection(EVENTS_COLLECTION).document(eventId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server fetch failed for event %s — trying cache", eventId)
+                firestore.collection(EVENTS_COLLECTION).document(eventId)
+                    .get(Source.CACHE)
+                    .await()
+            }
             if (!document.exists()) {
                 throw NoSuchElementException("Event not found: $eventId")
             }
@@ -106,11 +119,18 @@ class EventRepository(
         val participantId = EventParticipant.participantId(uid, eventId)
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val existingDoc = firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
-                .document(participantId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val existingDoc = try {
+                firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
+                    .document(participantId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server fetch failed for participant %s — trying cache", participantId)
+                firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
+                    .document(participantId)
+                    .get(Source.CACHE)
+                    .await()
+            }
 
             if (existingDoc.exists()) {
                 throw IllegalStateException("Already joined this event")
@@ -153,11 +173,18 @@ class EventRepository(
     ): Result<EventParticipant?> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             val participantId = EventParticipant.participantId(userId, eventId)
-            val document = firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
-                .document(participantId)
-                .get(Source.SERVER)
-                .await()
-                Unit
+            val document = try {
+                firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
+                    .document(participantId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server fetch failed for participant %s — trying cache", participantId)
+                firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
+                    .document(participantId)
+                    .get(Source.CACHE)
+                    .await()
+            }
             if (!document.exists()) null
             else EventParticipant.fromFirestoreMap(document.id, document.data ?: emptyMap())
         } ?: throw IllegalStateException("Get participant timed out after 30 seconds")

@@ -85,6 +85,8 @@ class MainActivity : ComponentActivity() {
             try {
                 MobileAds.initialize(this@MainActivity) { initializationStatus ->
                     Timber.d("AdMob initialized: ${initializationStatus.adapterStatusMap}")
+                    // Load the app-open ad after SDK initialization succeeds
+                    appModule.adManager.loadAppOpenAd()
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to initialize AdMob")
@@ -111,6 +113,16 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Show app-open ad when app comes to foreground, but only if user
+        // is already past the auth screen (not on login/signup)
+        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            appModule.adManager.showAppOpenAd(this) {}
         }
     }
 

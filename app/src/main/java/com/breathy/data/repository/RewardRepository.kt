@@ -241,9 +241,21 @@ class RewardRepository(
     /** Get all achievements with unlock state for a given user. */
     suspend fun getAchievements(userId: String): Result<List<Achievement>> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val userDoc = firestore.collection(USERS_COLLECTION).document(userId)
-                .get(Source.SERVER)
-                .await()
+            val userDoc = try {
+                firestore.collection(USERS_COLLECTION).document(userId)
+                    .get(Source.SERVER)
+                    .await()
+            } catch (e: Exception) {
+                Timber.w(e, "Server read failed for achievements — trying cache")
+                try {
+                    firestore.collection(USERS_COLLECTION).document(userId)
+                        .get(Source.CACHE)
+                        .await()
+                } catch (cacheEx: Exception) {
+                    Timber.w(cacheEx, "Cache read also failed")
+                    throw e
+                }
+            }
             if (!userDoc.exists()) throw NoSuchElementException("User not found: $userId")
             val unlockedIds = (userDoc.get("achievements") as? List<*>)
                 ?.filterIsInstance<String>() ?: emptyList()
@@ -266,9 +278,21 @@ class RewardRepository(
     suspend fun checkAndUnlockAchievement(userId: String): Result<List<Achievement>> =
         runCatching {
             withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-                val userDoc = firestore.collection(USERS_COLLECTION).document(userId)
-                    .get(Source.SERVER)
-                    .await()
+                val userDoc = try {
+                    firestore.collection(USERS_COLLECTION).document(userId)
+                        .get(Source.SERVER)
+                        .await()
+                } catch (e: Exception) {
+                    Timber.w(e, "Server read failed for achievement check — trying cache")
+                    try {
+                        firestore.collection(USERS_COLLECTION).document(userId)
+                            .get(Source.CACHE)
+                            .await()
+                    } catch (cacheEx: Exception) {
+                        Timber.w(cacheEx, "Cache read also failed")
+                        throw e
+                    }
+                }
                 if (!userDoc.exists()) throw NoSuchElementException("User not found: $userId")
                 val user = User.fromFirestoreMap(userDoc.data ?: emptyMap())
                 val newlyUnlocked = checkAndUnlockAchievementsInternal(userId, user)
