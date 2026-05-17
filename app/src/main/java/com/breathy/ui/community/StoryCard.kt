@@ -48,8 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.coil3.compose.AsyncImage
-import io.coil3.request.ImageRequest
+import io.coil.compose.AsyncImage
+import io.coil.request.ImageRequest
 import com.breathy.data.models.Story
 import com.breathy.ui.theme.AccentPink
 import com.breathy.ui.theme.AccentPrimary

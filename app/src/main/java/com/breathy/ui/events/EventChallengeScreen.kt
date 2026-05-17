@@ -86,7 +86,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import io.coil3.compose.AsyncImage
+import io.coil.compose.AsyncImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Event
 import com.breathy.data.models.EventParticipant

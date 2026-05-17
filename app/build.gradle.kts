@@ -128,9 +128,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // ── Coil 3.0 (Image Loading) ──────────────────────────────────────────
+    // ── Coil 2.7 (Image Loading) ──────────────────────────────────────────
     implementation(libs.coil.compose)
-    implementation(libs.coil.network.okhttp)
 
     // ── Accompanist ────────────────────────────────────────────────────────
     implementation(libs.accompanist.permissions)
