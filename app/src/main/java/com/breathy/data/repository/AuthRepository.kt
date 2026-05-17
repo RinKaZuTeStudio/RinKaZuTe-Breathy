@@ -118,26 +118,39 @@ class AuthRepository(
                     ?: throw IllegalStateException("Sign up failed: user is null")
 
                 // Create initial user document in Firestore (best-effort)
+                // NOTE: We intentionally do NOT write quitDate/quitType here.
+                // The onboarding screen will add those fields when the user
+                // completes setup. AuthScreen.checkUserProfileAndNavigate()
+                // checks for quitDate+quitType+nickname to decide whether
+                // the user has completed onboarding.
                 try {
                     val newUser = User(
                         email = email,
-                        nickname = nickname.ifBlank { firebaseUser.displayName ?: "Quitter" },
+                        nickname = nickname.ifBlank { firebaseUser.displayName ?: "" },
                         createdAt = com.google.firebase.Timestamp.now()
+                    )
+                    // Build a sparse map WITHOUT quitDate/quitType so the
+                    // auth check knows this user hasn't completed onboarding
+                    val sparseMap = mutableMapOf<String, Any?>(
+                        "email" to newUser.email,
+                        "nickname" to newUser.nickname,
+                        "createdAt" to newUser.createdAt,
+                        "xp" to 0,
+                        "coins" to 0
                     )
                     // Use toFirestoreMap() for explicit field mapping
                     // to avoid enum-serialization issues with Firestore's POJO converter
                     firestore.collection(USERS_COLLECTION)
                         .document(firebaseUser.uid)
-                        .set(newUser.toFirestoreMap())
+                        .set(sparseMap)
                         .await()
 
-                    // Create initial public profile
+                    // Create initial public profile (without quitDate)
                     val publicProfile = mapOf(
-                        "nickname" to (nickname.ifBlank { firebaseUser.displayName ?: "Quitter" }),
+                        "nickname" to (nickname.ifBlank { firebaseUser.displayName ?: "" }),
                         "photoURL" to (firebaseUser.photoUrl?.toString()),
                         "daysSmokeFree" to 0,
-                        "xp" to 0,
-                        "quitDate" to newUser.quitDate
+                        "xp" to 0
                     )
                     firestore.collection(PUBLIC_PROFILES_COLLECTION)
                         .document(firebaseUser.uid)
@@ -190,27 +203,31 @@ class AuthRepository(
                 val firebaseUser = result.user
                     ?: throw IllegalStateException("Google sign-in failed: user is null")
 
-                // If this is a new user, create a Firestore document (best-effort)
+                // If this is a new user, create a sparse Firestore document (best-effort)
+                // NOTE: We intentionally do NOT write quitDate/quitType here.
+                // The onboarding screen will add those fields when the user
+                // completes setup. See signUpWithEmail() for same pattern.
                 if (result.additionalUserInfo?.isNewUser == true) {
                     try {
-                        val newUser = User(
-                            email = firebaseUser.email ?: "",
-                            nickname = firebaseUser.displayName ?: "Quitter",
-                            photoURL = firebaseUser.photoUrl?.toString(),
-                            createdAt = com.google.firebase.Timestamp.now()
+                        // Sparse map WITHOUT quitDate/quitType
+                        val sparseMap = mutableMapOf<String, Any?>(
+                            "email" to (firebaseUser.email ?: ""),
+                            "nickname" to (firebaseUser.displayName ?: ""),
+                            "photoURL" to (firebaseUser.photoUrl?.toString()),
+                            "createdAt" to com.google.firebase.Timestamp.now(),
+                            "xp" to 0,
+                            "coins" to 0
                         )
-                        // Use toFirestoreMap() for explicit field mapping
                         firestore.collection(USERS_COLLECTION)
                             .document(firebaseUser.uid)
-                            .set(newUser.toFirestoreMap())
+                            .set(sparseMap)
                             .await()
 
                         val publicProfile = mapOf(
-                            "nickname" to (firebaseUser.displayName ?: "Quitter"),
+                            "nickname" to (firebaseUser.displayName ?: ""),
                             "photoURL" to (firebaseUser.photoUrl?.toString()),
                             "daysSmokeFree" to 0,
-                            "xp" to 0,
-                            "quitDate" to newUser.quitDate
+                            "xp" to 0
                         )
                         firestore.collection(PUBLIC_PROFILES_COLLECTION)
                             .document(firebaseUser.uid)

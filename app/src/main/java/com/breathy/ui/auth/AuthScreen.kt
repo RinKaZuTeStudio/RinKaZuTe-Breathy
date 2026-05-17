@@ -333,13 +333,18 @@ class AuthViewModel(
 
                 _uiState.update { it.copy(isLoading = false) }
 
-                if (document != null && document.exists() && document.contains("quitDate")) {
-                    // User has completed onboarding — go to Home
+                if (document != null && document.exists()
+                    && document.contains("quitDate")
+                    && document.contains("quitType")
+                    && document.contains("nickname")
+                    && (document.getString("nickname")?.isNotBlank() == true)
+                ) {
+                    // User has completed onboarding (has quitDate + quitType + nickname)
                     _uiState.update {
                         it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
                     }
                 } else {
-                    // New user or missing profile — go to onboarding
+                    // New user or incomplete profile — go to onboarding
                     _uiState.update {
                         it.copy(navigationEvent = AuthNavigationEvent.NavigateToOnboarding)
                     }
