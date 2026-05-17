@@ -150,7 +150,7 @@ class CoachRepository(
                 )
             }
 
-            val responseData = result.data as? Map<*, *> ?: emptyMap<Any, Any?>()
+            val responseData = result.getData() as? Map<*, *> ?: emptyMap<Any, Any?>()
             val assistantContent = responseData["content"] as? String
                 ?: "I'm here for you. Keep going — you're stronger than you think!"
 
