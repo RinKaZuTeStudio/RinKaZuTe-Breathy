@@ -86,7 +86,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.coil.compose.SubcomposeAsyncImage
+import io.coil.compose.AsyncImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Achievement
 import com.breathy.data.models.Subscription
@@ -563,39 +563,13 @@ private fun ProfileHeader(
                 onClick = onAvatarClick
             ) {
                 if (!photoURL.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
+                    AsyncImage(
                         model = photoURL,
                         contentDescription = "Your avatar",
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Loading avatar",
-                                    tint = AccentPrimary,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                            }
-                        },
-                        error = {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Default avatar",
-                                    tint = AccentPrimary,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                            }
-                        }
+                        contentScale = ContentScale.Crop
                     )
                 } else {
                     Box(

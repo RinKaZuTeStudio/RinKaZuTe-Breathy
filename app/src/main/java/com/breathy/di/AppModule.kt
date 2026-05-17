@@ -56,6 +56,7 @@ class AppModule(
     }
 
     /** Cloud Firestore instance — uses the named database for this Firebase project. */
+    @Suppress("DEPRECATION")
     val firestore: FirebaseFirestore by lazy {
         Timber.d("Initializing FirebaseFirestore with named database")
         try {
