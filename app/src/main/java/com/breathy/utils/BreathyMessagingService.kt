@@ -2,6 +2,8 @@ package com.breathy.utils
 
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -27,7 +29,7 @@ class BreathyMessagingService : FirebaseMessagingService() {
         if (userId != null) {
             try {
                 val app = applicationContext as com.breathy.BreathyApplication
-                kotlinx.coroutines.GlobalScope.launch(app.globalExceptionHandler) {
+                GlobalScope.launch(app.globalExceptionHandler) {
                     app.appModule.userRepository.updateFcmToken(userId, token)
                         .onFailure { e ->
                             Timber.e(e, "Failed to update FCM token on token refresh")

@@ -28,7 +28,7 @@ coroutines = "1.8.1"
 coroutinesPlayServices = "1.8.1"
 
 # Image loading
-coil = "3.0.0"
+coil = "3.0.4"
 
 # Accompanist
 accompanist = "0.34.0"
