@@ -59,8 +59,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
+import io.coil3.compose.AsyncImage
+import io.coil3.request.ImageRequest
 import com.breathy.BreathyApplication
 import com.breathy.data.models.PublicProfile
 import com.breathy.data.models.RequestStatus
@@ -411,24 +411,26 @@ private fun ProfileHeader(profile: PublicProfile) {
             }
 
             // Quit date
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.semantics {
-                    contentDescription = "Quit date: ${formatQuitDate(profile.quitDate.toDate())}"
+            profile.quitDate?.let { qd ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Quit date: ${formatQuitDate(qd.toDate())}"
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CalendarToday,
+                        contentDescription = null,
+                        tint = TextDisabled,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Quit on ${formatQuitDate(qd.toDate())}",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.CalendarToday,
-                    contentDescription = null,
-                    tint = TextDisabled,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Quit on ${formatQuitDate(profile.quitDate.toDate())}",
-                    color = TextSecondary,
-                    style = MaterialTheme.typography.bodySmall
-                )
             }
         }
     }

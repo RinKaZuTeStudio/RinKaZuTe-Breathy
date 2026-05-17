@@ -124,7 +124,7 @@ data class User(
     val age: Int? = null,
     @PropertyName("quitDate")
     @Serializable(with = TimestampSerializer::class)
-        val quitDate: Timestamp = Timestamp.now(),
+        val quitDate: Timestamp? = null,
     @PropertyName("quitType")
     val quitType: QuitType = QuitType.INSTANT,
     @PropertyName("cigarettesPerDay")
@@ -165,7 +165,7 @@ data class User(
             email = map["email"] as? String ?: "",
             nickname = map["nickname"] as? String ?: "",
             age = (map["age"] as? Long)?.toInt(),
-            quitDate = map["quitDate"] as? Timestamp ?: Timestamp.now(),
+            quitDate = map["quitDate"] as? Timestamp,
             quitType = QuitType.fromValue(map["quitType"] as? String ?: "instant"),
             cigarettesPerDay = (map["cigarettesPerDay"] as? Long)?.toInt() ?: 0,
             pricePerPack = (map["pricePerPack"] as? Number)?.toDouble() ?: 0.0,
@@ -195,10 +195,10 @@ data class User(
     val level: Int
         get() = computeLevel(xp)
 
-    /** Days smoke-free from the quit date to now. */
+    /** Days smoke-free from the quit date to now. Returns 0 if quitDate is not set. */
     val daysSmokeFree: Int
         get() {
-            val quitMillis = quitDate.toDate().time
+            val quitMillis = quitDate?.toDate()?.time ?: return 0
             val nowMillis = System.currentTimeMillis()
             val diffMillis = nowMillis - quitMillis
             return if (diffMillis < 0) 0 else TimeUnit.MILLISECONDS.toDays(diffMillis).toInt()
@@ -206,7 +206,7 @@ data class User(
 
     /** Total money saved based on habit data and days smoke-free. */
     fun moneySaved(): Double {
-        if (cigarettesPerPack <= 0) return 0.0
+        if (quitDate == null || cigarettesPerPack <= 0) return 0.0
         val costPerCigarette = pricePerPack / cigarettesPerPack
         return costPerCigarette * cigarettesPerDay * daysSmokeFree
     }
@@ -269,7 +269,7 @@ data class PublicProfile(
     val location: String? = null,
     @PropertyName("quitDate")
     @Serializable(with = TimestampSerializer::class)
-        val quitDate: Timestamp = Timestamp.now()
+        val quitDate: Timestamp? = null
 ){
     companion object {
         fun fromFirestoreMap(map: Map<String, Any?>): PublicProfile = PublicProfile(
@@ -278,7 +278,7 @@ data class PublicProfile(
             daysSmokeFree = (map["daysSmokeFree"] as? Long)?.toInt() ?: 0,
             xp = (map["xp"] as? Long)?.toInt() ?: 0,
             location = map["location"] as? String,
-            quitDate = map["quitDate"] as? Timestamp ?: Timestamp.now()
+            quitDate = map["quitDate"] as? Timestamp
         )
     }
 }

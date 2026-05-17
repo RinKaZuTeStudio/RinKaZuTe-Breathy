@@ -51,6 +51,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -122,12 +123,6 @@ fun CommunityScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-
-    // ── Refresh when returning from PostStory ──────────────────────────
-    LaunchedEffect(Unit) {
-        // Refresh stories when screen is first composed (e.g., after back navigation)
-        viewModel.refresh()
-    }
 
     // ── Lifecycle cleanup ─────────────────────────────────────────────────
     DisposableEffect(viewModel) {
@@ -526,9 +521,6 @@ private fun ErrorState(
         }
     }
 }
-
-// Need LocalContext import
-private val LocalContext = androidx.compose.ui.platform.LocalContext
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ViewModel

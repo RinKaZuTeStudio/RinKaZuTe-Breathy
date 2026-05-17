@@ -85,9 +85,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
+import io.coil3.compose.SubcomposeAsyncImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Achievement
 import com.breathy.data.models.Subscription
@@ -564,13 +563,39 @@ private fun ProfileHeader(
                 onClick = onAvatarClick
             ) {
                 if (!photoURL.isNullOrBlank()) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = photoURL,
                         contentDescription = "Your avatar",
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Loading avatar",
+                                    tint = AccentPrimary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        },
+                        error = {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Default avatar",
+                                    tint = AccentPrimary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
                     )
                 } else {
                     Box(

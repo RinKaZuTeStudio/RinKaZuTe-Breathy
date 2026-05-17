@@ -74,7 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
+import io.coil3.compose.AsyncImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.CopingMethod
 import com.breathy.ui.theme.AccentOrange

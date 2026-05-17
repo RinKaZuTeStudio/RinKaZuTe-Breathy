@@ -625,7 +625,7 @@ class UserRepository(
     private fun createFallbackUser(): User = User(
         nickname = "Quitter",
         email = "",
-        quitDate = Timestamp.now(),
+        quitDate = null,
         quitType = QuitType.INSTANT,
         cigarettesPerDay = 0,
         pricePerPack = 0.0,

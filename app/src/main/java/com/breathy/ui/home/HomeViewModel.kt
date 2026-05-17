@@ -157,7 +157,7 @@ class HomeViewModel(
         val lifeRegained = cigarettesAvoided * 11 // 11 minutes per cigarette
 
         val milestones = try {
-            userRepository.getCurrentMilestones(user.quitDate.toDate())
+            user.quitDate?.toDate()?.let { userRepository.getCurrentMilestones(it) } ?: emptyList()
         } catch (e: Exception) {
             Timber.w(e, "$TAG: Failed to get health milestones")
             emptyList()
