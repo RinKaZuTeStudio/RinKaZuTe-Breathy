@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -235,7 +236,7 @@ fun AchievementsListScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        androidx.compose.material3.CircularProgressIndicator(color = AccentPrimary)
+                        CircularProgressIndicator(color = AccentPrimary)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Loading achievements...",
