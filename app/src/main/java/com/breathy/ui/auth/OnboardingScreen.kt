@@ -559,6 +559,8 @@ internal fun showDatePicker(
     ).apply {
         // Allow selecting today and past dates (quit date can be in the past)
         datePicker.maxDate = System.currentTimeMillis()
+        // Minimum date = 365 days ago (generous window; account is being created now)
+        datePicker.minDate = System.currentTimeMillis() - 365L * 24 * 60 * 60 * 1000
     }.show()
 }
 

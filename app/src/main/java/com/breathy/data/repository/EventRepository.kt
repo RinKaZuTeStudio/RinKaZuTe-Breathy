@@ -367,7 +367,7 @@ class EventRepository(
                                 .await()
                                 Unit
                             val profile = if (profileDoc.exists()) {
-                                PublicProfile.fromFirestoreMap(profileDoc.data ?: emptyMap())
+                                PublicProfile.fromFirestoreMap(participant.userId, profileDoc.data ?: emptyMap())
                             } else null
 
                             EventLeaderboardEntry(

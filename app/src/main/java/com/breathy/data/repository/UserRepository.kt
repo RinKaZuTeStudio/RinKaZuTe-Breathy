@@ -197,7 +197,7 @@ class UserRepository(
                 .get(Source.SERVER)
                 .await()
             if (!document.exists()) throw NoSuchElementException("Public profile not found: $userId")
-            PublicProfile.fromFirestoreMap(document.data ?: emptyMap())
+            PublicProfile.fromFirestoreMap(userId, document.data ?: emptyMap())
         } ?: throw IllegalStateException("Get public profile timed out after 30 seconds")
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to get public profile: %s", userId)
@@ -611,7 +611,7 @@ class UserRepository(
                     .get()
                     .await()
                 snapshot.documents.mapNotNull { doc ->
-                    doc.data?.let { PublicProfile.fromFirestoreMap(it) }
+                    doc.data?.let { PublicProfile.fromFirestoreMap(doc.id, it) }
                 }
             } ?: throw IllegalStateException("Search users timed out after 30 seconds")
         }.onFailure { e ->
@@ -681,7 +681,7 @@ class UserRepository(
                     }
                     if (snapshot != null) {
                         val profiles = snapshot.documents.mapNotNull { doc ->
-                            doc.data?.let { Pair(doc.id, PublicProfile.fromFirestoreMap(it)) }
+                            doc.data?.let { Pair(doc.id, PublicProfile.fromFirestoreMap(doc.id, it)) }
                         }
                         trySend(profiles)
                     }
@@ -705,7 +705,7 @@ class UserRepository(
                     }
                     if (snapshot != null) {
                         val profiles = snapshot.documents.mapNotNull { doc ->
-                            doc.data?.let { PublicProfile.fromFirestoreMap(it) }
+                            doc.data?.let { PublicProfile.fromFirestoreMap(doc.id, it) }
                         }
                         trySend(profiles)
                     }

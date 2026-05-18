@@ -299,9 +299,11 @@ class ChatViewModel(
     override fun onCleared() {
         super.onCleared()
         typingJob?.cancel()
-        // Clear typing indicator on leave
-        viewModelScope.launch {
-            chatRepository.setTyping(chatId, false)
+        // Use GlobalScope to ensure typing indicator is cleared even after viewModelScope is cancelled
+        kotlinx.coroutines.GlobalScope.launch {
+            try {
+                chatRepository.setTyping(chatId, false)
+            } catch (_: Exception) { }
         }
         Timber.d("ChatViewModel: cleared")
     }
@@ -352,108 +354,112 @@ fun ChatScreen(
         onDispose { Timber.d("ChatScreen: disposed") }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // ── Top Bar with Online Status ─────────────────────────────────────
-        ChatTopBar(
-            otherUserProfile = uiState.otherUserProfile,
-            isOnline = uiState.isOtherUserOnline,
-            isTyping = uiState.isOtherUserTyping,
-            onNavigateBack = onNavigateBack
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // ── Top Bar with Online Status ─────────────────────────────────────
+            ChatTopBar(
+                otherUserProfile = uiState.otherUserProfile,
+                isOnline = uiState.isOtherUserOnline,
+                isTyping = uiState.isOtherUserTyping,
+                onNavigateBack = onNavigateBack
+            )
 
-        // ── Messages List ──────────────────────────────────────────────────
-        Box(modifier = Modifier.weight(1f)) {
-            if (uiState.isLoading) {
-                // Loading state
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(
-                            color = AccentPrimary,
-                            modifier = Modifier.size(32.dp),
-                            strokeWidth = 3.dp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Loading messages...",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+            // ── Messages List ──────────────────────────────────────────────────
+            Box(modifier = Modifier.weight(1f)) {
+                if (uiState.isLoading) {
+                    // Loading state
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = AccentPrimary,
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 3.dp
                             )
-                        )
-                    }
-                }
-            } else if (uiState.errorMessage != null) {
-                // Error state
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = uiState.errorMessage!!,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = AccentPrimary
-                        ) {
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Retry",
-                                modifier = Modifier
-                                    .clickable { viewModel.loadChat() }
-                                    .padding(horizontal = 24.dp, vertical = 10.dp),
-                                color = MaterialTheme.colorScheme.background,
-                                fontWeight = FontWeight.Bold
+                                text = "Loading messages...",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
                         }
                     }
+                } else if (uiState.errorMessage != null) {
+                    // Error state
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = uiState.errorMessage!!,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = AccentPrimary
+                            ) {
+                                Text(
+                                    text = "Retry",
+                                    modifier = Modifier
+                                        .clickable { viewModel.loadChat() }
+                                        .padding(horizontal = 24.dp, vertical = 10.dp),
+                                    color = MaterialTheme.colorScheme.background,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Message list
+                    MessageList(
+                        messages = uiState.messages,
+                        currentUserId = try {
+                            com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        } catch (_: Exception) { "" },
+                        otherUserProfile = uiState.otherUserProfile,
+                        isOtherTyping = uiState.isOtherUserTyping,
+                        isLoadingOlder = uiState.isLoadingOlder,
+                        onLoadOlder = { viewModel.loadOlderMessages() }
+                    )
                 }
-            } else {
-                // Message list
-                MessageList(
-                    messages = uiState.messages,
-                    currentUserId = try {
-                        com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                    } catch (_: Exception) { "" },
-                    otherUserProfile = uiState.otherUserProfile,
-                    isOtherTyping = uiState.isOtherUserTyping,
-                    isLoadingOlder = uiState.isLoadingOlder,
-                    onLoadOlder = { viewModel.loadOlderMessages() }
-                )
             }
+
+            // ── Typing Indicator ───────────────────────────────────────────────
+            AnimatedVisibility(visible = uiState.isOtherUserTyping) {
+                TypingIndicatorBar(otherUserName = uiState.otherUserProfile?.nickname ?: "User")
+            }
+
+            // ── Input Bar ──────────────────────────────────────────────────────
+            MessageInputBar(
+                text = uiState.inputText,
+                isSending = uiState.isSending,
+                onTextChanged = { viewModel.onInputTextChanged(it) },
+                onSend = { viewModel.sendMessage() }
+            )
         }
 
-        // ── Typing Indicator ───────────────────────────────────────────────
-        AnimatedVisibility(visible = uiState.isOtherUserTyping) {
-            TypingIndicatorBar(otherUserName = uiState.otherUserProfile?.nickname ?: "User")
-        }
-
-        // ── Input Bar ──────────────────────────────────────────────────────
-        MessageInputBar(
-            text = uiState.inputText,
-            isSending = uiState.isSending,
-            onTextChanged = { viewModel.onInputTextChanged(it) },
-            onSend = { viewModel.sendMessage() }
+        // Snackbar — positioned at bottom center above input bar
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 72.dp)
         )
     }
-
-    // Snackbar
-    SnackbarHost(
-        hostState = snackbarHostState,
-        modifier = Modifier.padding(bottom = 56.dp)
-    )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

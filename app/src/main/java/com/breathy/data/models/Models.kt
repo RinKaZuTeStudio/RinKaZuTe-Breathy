@@ -257,6 +257,7 @@ data class User(
 
 @Serializable
 data class PublicProfile(
+    val userId: String = "",
     @PropertyName("nickname")
     val nickname: String = "",
     @PropertyName("photoURL")
@@ -272,7 +273,8 @@ data class PublicProfile(
         val quitDate: Timestamp? = null
 ){
     companion object {
-        fun fromFirestoreMap(map: Map<String, Any?>): PublicProfile = PublicProfile(
+        fun fromFirestoreMap(id: String, map: Map<String, Any?>): PublicProfile = PublicProfile(
+            userId = id,
             nickname = map["nickname"] as? String ?: "",
             photoURL = map["photoURL"] as? String,
             daysSmokeFree = (map["daysSmokeFree"] as? Long)?.toInt() ?: 0,

@@ -820,7 +820,15 @@ class StoryDetailViewModel(
             ).fold(
                 onSuccess = { newReply ->
                     val currentReplies = _uiState.value.replies + newReply
+                    // Optimistically increment replyCount so the UI updates immediately.
+                    // The observeStory() real-time listener will eventually confirm the
+                    // server-side value, but without this the count stays stale until
+                    // the snapshot arrives.
+                    val updatedStory = _uiState.value.story?.let {
+                        it.copy(replyCount = it.replyCount + 1)
+                    }
                     _uiState.value = _uiState.value.copy(
+                        story = updatedStory,
                         replies = currentReplies,
                         threadedReplies = buildThreadedReplies(currentReplies),
                         replyText = "",

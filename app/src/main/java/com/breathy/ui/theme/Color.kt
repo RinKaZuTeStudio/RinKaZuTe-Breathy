@@ -153,6 +153,12 @@ val LightTextInverse = Color(0xFFFFFFFF)
 /** Primary accent for light mode — slightly darker green for contrast. */
 val LightAccentPrimary = Color(0xFF00C853)
 
+/** Primary container for light mode — light green surface for primary-themed containers. */
+val LightAccentPrimaryContainer = Color(0xFFC8E6C9)
+
+/** On primary container for light mode — dark green text on primary container surfaces. */
+val LightOnPrimaryContainer = Color(0xFF1B5E20)
+
 /** Card outlines (light mode). */
 val LightOutlineColor = Color(0xFFE0E0E0)
 

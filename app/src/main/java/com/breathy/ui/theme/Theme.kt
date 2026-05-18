@@ -178,8 +178,8 @@ private val BreathyDarkColorScheme = darkColorScheme(
 private val BreathyLightColorScheme = lightColorScheme(
     primary = LightAccentPrimary,
     onPrimary = LightTextInverse,
-    primaryContainer = LightAccentPrimary.copy(alpha = 0.12f),
-    onPrimaryContainer = LightAccentPrimary,
+    primaryContainer = LightAccentPrimaryContainer,
+    onPrimaryContainer = LightOnPrimaryContainer,
 
     secondary = AccentSecondary,
     onSecondary = LightTextInverse,

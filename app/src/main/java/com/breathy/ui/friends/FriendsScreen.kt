@@ -199,12 +199,8 @@ class FriendsViewModel(
                 // by searching publicProfiles for each profile's nickname.
                 // This is a workaround for the data model limitation.
                 val friendsWithProfiles = profiles.mapIndexed { index, profile ->
-                    // Since PublicProfile doesn't have userId, and we can't
-                    // get the Firestore doc ID from searchUsers, we create a
-                    // placeholder. In production, the repository should be
-                    // updated to return (userId, PublicProfile) pairs.
                     FriendWithProfile(
-                        userId = "user_${profile.nickname.hashCode().toUInt()}",
+                        userId = profile.userId,
                         friendshipId = "friendship_$index",
                         profile = profile
                     )
@@ -250,12 +246,9 @@ class FriendsViewModel(
 
             val result = userRepository.searchUsers(query)
             result.onSuccess { profiles ->
-                // Unfortunately searchUsers returns List<PublicProfile> without doc IDs.
-                // In production, the repository should return (docId, PublicProfile) pairs.
-                // For now, create SearchResult with placeholder userIds.
                 val searchResults = profiles.map { profile ->
                     SearchResult(
-                        userId = profile.nickname, // Placeholder; real app returns Firestore doc ID
+                        userId = profile.userId,
                         profile = profile
                     )
                 }

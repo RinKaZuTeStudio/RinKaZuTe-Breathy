@@ -437,7 +437,7 @@ class FriendRepository(
                                 }
                             }
                             if (profileDoc.exists()) {
-                                PublicProfile.fromFirestoreMap(profileDoc.data ?: emptyMap())
+                                PublicProfile.fromFirestoreMap(id, profileDoc.data ?: emptyMap())
                             } else null
                         } catch (e: Exception) {
                             Timber.e(e, "Failed to fetch friend profile: %s", id)
@@ -588,7 +588,7 @@ class FriendRepository(
                                     .await()
                                 Unit
                                 if (profileDoc.exists()) {
-                                    PublicProfile.fromFirestoreMap(profileDoc.data ?: emptyMap())
+                                    PublicProfile.fromFirestoreMap(id, profileDoc.data ?: emptyMap())
                                 } else null
                             } catch (e: Exception) {
                                 Timber.e(e, "Failed to fetch friend profile: %s", id)

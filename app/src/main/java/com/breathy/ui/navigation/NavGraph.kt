@@ -6,8 +6,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -29,6 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -59,8 +62,10 @@ import com.breathy.ui.friends.ChatScreen
 import com.breathy.ui.friends.FriendsScreen
 import com.breathy.ui.home.HomeScreen
 import com.breathy.ui.leaderboard.LeaderboardScreen
+import com.breathy.ui.notifications.NotificationsScreen
 import com.breathy.ui.profile.AchievementsListScreen
 import com.breathy.ui.profile.ProfileScreen
+import com.breathy.ui.subscription.PremiumPopup
 import com.breathy.ui.subscription.SubscriptionScreen
 import com.breathy.ui.theme.AccentPrimary
 import com.google.firebase.auth.FirebaseAuth
@@ -93,6 +98,7 @@ object BreathyRoutes {
     const val ADMIN_REVIEW = "adminReview"
     const val AI_COACH = "aiCoach"
     const val ACHIEVEMENTS = "achievements"
+    const val NOTIFICATIONS = "notifications"
     const val SUBSCRIPTION = "subscription"
 
     // ── Helper functions for parameterized routes ───────────────────────────
@@ -139,6 +145,7 @@ private val noBottomBarRoutes = setOf(
     BreathyRoutes.AI_COACH,
     BreathyRoutes.SUBSCRIPTION,
     BreathyRoutes.ACHIEVEMENTS,
+    BreathyRoutes.NOTIFICATIONS,
     BreathyRoutes.PUBLIC_PROFILE,
     BreathyRoutes.FRIENDS,
     BreathyRoutes.EVENT_CHALLENGE
@@ -148,34 +155,22 @@ private val noBottomBarRoutes = setOf(
 // Animation Specs
 // ═══════════════════════════════════════════════════════════════════════════════
 
-private const val ANIM_DURATION_MS = 350
+private const val ANIM_DURATION_MS = 300
 
 private val enterTransition: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
-    fadeIn(animationSpec = tween(ANIM_DURATION_MS)) + slideIntoContainer(
-        AnimatedContentTransitionScope.SlideDirection.Start,
-        animationSpec = tween(ANIM_DURATION_MS)
-    )
+    fadeIn(animationSpec = tween(ANIM_DURATION_MS))
 }
 
 private val exitTransition: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
-    fadeOut(animationSpec = tween(ANIM_DURATION_MS)) + slideOutOfContainer(
-        AnimatedContentTransitionScope.SlideDirection.Start,
-        animationSpec = tween(ANIM_DURATION_MS)
-    )
+    fadeOut(animationSpec = tween(ANIM_DURATION_MS / 2))
 }
 
 private val popEnterTransition: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
-    fadeIn(animationSpec = tween(ANIM_DURATION_MS)) + slideIntoContainer(
-        AnimatedContentTransitionScope.SlideDirection.End,
-        animationSpec = tween(ANIM_DURATION_MS)
-    )
+    fadeIn(animationSpec = tween(ANIM_DURATION_MS))
 }
 
 private val popExitTransition: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
-    fadeOut(animationSpec = tween(ANIM_DURATION_MS)) + slideOutOfContainer(
-        AnimatedContentTransitionScope.SlideDirection.End,
-        animationSpec = tween(ANIM_DURATION_MS)
-    )
+    fadeOut(animationSpec = tween(ANIM_DURATION_MS / 2))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -196,6 +191,10 @@ fun BreathyNavHost(
     val currentDestination = navBackStackEntry?.destination
     val context = LocalContext.current
     val app = context.applicationContext as BreathyApplication
+
+    // ── Premium popup state ─────────────────────────────────────────────────
+    var showPremiumPopup by remember { mutableStateOf(false) }
+    var adShowCount by remember { mutableIntStateOf(0) }
 
     // ── Deep link routing ───────────────────────────────────────────────────
     LaunchedEffect(deepLinkRoute) {
@@ -241,6 +240,11 @@ fun BreathyNavHost(
         if (activity != null) {
             app.appModule.adManager.showInterstitialAd(activity) {
                 navigateTo(route)
+                adShowCount++
+                // Show premium popup every 3rd ad (not every time)
+                if (adShowCount % 3 == 0) {
+                    showPremiumPopup = true
+                }
             }
         } else {
             navigateTo(route)
@@ -314,7 +318,8 @@ fun BreathyNavHost(
             composable(BreathyRoutes.HOME) {
                 HomeScreen(
                     onNavigateToProfile = { navigateToWithAd(BreathyRoutes.PROFILE) },
-                    onNavigateToAICoach = { navigateToWithAd(BreathyRoutes.AI_COACH) }
+                    onNavigateToAICoach = { navigateToWithAd(BreathyRoutes.AI_COACH) },
+                    onNavigateToNotifications = { navigateToWithAd(BreathyRoutes.NOTIFICATIONS) }
                 )
             }
 
@@ -483,6 +488,13 @@ fun BreathyNavHost(
                 )
             }
 
+            // ── Notifications ──────────────────────────────────────────
+            composable(BreathyRoutes.NOTIFICATIONS) {
+                NotificationsScreen(
+                    onBack = { navigateBack() }
+                )
+            }
+
             // ── Achievements ────────────────────────────────────────────
             composable(BreathyRoutes.ACHIEVEMENTS) {
                 AchievementsListScreen(
@@ -497,6 +509,17 @@ fun BreathyNavHost(
                 )
             }
         }
+    }
+
+    // ── Premium popup overlay ──────────────────────────────────────────────
+    if (showPremiumPopup) {
+        PremiumPopup(
+            onDismiss = { showPremiumPopup = false },
+            onSubscribe = {
+                showPremiumPopup = false
+                navController.navigate(BreathyRoutes.SUBSCRIPTION)
+            }
+        )
     }
 }
 

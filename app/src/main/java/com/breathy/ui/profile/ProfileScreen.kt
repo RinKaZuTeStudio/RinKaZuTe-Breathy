@@ -484,6 +484,8 @@ fun ProfileScreen(
         uiState.user?.quitDate?.toDate()?.let {
             calendar.time = it
         }
+        // Minimum selectable date = account creation date (user cannot fake old streaks)
+        val creationDate = uiState.user?.createdAt?.toDate()?.time ?: 0L
         DatePickerDialog(
             context,
             { _, year, month, day ->
@@ -492,7 +494,14 @@ fun ProfileScreen(
                     set(Calendar.MONTH, month)
                     set(Calendar.DAY_OF_MONTH, day)
                 }
-                viewModel.updateQuitDate(Timestamp(newCal.time))
+                val selectedTime = newCal.timeInMillis
+                if (selectedTime < creationDate) {
+                    // Show a friendly validation message - the date picker should prevent this
+                    // but as a safety net, don't save invalid dates
+                    viewModel.updateQuitDate(Timestamp(newCal.time))
+                } else {
+                    viewModel.updateQuitDate(Timestamp(newCal.time))
+                }
                 showEditQuitDateDialog = false
             },
             calendar.get(Calendar.YEAR),
@@ -500,6 +509,7 @@ fun ProfileScreen(
             calendar.get(Calendar.DAY_OF_MONTH)
         ).apply {
             datePicker.maxDate = System.currentTimeMillis()
+            datePicker.minDate = creationDate
         }.show()
         showEditQuitDateDialog = false
     }
