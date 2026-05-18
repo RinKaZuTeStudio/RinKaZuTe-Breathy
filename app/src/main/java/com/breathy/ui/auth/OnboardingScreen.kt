@@ -313,18 +313,6 @@ class OnboardingViewModel(
         // Check nickname uniqueness before saving
         _uiState.update { it.copy(isLoading = true, errorMessage = null, nicknameError = null) }
 
-        val isAvailable = userRepository.isNicknameAvailable(state.nickname)
-        if (!isAvailable) {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    nicknameError = "This nickname is already taken.",
-                    errorMessage = "Please choose a different nickname."
-                )
-            }
-            return
-        }
-
         // ── Safety-net: guarantee navigation even if the coroutine hangs ──────
         // This prevents the user from being stuck on loading forever.
         val safetyNetJob = viewModelScope.launch {
@@ -337,6 +325,20 @@ class OnboardingViewModel(
 
         saveJob = viewModelScope.launch {
             try {
+                // Check nickname availability inside the coroutine (suspend call)
+                val isAvailable = userRepository.isNicknameAvailable(state.nickname)
+                if (!isAvailable) {
+                    safetyNetJob.cancel()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            nicknameError = "This nickname is already taken.",
+                            errorMessage = "Please choose a different nickname."
+                        )
+                    }
+                    return@launch
+                }
+
                 val userId = currentUser.uid
                 val quitTimestamp = Timestamp(Date(state.quitDate))
 
