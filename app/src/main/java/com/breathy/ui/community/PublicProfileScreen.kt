@@ -59,8 +59,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import io.coil.compose.AsyncImage
-import io.coil.request.ImageRequest
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.PublicProfile
 import com.breathy.data.models.RequestStatus
@@ -325,11 +324,8 @@ private fun ProfileHeader(profile: PublicProfile) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Avatar
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(profile.photoURL?.takeIf { it.isNotBlank() })
-                    
-                    .build(),
+            NetworkImage(
+                model = profile.photoURL?.takeIf { it.isNotBlank() },
                 contentDescription = "${profile.nickname}'s avatar",
                 modifier = Modifier
                     .size(80.dp)

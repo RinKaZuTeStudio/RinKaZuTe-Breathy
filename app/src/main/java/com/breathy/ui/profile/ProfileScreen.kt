@@ -85,7 +85,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.coil.compose.AsyncImage
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Achievement
 import com.breathy.data.models.Subscription
@@ -562,7 +562,7 @@ private fun ProfileHeader(
                 onClick = onAvatarClick
             ) {
                 if (!photoURL.isNullOrBlank()) {
-                    AsyncImage(
+                    NetworkImage(
                         model = photoURL,
                         contentDescription = "Your avatar",
                         modifier = Modifier

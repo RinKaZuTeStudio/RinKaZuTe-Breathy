@@ -59,8 +59,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import io.coil.compose.AsyncImage
-import io.coil.request.ImageRequest
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Reply
 import com.breathy.data.models.Story
@@ -305,11 +304,8 @@ private fun FullStoryContent(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(story.photoURL?.takeIf { it.isNotBlank() })
-                        
-                        .build(),
+                NetworkImage(
+                    model = story.photoURL?.takeIf { it.isNotBlank() },
                     contentDescription = "${story.nickname}'s avatar",
                     modifier = Modifier
                         .size(44.dp)
@@ -477,11 +473,8 @@ private fun ReplyItem(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(reply.photoURL?.takeIf { it.isNotBlank() })
-                        
-                        .build(),
+                NetworkImage(
+                    model = reply.photoURL?.takeIf { it.isNotBlank() },
                     contentDescription = "${reply.nickname}'s avatar",
                     modifier = Modifier
                         .size(28.dp)

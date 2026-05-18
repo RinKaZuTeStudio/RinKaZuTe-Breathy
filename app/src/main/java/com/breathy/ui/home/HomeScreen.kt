@@ -74,7 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.coil.compose.AsyncImage
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.CopingMethod
 import com.breathy.ui.theme.AccentOrange
@@ -522,7 +522,7 @@ private fun TopBar(
                 onClick = onAvatarClick
             ) {
                 if (!photoURL.isNullOrBlank()) {
-                    AsyncImage(
+                    NetworkImage(
                         model = photoURL,
                         contentDescription = "Your avatar",
                         modifier = Modifier.fillMaxSize(),

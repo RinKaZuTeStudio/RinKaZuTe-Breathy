@@ -121,11 +121,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // ── Coil 2.x (Image Loading) — direct + catalog for maximum reliability ─
-    implementation(libs.coil)
-    implementation(libs.coil.compose)
-    implementation("io.coil-kt:coil-compose:2.5.0")
-    implementation("io.coil-kt:coil:2.5.0")
+    // ── Image Loading — custom NetworkImage composable (no Coil needed) ────
+    // Uses OkHttp (already declared below) for network image loading
 
     // ── Accompanist ────────────────────────────────────────────────────────
     implementation(libs.accompanist.permissions)

@@ -80,7 +80,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import io.coil.compose.AsyncImage
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.PublicProfile
 import com.breathy.data.repository.EventRepository
@@ -658,7 +658,7 @@ private fun PodiumCard(
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     if (entry.photoURL != null) {
-                        AsyncImage(
+                        NetworkImage(
                             model = entry.photoURL,
                             contentDescription = "${entry.nickname}'s avatar",
                             modifier = Modifier.fillMaxSize(),
@@ -768,7 +768,7 @@ private fun LeaderboardRow(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 if (entry.photoURL != null) {
-                    AsyncImage(
+                    NetworkImage(
                         model = entry.photoURL,
                         contentDescription = "${entry.nickname}'s avatar",
                         modifier = Modifier.fillMaxSize(),
@@ -876,7 +876,7 @@ private fun CurrentUserBottomBar(
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     if (entry.photoURL != null) {
-                        AsyncImage(
+                        NetworkImage(
                             model = entry.photoURL,
                             contentDescription = "Your avatar",
                             modifier = Modifier.fillMaxSize(),

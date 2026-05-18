@@ -75,7 +75,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.coil.compose.AsyncImage
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Chat
 import com.breathy.data.models.Message
@@ -503,7 +503,7 @@ private fun ChatTopBar(
                 elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 if (otherUserProfile?.photoURL != null) {
-                    AsyncImage(
+                    NetworkImage(
                         model = otherUserProfile.photoURL,
                         contentDescription = "${otherUserProfile.nickname}'s avatar",
                         modifier = Modifier.fillMaxSize(),

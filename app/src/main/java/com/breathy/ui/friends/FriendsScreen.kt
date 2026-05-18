@@ -81,7 +81,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.coil.compose.AsyncImage
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Chat
 import com.breathy.data.models.FriendRequest
@@ -744,7 +744,7 @@ private fun FriendItem(
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     if (profile.photoURL != null) {
-                        AsyncImage(
+                        NetworkImage(
                             model = profile.photoURL,
                             contentDescription = "${profile.nickname}'s avatar",
                             modifier = Modifier.fillMaxSize(),
@@ -1495,7 +1495,7 @@ private fun SearchResultItem(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 if (profile.photoURL != null) {
-                    AsyncImage(
+                    NetworkImage(
                         model = profile.photoURL,
                         contentDescription = "${profile.nickname}'s avatar",
                         modifier = Modifier.fillMaxSize(),

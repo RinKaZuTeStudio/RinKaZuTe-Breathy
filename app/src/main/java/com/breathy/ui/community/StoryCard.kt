@@ -48,8 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.coil.compose.AsyncImage
-import io.coil.request.ImageRequest
+import com.breathy.ui.components.NetworkImage
 import com.breathy.data.models.Story
 import com.breathy.ui.theme.AccentPink
 import com.breathy.ui.theme.AccentPrimary
@@ -159,11 +158,8 @@ private fun StoryCardHeader(
         // Avatar
         val photoUrl = story.photoURL?.takeIf { it.isNotBlank() }
         if (photoUrl != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(photoUrl)
-                    .crossfade(true)
-                    .build(),
+            NetworkImage(
+                model = photoUrl,
                 contentDescription = "${story.nickname}'s avatar",
                 modifier = Modifier
                     .size(40.dp)

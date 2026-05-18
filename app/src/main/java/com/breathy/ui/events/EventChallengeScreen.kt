@@ -86,7 +86,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import io.coil.compose.AsyncImage
+import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Event
 import com.breathy.data.models.EventParticipant
@@ -632,7 +632,7 @@ private fun EventLeaderboardRow(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 if (profile?.photoURL != null) {
-                    AsyncImage(
+                    NetworkImage(
                         model = profile.photoURL,
                         contentDescription = "${profile.nickname}'s avatar",
                         modifier = Modifier.fillMaxSize(),
