@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -27,10 +29,20 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "placeholder"
-            keyAlias = System.getenv("KEY_ALIAS") ?: "breathy"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "placeholder"
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                val keystoreProperties = Properties()
+                keystoreProperties.load(keystorePropertiesFile.inputStream())
+                storeFile = file(keystoreProperties.getProperty("storeFile") ?: "release.keystore")
+                storePassword = keystoreProperties.getProperty("storePassword") ?: "breathy2024"
+                keyAlias = keystoreProperties.getProperty("keyAlias") ?: "breathy"
+                keyPassword = keystoreProperties.getProperty("keyPassword") ?: "breathy2024"
+            } else {
+                storeFile = file(System.getenv("KEYSTORE_PATH") ?: "release.keystore")
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "breathy2024"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "breathy"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "breathy2024"
+            }
         }
         getByName("debug") {
             storeFile = file("debug.keystore")
