@@ -48,9 +48,9 @@ import androidx.compose.ui.unit.sp
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextSecondary
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -123,7 +123,7 @@ fun StatCard(
             scaleX = scale
             scaleY = scale
         },
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -172,7 +172,7 @@ fun StatCard(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     ),

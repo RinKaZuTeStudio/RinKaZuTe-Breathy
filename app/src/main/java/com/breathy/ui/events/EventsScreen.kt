@@ -78,15 +78,27 @@ import com.breathy.data.models.Event
 import com.breathy.data.models.EventParticipant
 import com.breathy.data.repository.EventRepository
 import com.breathy.ui.theme.AccentPrimary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
+import com.breathy.ui.theme.themeTextDisabled
 import com.breathy.ui.theme.AccentPurple
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
+import com.breathy.ui.theme.themeTextDisabled
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
+import com.breathy.ui.theme.themeTextDisabled
+
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.CancellationException
@@ -298,7 +310,7 @@ fun EventsScreen(
                     Text(
                         text = "Events & Challenges",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = themethemeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -306,17 +318,17 @@ fun EventsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgPrimary,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = BgPrimary
+        containerColor = themethemeBgPrimary
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -375,7 +387,7 @@ fun EventsScreen(
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
                 contentColor = AccentPrimary,
-                backgroundColor = BgSurface
+                backgroundColor = themeBgSurface
             )
         }
     }
@@ -409,9 +421,9 @@ private fun EventCard(
             containerColor = if (eventWithStatus.isCompleted) {
                 AccentPrimary.copy(alpha = 0.06f)
             } else if (isCurrentlyActive) {
-                BgSurface
+                themeBgSurface
             } else {
-                BgSurface.copy(alpha = 0.7f)
+                themeBgSurface.copy(alpha = 0.7f)
             }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -448,7 +460,7 @@ private fun EventCard(
                     Text(
                         text = event.title,
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = TextPrimary,
+                            color = themethemeTextPrimary,
                             fontWeight = FontWeight.Bold
                         ),
                         maxLines = 1,
@@ -482,7 +494,7 @@ private fun EventCard(
             Text(
                 text = event.description,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = TextSecondary
+                    color = themethemeTextSecondary
                 ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -504,13 +516,13 @@ private fun EventCard(
                     Icon(
                         imageVector = Icons.Filled.CalendarMonth,
                         contentDescription = null,
-                        tint = TextDisabled,
+                        tint = themethemeTextDisabled,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "${dateFormatter.format(event.startDate.toDate())} - ${dateFormatter.format(event.endDate.toDate())}",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextDisabled,
+                            color = themethemeTextDisabled,
                             fontSize = 11.sp
                         )
                     )
@@ -524,13 +536,13 @@ private fun EventCard(
                     Icon(
                         imageVector = Icons.Filled.Timer,
                         contentDescription = null,
-                        tint = TextDisabled,
+                        tint = themethemeTextDisabled,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "${event.dailyRequired}x daily",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextDisabled,
+                            color = themethemeTextDisabled,
                             fontSize = 11.sp
                         )
                     )
@@ -577,7 +589,7 @@ private fun EventCard(
                     Text(
                         text = "Finished",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = TextDisabled,
+                            color = themethemeTextDisabled,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -602,7 +614,7 @@ private fun EventCard(
                         enabled = !isJoining,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AccentPrimary,
-                            contentColor = BgPrimary,
+                            contentColor = themeBgPrimary,
                             disabledContainerColor = AccentPrimary.copy(alpha = 0.5f)
                         ),
                         shape = RoundedCornerShape(16.dp),
@@ -614,7 +626,7 @@ private fun EventCard(
                         if (isJoining) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                color = BgPrimary,
+                                color = themethemeBgPrimary,
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -629,7 +641,7 @@ private fun EventCard(
                     Text(
                         text = "Coming Soon",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = TextDisabled
+                            color = themethemeTextDisabled
                         )
                     )
                 }
@@ -657,7 +669,7 @@ private fun EventsLoadingState() {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Loading events...",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
             )
         }
     }
@@ -682,13 +694,13 @@ private fun EventsEmptyState() {
                 text = "No Active Events",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = themethemeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Check back soon for new challenges and events!",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
         }
@@ -716,13 +728,13 @@ private fun EventsErrorState(
                 text = "Something went wrong",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = themethemeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -734,7 +746,7 @@ private fun EventsErrorState(
                 Text(
                     text = "Try Again",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                    color = BgPrimary,
+                    color = themethemeBgPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }

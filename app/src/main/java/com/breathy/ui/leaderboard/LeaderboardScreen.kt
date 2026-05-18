@@ -86,15 +86,27 @@ import com.breathy.data.models.PublicProfile
 import com.breathy.data.repository.EventRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
+import com.breathy.ui.theme.themeTextDisabled
 import com.breathy.ui.theme.AccentPurple
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
+import com.breathy.ui.theme.themeTextDisabled
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
+import com.breathy.ui.theme.themeTextDisabled
+
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -174,13 +186,13 @@ class LeaderboardViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                val profiles = mutableListOf<PublicProfile>()
                 val flow = userRepository.observePublicProfilesOrderedByXp(LEADERBOARD_LIMIT)
 
-                flow.collect { profileList ->
-                    val entries = profileList.mapIndexed { index, profile ->
+                flow.collect { profilePairs ->
+                    val entries = profilePairs.mapIndexed { index, pair ->
+                        val (userId, profile) = pair
                         LeaderboardEntry(
-                            userId = profile.nickname, // we don't have userId from PublicProfile directly, use nickname as display key
+                            userId = userId,
                             nickname = profile.nickname,
                             photoURL = profile.photoURL,
                             xp = profile.xp,
@@ -189,7 +201,7 @@ class LeaderboardViewModel(
                         )
                     }
 
-                    val currentUserEntry = entries.find { it.nickname == _uiState.value.currentUserEntry?.nickname }
+                    val currentUserEntry = entries.find { it.userId == uid }
 
                     _uiState.update { state ->
                         state.copy(
@@ -200,8 +212,10 @@ class LeaderboardViewModel(
                         )
                     }
 
-                    // Fetch current user's own rank
-                    fetchCurrentUserRank(uid, profileList)
+                    // Fetch current user's own rank if not found in entries
+                    if (currentUserEntry == null) {
+                        fetchCurrentUserRank(uid, profilePairs.map { it.second })
+                    }
                 }
             } catch (e: CancellationException) {
                 // Ignore
@@ -323,7 +337,7 @@ fun LeaderboardScreen(
                     Text(
                         text = "Leaderboard",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = themethemeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -331,17 +345,17 @@ fun LeaderboardScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = BgPrimary
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -433,7 +447,7 @@ fun LeaderboardScreen(
                                             Text(
                                                 text = "Top 3 are on the podium above!",
                                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                                    color = TextSecondary
+                                                    color = themethemeTextSecondary
                                                 )
                                             )
                                         }
@@ -465,7 +479,7 @@ fun LeaderboardScreen(
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
                 contentColor = AccentPrimary,
-                backgroundColor = BgSurface
+                backgroundColor = MaterialTheme.colorScheme.surface
             )
         }
     }
@@ -499,11 +513,11 @@ private fun PeriodFilterChips(
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = AccentPrimary.copy(alpha = 0.2f),
                     selectedLabelColor = AccentPrimary,
-                    containerColor = BgSurfaceVariant,
-                    labelColor = TextSecondary
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    labelColor = themeTextSecondary
                 ),
                 border = FilterChipDefaults.filterChipBorder(
-                    borderColor = BgSurfaceVariant,
+                    borderColor = MaterialTheme.colorScheme.surfaceVariant,
                     selectedBorderColor = AccentPrimary.copy(alpha = 0.5f),
                     enabled = true,
                     selected = selectedPeriod == period
@@ -604,7 +618,7 @@ private fun PodiumCard(
                 contentDescription = "Rank ${entry.rank}: ${entry.nickname}, ${entry.xp} XP"
                 role = androidx.compose.ui.semantics.Role.Button
             },
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         onClick = { onProfileClick(entry.userId) }
@@ -686,7 +700,7 @@ private fun PodiumCard(
                 Text(
                     text = entry.nickname,
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -720,7 +734,7 @@ private fun LeaderboardRow(
     val cardColor = if (isCurrentUser) {
         AccentPrimary.copy(alpha = 0.08f)
     } else {
-        BgSurface
+        MaterialTheme.colorScheme.surface
     }
 
     Card(
@@ -752,7 +766,7 @@ private fun LeaderboardRow(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isCurrentUser) AccentPrimary else TextSecondary
+                    color = if (isCurrentUser) AccentPrimary else themeTextSecondary
                 ),
                 modifier = Modifier.width(32.dp),
                 textAlign = TextAlign.Center
@@ -797,7 +811,7 @@ private fun LeaderboardRow(
                 Text(
                     text = entry.nickname,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = if (isCurrentUser) AccentPrimary else TextPrimary,
+                        color = if (isCurrentUser) AccentPrimary else themeTextPrimary,
                         fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -806,7 +820,7 @@ private fun LeaderboardRow(
                 Text(
                     text = "${entry.daysSmokeFree} days smoke-free",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         fontSize = 11.sp
                     )
                 )
@@ -844,7 +858,7 @@ private fun CurrentUserBottomBar(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = BgSurface.copy(alpha = 0.95f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
             shadowElevation = 8.dp,
             tonalElevation = 0.dp
         ) {
@@ -909,7 +923,7 @@ private fun CurrentUserBottomBar(
                     Text(
                         text = "${entry.daysSmokeFree} days smoke-free",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -948,7 +962,7 @@ private fun LoadingState() {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Loading leaderboard...",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
             )
         }
     }
@@ -975,13 +989,13 @@ private fun ErrorState(
                 text = "Something went wrong",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = themethemeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -993,7 +1007,7 @@ private fun ErrorState(
                 Text(
                     text = "Try Again",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                    color = BgPrimary,
+                    color = MaterialTheme.colorScheme.background,
                     fontWeight = FontWeight.Bold
                 )
             }

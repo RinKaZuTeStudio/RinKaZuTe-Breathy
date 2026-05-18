@@ -76,12 +76,12 @@ import com.breathy.data.models.Achievement
 import com.breathy.data.repository.RewardRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CancellationException
@@ -125,14 +125,14 @@ fun AchievementsListScreen(
     }
 
     Scaffold(
-        containerColor = BgPrimary,
+        containerColor = themethemeBgPrimary,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "Achievements",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = TextPrimary,
+                            color = themethemeTextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -142,13 +142,13 @@ fun AchievementsListScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgSurface,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgSurface,
+                    titleContentColor = themeTextPrimary
                 )
             )
         }
@@ -198,11 +198,11 @@ fun AchievementsListScreen(
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AccentPrimary.copy(alpha = 0.2f),
                             selectedLabelColor = AccentPrimary,
-                            containerColor = BgSurfaceVariant,
-                            labelColor = TextSecondary
+                            containerColor = themethemeBgSurfaceVariant,
+                            labelColor = themeTextSecondary
                         ),
                         border = FilterChipDefaults.filterChipBorder(
-                            borderColor = BgSurfaceVariant,
+                            borderColor = themeBgSurfaceVariant,
                             selectedBorderColor = AccentPrimary,
                             enabled = true,
                             selected = selectedFilter == filter
@@ -240,7 +240,7 @@ fun AchievementsListScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Loading achievements...",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
                         )
                     }
                 }
@@ -256,7 +256,7 @@ fun AchievementsListScreen(
                                 AchievementFilter.LOCKED -> "All achievements unlocked! 🎉"
                                 else -> "No achievements found"
                             },
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -267,7 +267,7 @@ fun AchievementsListScreen(
                                 else -> ""
                             },
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextDisabled,
+                                color = themethemeTextDisabled,
                                 fontSize = 12.sp
                             ),
                             textAlign = TextAlign.Center
@@ -315,7 +315,7 @@ private fun AchievementStatsBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -339,7 +339,7 @@ private fun AchievementStatsBar(
                     Text(
                         text = "Achievements Unlocked",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontSize = 12.sp
                         )
                     )
@@ -355,7 +355,7 @@ private fun AchievementStatsBar(
                     Text(
                         text = "From Achievements",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontSize = 12.sp
                         )
                     )
@@ -373,7 +373,7 @@ private fun AchievementStatsBar(
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
                 color = AccentPrimary,
-                trackColor = BgSurfaceVariant
+                trackColor = themethemeBgSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -381,7 +381,7 @@ private fun AchievementStatsBar(
             Text(
                 text = "${(progress * 100).toInt()}% complete",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = TextDisabled,
+                    color = themethemeTextDisabled,
                     fontSize = 11.sp
                 )
             )
@@ -430,9 +430,9 @@ private fun AchievementGridCard(
             ),
         colors = CardDefaults.cardColors(
             containerColor = if (achievement.unlocked) {
-                BgSurface
+                themeBgSurface
             } else {
-                BgSurface.copy(alpha = 0.6f)
+                themeBgSurface.copy(alpha = 0.6f)
             }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -477,7 +477,7 @@ private fun AchievementGridCard(
                             if (achievement.unlocked) {
                                 AccentPrimary.copy(alpha = 0.15f)
                             } else {
-                                BgSurfaceVariant
+                                themeBgSurfaceVariant
                             }
                         ),
                     contentAlignment = Alignment.Center
@@ -485,7 +485,7 @@ private fun AchievementGridCard(
                     Text(
                         text = achievement.icon,
                         fontSize = 24.sp,
-                        color = if (achievement.unlocked) Color.Unspecified else TextDisabled
+                        color = if (achievement.unlocked) Color.Unspecified else themeTextDisabled
                     )
                 }
 
@@ -495,7 +495,7 @@ private fun AchievementGridCard(
                 Text(
                     text = achievement.title,
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = if (achievement.unlocked) TextPrimary else TextDisabled,
+                        color = if (achievement.unlocked) themeTextPrimary else themeTextDisabled,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp
                     ),
@@ -510,7 +510,7 @@ private fun AchievementGridCard(
                 Text(
                     text = "+${achievement.xpReward} XP",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = if (achievement.unlocked) AccentPurple else TextDisabled,
+                        color = if (achievement.unlocked) AccentPurple else themeTextDisabled,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp
                     )
@@ -528,13 +528,13 @@ private fun AchievementGridCard(
                                 .height(3.dp)
                                 .clip(RoundedCornerShape(1.5.dp)),
                             color = AccentPrimary.copy(alpha = 0.5f),
-                            trackColor = BgSurfaceVariant
+                            trackColor = themethemeBgSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${(progress * 100).toInt()}%",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextDisabled,
+                                color = themethemeTextDisabled,
                                 fontSize = 9.sp
                             )
                         )
@@ -589,7 +589,7 @@ private fun AchievementDetailDialog(
                         .size(64.dp)
                         .clip(CircleShape)
                         .background(
-                            if (achievement.unlocked) AccentPrimary.copy(alpha = 0.15f) else BgSurfaceVariant
+                            if (achievement.unlocked) AccentPrimary.copy(alpha = 0.15f) else themeBgSurfaceVariant
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -602,7 +602,7 @@ private fun AchievementDetailDialog(
                 Text(
                     text = achievement.title,
                     style = MaterialTheme.typography.titleMedium.copy(
-                        color = if (achievement.unlocked) TextPrimary else TextDisabled,
+                        color = if (achievement.unlocked) themeTextPrimary else themeTextDisabled,
                         fontWeight = FontWeight.Bold
                     ),
                     textAlign = TextAlign.Center
@@ -617,7 +617,7 @@ private fun AchievementDetailDialog(
                 Text(
                     text = achievement.description,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextSecondary
+                        color = themethemeTextSecondary
                     ),
                     textAlign = TextAlign.Center
                 )
@@ -631,7 +631,7 @@ private fun AchievementDetailDialog(
                         containerColor = if (achievement.unlocked) {
                             AccentPrimary.copy(alpha = 0.15f)
                         } else {
-                            BgSurfaceVariant
+                            themeBgSurfaceVariant
                         }
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -648,7 +648,7 @@ private fun AchievementDetailDialog(
                         Text(
                             text = if (achievement.unlocked) "Unlocked" else "Locked",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = if (achievement.unlocked) AccentPrimary else TextDisabled,
+                                color = if (achievement.unlocked) AccentPrimary else themeTextDisabled,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
@@ -665,7 +665,7 @@ private fun AchievementDetailDialog(
                     Text(
                         text = "Reward:",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary
+                            color = themethemeTextSecondary
                         )
                     )
                     Text(
@@ -687,9 +687,9 @@ private fun AchievementDetailDialog(
                 )
             }
         },
-        containerColor = BgSurface,
-        titleContentColor = TextPrimary,
-        textContentColor = TextSecondary
+        containerColor = themethemeBgSurface,
+        titleContentColor = themeTextPrimary,
+        textContentColor = themeTextSecondary
     )
 }
 

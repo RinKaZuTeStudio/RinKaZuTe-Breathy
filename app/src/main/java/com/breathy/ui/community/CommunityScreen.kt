@@ -72,13 +72,7 @@ import com.breathy.data.repository.StoryRepository
 import com.breathy.ui.navigation.BreathyRoutes
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -137,7 +131,7 @@ fun CommunityScreen(
             FloatingActionButton(
                 onClick = onNavigateToPostStory,
                 containerColor = AccentPrimary,
-                contentColor = BgPrimary,
+                contentColor = MaterialTheme.colorScheme.background,
                 modifier = Modifier.semantics {
                     contentDescription = "Post a new story"
                     role = Role.Button
@@ -150,7 +144,7 @@ fun CommunityScreen(
                 )
             }
         },
-        containerColor = BgPrimary
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -219,7 +213,7 @@ private fun CommunityTopBar(onNavigateToFriends: () -> Unit = {}) {
             Text(
                 text = "Community",
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
         },
         actions = {
@@ -233,14 +227,14 @@ private fun CommunityTopBar(onNavigateToFriends: () -> Unit = {}) {
                 Icon(
                     imageVector = Icons.Filled.People,
                     contentDescription = "Friends",
-                    tint = TextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = BgPrimary,
-            titleContentColor = TextPrimary
+            containerColor = MaterialTheme.colorScheme.background,
+            titleContentColor = MaterialTheme.colorScheme.onBackground
         )
     )
 }
@@ -263,14 +257,14 @@ private fun SearchBar(
         placeholder = {
             Text(
                 text = "Search stories or users...",
-                color = TextDisabled
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
             )
         },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
-                tint = TextDisabled,
+                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                 modifier = Modifier.size(20.dp)
             )
         },
@@ -286,7 +280,7 @@ private fun SearchBar(
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = null,
-                        tint = TextDisabled,
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -296,12 +290,12 @@ private fun SearchBar(
         shape = RoundedCornerShape(28.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = AccentPrimary.copy(alpha = 0.5f),
-            unfocusedBorderColor = BgSurfaceVariant,
-            focusedContainerColor = BgSurface,
-            unfocusedContainerColor = BgSurface,
+            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             cursorColor = AccentPrimary,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground
         ),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(
@@ -385,7 +379,7 @@ private fun StoryList(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
-                        color = TextDisabled,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                         style = MaterialTheme.typography.labelMedium,
                         textAlign = TextAlign.Center
                     )
@@ -419,7 +413,7 @@ private fun EmptyState(
                 text = if (hasSearch) "No stories found" else "No stories yet",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -428,7 +422,7 @@ private fun EmptyState(
                 else
                     "Be the first to share your quit-smoking journey!",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             if (!hasSearch) {
@@ -437,7 +431,7 @@ private fun EmptyState(
                     onClick = onPostStory,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentPrimary,
-                        contentColor = BgPrimary
+                        contentColor = MaterialTheme.colorScheme.background
                     ),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.semantics {
@@ -485,13 +479,13 @@ private fun ErrorState(
                 text = "Something went wrong",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -499,7 +493,7 @@ private fun ErrorState(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentPrimary,
-                    contentColor = BgPrimary
+                    contentColor = MaterialTheme.colorScheme.background
                 ),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.semantics {
@@ -568,10 +562,16 @@ class CommunityViewModel(
                 onSuccess = { stories ->
                     allStories = stories
                     lastDocumentId = stories.lastOrNull()?.id
+                    // Populate likedStoryIds from Firestore data so likes persist across refreshes
+                    val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                    val likedIds = if (currentUserId != null) {
+                        stories.filter { it.isLikedBy(currentUserId) }.map { it.id }.toSet()
+                    } else emptySet()
                     _uiState.value = _uiState.value.copy(
                         stories = stories,
                         isLoading = false,
-                        hasMore = stories.size >= PAGE_SIZE
+                        hasMore = stories.size >= PAGE_SIZE,
+                        likedStoryIds = likedIds
                     )
                 },
                 onFailure = { e ->
@@ -626,11 +626,17 @@ class CommunityViewModel(
                 onSuccess = { stories ->
                     allStories = stories
                     lastDocumentId = stories.lastOrNull()?.id
+                    // Populate likedStoryIds from Firestore data so likes persist across refreshes
+                    val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                    val likedIds = if (currentUserId != null) {
+                        stories.filter { it.isLikedBy(currentUserId) }.map { it.id }.toSet()
+                    } else emptySet()
                     _uiState.value = _uiState.value.copy(
                         stories = stories,
                         isRefreshing = false,
                         hasMore = stories.size >= PAGE_SIZE,
-                        error = null
+                        error = null,
+                        likedStoryIds = likedIds
                     )
                 },
                 onFailure = { e ->

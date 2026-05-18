@@ -50,10 +50,10 @@ import androidx.compose.ui.unit.sp
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import kotlinx.coroutines.delay
 
 /**
@@ -129,7 +129,7 @@ fun TapGame(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Cancel tap game",
-                        tint = TextSecondary,
+                        tint = themethemeTextSecondary,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -143,7 +143,7 @@ fun TapGame(
                         Text(
                             text = "Tap as fast as you can!",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                color = TextPrimary,
+                                color = themethemeTextPrimary,
                                 fontWeight = FontWeight.Bold
                             ),
                             textAlign = TextAlign.Center
@@ -164,7 +164,7 @@ fun TapGame(
                         Text(
                             text = "seconds left",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextSecondary
+                                color = themethemeTextSecondary
                             )
                         )
 
@@ -218,7 +218,7 @@ fun TapGame(
                             Text(
                                 text = "TAP!",
                                 style = MaterialTheme.typography.titleLarge.copy(
-                                    color = BgPrimary,
+                                    color = themethemeBgPrimary,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 28.sp
                                 )
@@ -241,7 +241,7 @@ fun TapGame(
                         Text(
                             text = "taps",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextSecondary
+                                color = themethemeTextSecondary
                             )
                         )
                     }
@@ -251,7 +251,7 @@ fun TapGame(
                         Text(
                             text = "Time's up! 🎯",
                             style = MaterialTheme.typography.titleLarge.copy(
-                                color = TextPrimary,
+                                color = themethemeTextPrimary,
                                 fontWeight = FontWeight.Bold
                             ),
                             textAlign = TextAlign.Center
@@ -262,7 +262,7 @@ fun TapGame(
                         // Result card
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = BgSurface
+                                containerColor = themethemeBgSurface
                             ),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.width(280.dp)
@@ -286,7 +286,7 @@ fun TapGame(
                                 Text(
                                     text = "taps in 30 seconds",
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = TextSecondary
+                                        color = themethemeTextSecondary
                                     )
                                 )
 
@@ -302,7 +302,7 @@ fun TapGame(
                                 Text(
                                     text = feedbackMessage,
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = TextPrimary,
+                                        color = themethemeTextPrimary,
                                         fontWeight = FontWeight.Medium
                                     ),
                                     textAlign = TextAlign.Center
@@ -319,7 +319,7 @@ fun TapGame(
                                 onClick = { onComplete(true) },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = AccentPrimary,
-                                    contentColor = BgPrimary
+                                    contentColor = themeBgPrimary
                                 ),
                                 shape = RoundedCornerShape(24.dp)
                             ) {

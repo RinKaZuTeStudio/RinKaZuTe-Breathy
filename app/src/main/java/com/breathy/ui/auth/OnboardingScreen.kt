@@ -106,12 +106,7 @@ import com.breathy.data.models.User
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -634,7 +629,7 @@ fun OnboardingScreen(
             .fillMaxSize()
             .background(
                 Brush.linearGradient(
-                    colors = listOf(BgPrimary, BgSurface, BgPrimary),
+                    colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.background),
                     start = Offset(0f, 0f),
                     end = Offset(0f, 2000f)
                 )
@@ -646,8 +641,8 @@ fun OnboardingScreen(
         ) { data ->
             Snackbar(
                 snackbarData = data,
-                containerColor = BgSurfaceVariant,
-                contentColor = SemanticError,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.error,
                 shape = RoundedCornerShape(12.dp)
             )
         }
@@ -667,7 +662,7 @@ fun OnboardingScreen(
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
                 color = AccentPrimary,
-                trackColor = BgSurfaceVariant,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -675,7 +670,7 @@ fun OnboardingScreen(
             // Step indicator text
             Text(
                 text = "Step ${uiState.currentStep + 1} of ${uiState.totalSteps}",
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
@@ -803,7 +798,7 @@ private fun WelcomeStep(
             text = "Your Journey Starts Here",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
 
@@ -812,7 +807,7 @@ private fun WelcomeStep(
         Text(
             text = "Every breath is a step toward freedom.\nLet's set your quit date.",
             fontSize = 15.sp,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             lineHeight = 22.sp
         )
@@ -823,7 +818,7 @@ private fun WelcomeStep(
             text = "When did you quit (or plan to quit)?",
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -863,9 +858,9 @@ private fun WelcomeStep(
             },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = AccentSecondary,
-                unfocusedBorderColor = BgSurfaceVariant,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground
             ),
             shape = RoundedCornerShape(12.dp)
         )
@@ -876,7 +871,7 @@ private fun WelcomeStep(
         Text(
             text = "You can set today's date if you're just starting,\nor a past date if you've already quit.",
             fontSize = 13.sp,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             lineHeight = 18.sp,
             modifier = Modifier
@@ -911,7 +906,7 @@ private fun QuitTypeStep(
             text = "How Are You Quitting?",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
 
@@ -920,7 +915,7 @@ private fun QuitTypeStep(
         Text(
             text = "Choose the approach that works best for you.\nYou can change this later.",
             fontSize = 14.sp,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
         )
@@ -963,8 +958,8 @@ private fun QuitTypeCard(
     accentColor: Color,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) accentColor else BgSurfaceVariant
-    val backgroundColor = if (isSelected) accentColor.copy(alpha = 0.08f) else BgSurfaceVariant.copy(alpha = 0.5f)
+    val borderColor = if (isSelected) accentColor else MaterialTheme.colorScheme.surfaceVariant
+    val backgroundColor = if (isSelected) accentColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
 
     Column(
         modifier = Modifier
@@ -1004,12 +999,12 @@ private fun QuitTypeCard(
                     text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) accentColor else TextPrimary
+                    color = if (isSelected) accentColor else MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = subtitle,
                     fontSize = 12.sp,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -1028,7 +1023,7 @@ private fun QuitTypeCard(
         Text(
             text = description,
             fontSize = 13.sp,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 18.sp
         )
     }
@@ -1065,7 +1060,7 @@ private fun SmokingHabitsStep(
             text = "Your Smoking Habits",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
 
@@ -1074,7 +1069,7 @@ private fun SmokingHabitsStep(
         Text(
             text = "This helps us calculate your savings\nand track your progress.",
             fontSize = 14.sp,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
         )
@@ -1086,7 +1081,7 @@ private fun SmokingHabitsStep(
             text = "Cigarettes per day",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -1106,7 +1101,7 @@ private fun SmokingHabitsStep(
             text = "Price per pack",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -1144,10 +1139,10 @@ private fun SmokingHabitsStep(
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = AccentPrimary,
-                unfocusedBorderColor = BgSurfaceVariant,
+                unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
                 cursorColor = AccentPrimary,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground
             ),
             shape = RoundedCornerShape(12.dp)
         )
@@ -1159,7 +1154,7 @@ private fun SmokingHabitsStep(
             text = "Cigarettes per pack",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -1181,7 +1176,7 @@ private fun SmokingHabitsStep(
             },
             modifier = Modifier.fillMaxWidth(),
             suffix = {
-                Text("cigs", color = TextSecondary, fontSize = 13.sp)
+                Text("cigs", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
@@ -1193,10 +1188,10 @@ private fun SmokingHabitsStep(
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = AccentPrimary,
-                unfocusedBorderColor = BgSurfaceVariant,
+                unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
                 cursorColor = AccentPrimary,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground
             ),
             shape = RoundedCornerShape(12.dp)
         )
@@ -1209,7 +1204,7 @@ private fun SmokingHabitsStep(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(BgSurfaceVariant)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -1247,7 +1242,7 @@ private fun StepperControl(
             .fillMaxWidth()
             .height(52.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(BgSurfaceVariant),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -1258,7 +1253,7 @@ private fun StepperControl(
             Icon(
                 imageVector = Icons.Default.Remove,
                 contentDescription = "Decrease value",
-                tint = if (value > minValue) AccentPrimary else TextSecondary.copy(alpha = 0.3f)
+                tint = if (value > minValue) AccentPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
         }
 
@@ -1266,7 +1261,7 @@ private fun StepperControl(
             text = value.toString(),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         IconButton(
@@ -1276,7 +1271,7 @@ private fun StepperControl(
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Increase value",
-                tint = if (value < maxValue) AccentPrimary else TextSecondary.copy(alpha = 0.3f)
+                tint = if (value < maxValue) AccentPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
             )
         }
     }
@@ -1295,7 +1290,7 @@ private fun SavingsItem(label: String, value: String) {
         Text(
             text = label,
             fontSize = 11.sp,
-            color = TextSecondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -1376,7 +1371,7 @@ private fun ProfileStep(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(CircleShape)
-                        .background(BgSurfaceVariant)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .border(
                             2.dp,
                             AccentPrimary.copy(alpha = 0.4f),
@@ -1390,13 +1385,13 @@ private fun ProfileStep(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Default profile icon",
-                            tint = TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(36.dp)
                         )
                         Text(
                             text = "Add Photo",
                             fontSize = 10.sp,
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -1410,7 +1405,7 @@ private fun ProfileStep(
             text = "Set Your Profile",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
 
@@ -1419,7 +1414,7 @@ private fun ProfileStep(
         Text(
             text = "Choose a nickname for the community.\nYou can add a photo too!",
             fontSize = 14.sp,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
         )
@@ -1431,7 +1426,7 @@ private fun ProfileStep(
             text = "Nickname",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -1444,14 +1439,14 @@ private fun ProfileStep(
             placeholder = {
                 Text(
                     text = "e.g. BreathyBree",
-                    color = TextSecondary.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Nickname input icon",
-                    tint = TextSecondary
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             isError = nicknameError != null,
@@ -1459,7 +1454,7 @@ private fun ProfileStep(
                 {
                     Text(
                         text = it,
-                        color = SemanticError,
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp
                     )
                 }
@@ -1474,14 +1469,14 @@ private fun ProfileStep(
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = AccentPrimary,
-                unfocusedBorderColor = BgSurfaceVariant,
-                errorBorderColor = SemanticError,
+                unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                errorBorderColor = MaterialTheme.colorScheme.error,
                 focusedLabelColor = AccentPrimary,
-                errorLabelColor = SemanticError,
+                errorLabelColor = MaterialTheme.colorScheme.error,
                 cursorColor = AccentPrimary,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                errorTextColor = TextPrimary
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                errorTextColor = MaterialTheme.colorScheme.onBackground
             ),
             shape = RoundedCornerShape(12.dp)
         )
@@ -1530,7 +1525,7 @@ private fun ProfileStep(
             Text(
                 text = "Your nickname will be visible to other community members. You can change it anytime in your profile settings.",
                 fontSize = 12.sp,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 16.sp
             )
@@ -1560,7 +1555,7 @@ private fun PageIndicator(totalPages: Int, currentPage: Int) {
                     .size(width, 8.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(
-                        if (isSelected) AccentPrimary else BgSurfaceVariant
+                        if (isSelected) AccentPrimary else MaterialTheme.colorScheme.surfaceVariant
                     )
             )
             if (index < totalPages - 1) {
@@ -1597,7 +1592,7 @@ private fun OnboardingNavigation(
                 modifier = Modifier.height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = TextSecondary
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Icon(
@@ -1621,7 +1616,7 @@ private fun OnboardingNavigation(
             ) {
                 Text(
                     text = "Skip",
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
             }
@@ -1637,7 +1632,7 @@ private fun OnboardingNavigation(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentPrimary,
                     disabledContainerColor = AccentPrimary.copy(alpha = 0.3f),
-                    contentColor = BgPrimary
+                    contentColor = MaterialTheme.colorScheme.background
                 )
             ) {
                 Text("Next", fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -1659,7 +1654,7 @@ private fun OnboardingNavigation(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent,
                     disabledContainerColor = Color.Transparent,
-                    contentColor = BgPrimary
+                    contentColor = MaterialTheme.colorScheme.background
                 ),
                 contentPadding = ButtonDefaults.ContentPadding
             ) {
@@ -1677,7 +1672,7 @@ private fun OnboardingNavigation(
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = BgPrimary,
+                            color = MaterialTheme.colorScheme.background,
                             strokeWidth = 2.5.dp
                         )
                     } else {
@@ -1685,7 +1680,7 @@ private fun OnboardingNavigation(
                             text = "Let's Go!",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = BgPrimary
+                            color = MaterialTheme.colorScheme.background
                         )
                     }
                 }

@@ -85,12 +85,7 @@ import com.breathy.data.repository.FriendRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -360,7 +355,7 @@ fun ChatScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgPrimary)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // ── Top Bar with Online Status ─────────────────────────────────────
         ChatTopBar(
@@ -388,7 +383,7 @@ fun ChatScreen(
                         Text(
                             text = "Loading messages...",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -405,7 +400,7 @@ fun ChatScreen(
                         Text(
                             text = uiState.errorMessage!!,
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             ),
                             textAlign = TextAlign.Center
                         )
@@ -419,7 +414,7 @@ fun ChatScreen(
                                 modifier = Modifier
                                     .clickable { viewModel.loadChat() }
                                     .padding(horizontal = 24.dp, vertical = 10.dp),
-                                color = BgPrimary,
+                                color = MaterialTheme.colorScheme.background,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -474,7 +469,7 @@ private fun ChatTopBar(
     onNavigateBack: () -> Unit
 ) {
     Surface(
-        color = BgSurface,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp
     ) {
         Row(
@@ -489,7 +484,7 @@ private fun ChatTopBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Navigate back",
-                    tint = TextPrimary
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
             }
 
@@ -532,7 +527,7 @@ private fun ChatTopBar(
                 Text(
                     text = otherUserProfile?.nickname ?: "Chat",
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -548,7 +543,7 @@ private fun ChatTopBar(
                 val statusColor = when {
                     isTyping -> AccentPrimary
                     isOnline -> AccentPrimary
-                    else -> TextSecondary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
 
                 Row(
@@ -705,7 +700,7 @@ private fun MessageBubble(
             color = if (isFromCurrentUser) {
                 AccentPrimary.copy(alpha = 0.15f)
             } else {
-                BgSurface
+                MaterialTheme.colorScheme.surface
             },
             modifier = Modifier
                 .widthIn(max = 280.dp)
@@ -718,7 +713,7 @@ private fun MessageBubble(
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = if (isFromCurrentUser) TextPrimary else TextPrimary,
+                        color = if (isFromCurrentUser) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground,
                         lineHeight = 20.sp
                     )
                 )
@@ -734,7 +729,7 @@ private fun MessageBubble(
                     Text(
                         text = formatMessageTime(message),
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextDisabled,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                             fontSize = 10.sp
                         )
                     )
@@ -745,7 +740,7 @@ private fun MessageBubble(
                         Icon(
                             imageVector = if (message.read) Icons.Default.DoneAll else Icons.Default.Check,
                             contentDescription = if (message.read) "Read" else "Sent",
-                            tint = if (message.read) AccentPrimary else TextDisabled,
+                            tint = if (message.read) AccentPrimary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -769,13 +764,13 @@ private fun DateHeader(dateText: String) {
     ) {
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = BgSurfaceVariant.copy(alpha = 0.6f)
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         ) {
             Text(
                 text = dateText,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -797,7 +792,7 @@ private fun TypingBubble(otherUserName: String) {
             bottomStart = 4.dp,
             bottomEnd = 16.dp
         ),
-        color = BgSurface,
+        color = MaterialTheme.colorScheme.surface,
         modifier = Modifier.padding(vertical = 2.dp)
     ) {
         Row(
@@ -874,7 +869,7 @@ private fun TypingDot(alpha: Float) {
     Surface(
         modifier = Modifier.size(6.dp),
         shape = CircleShape,
-        color = TextSecondary.copy(alpha = alpha)
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
     ) {}
 }
 
@@ -885,7 +880,7 @@ private fun TypingDot(alpha: Float) {
 @Composable
 private fun TypingIndicatorBar(otherUserName: String) {
     Surface(
-        color = BgPrimary,
+        color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -920,7 +915,7 @@ private fun MessageInputBar(
     onSend: () -> Unit
 ) {
     Surface(
-        color = BgSurface,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp
     ) {
         Row(
@@ -937,19 +932,19 @@ private fun MessageInputBar(
                 placeholder = {
                     Text(
                         text = "Type a message...",
-                        color = TextDisabled
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
                     )
                 },
                 modifier = Modifier.weight(1f),
                 maxLines = 4,
                 shape = RoundedCornerShape(20.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                     focusedBorderColor = AccentPrimary,
-                    unfocusedBorderColor = BgSurfaceVariant,
-                    focusedContainerColor = BgSurfaceVariant,
-                    unfocusedContainerColor = BgSurfaceVariant,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     cursorColor = AccentPrimary
                 ),
                 textStyle = MaterialTheme.typography.bodyMedium
@@ -970,14 +965,14 @@ private fun MessageInputBar(
                     if (isSending) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            color = BgPrimary,
+                            color = MaterialTheme.colorScheme.background,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send message",
-                            tint = BgPrimary,
+                            tint = MaterialTheme.colorScheme.background,
                             modifier = Modifier.size(20.dp)
                         )
                     }

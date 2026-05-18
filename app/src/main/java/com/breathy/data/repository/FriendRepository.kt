@@ -157,7 +157,42 @@ class FriendRepository(
             val docRef = firestore.collection(FRIEND_REQUESTS_COLLECTION)
                 .add(requestData)
                 .await()
-                Unit
+
+            // Send push notification to the receiving user
+            try {
+                val senderProfile = firestore.collection("publicProfiles")
+                    .document(uid)
+                    .get()
+                    .await()
+                val senderName = senderProfile.getString("nickname") ?: "Someone"
+                val senderPhotoUrl = senderProfile.getString("photoURL")
+
+                val toUserDoc = firestore.collection("users")
+                    .document(toUserId)
+                    .get()
+                    .await()
+                val fcmToken = toUserDoc.getString("fcmToken")
+
+                if (!fcmToken.isNullOrBlank()) {
+                    // Use Firebase Functions to send FCM (client-side direct send requires admin SDK)
+                    // For now, store a notification document that a Cloud Function can pick up
+                    firestore.collection("notifications").add(mapOf(
+                        "type" to "friend_request",
+                        "toUserId" to toUserId,
+                        "toFcmToken" to fcmToken,
+                        "senderName" to senderName,
+                        "senderId" to uid,
+                        "senderPhotoUrl" to senderPhotoUrl,
+                        "requestId" to docRef.id,
+                        "timestamp" to FieldValue.serverTimestamp(),
+                        "processed" to false
+                    )).await()
+                    Timber.d("Friend request notification queued for user: %s", toUserId)
+                }
+            } catch (e: Exception) {
+                // Notification sending is best-effort — don't fail the request
+                Timber.w(e, "Failed to send friend request notification")
+            }
 
             FriendRequest(
                 id = docRef.id,

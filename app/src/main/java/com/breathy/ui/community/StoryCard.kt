@@ -54,11 +54,11 @@ import com.breathy.ui.components.NetworkImage
 import com.breathy.data.models.Story
 import com.breathy.ui.theme.AccentPink
 import com.breathy.ui.theme.AccentPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
-import com.breathy.ui.theme.TextDisabled
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
+import com.breathy.ui.theme.themeTextDisabled
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  StoryCard — Reusable card component for community feed stories
@@ -102,8 +102,8 @@ fun StoryCard(
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = BgSurface,
-            contentColor = TextPrimary
+            containerColor = themethemeBgSurface,
+            contentColor = themethemeTextPrimary
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -210,7 +210,7 @@ private fun StoryCardHeader(
                 text = story.nickname,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+                color = themethemeTextPrimary
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -219,7 +219,7 @@ private fun StoryCardHeader(
             Text(
                 text = story.timeAgo(),
                 style = MaterialTheme.typography.labelSmall,
-                color = TextDisabled
+                color = themethemeTextDisabled
             )
         }
 
@@ -261,7 +261,7 @@ private fun ExpandableText(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
+            color = themethemeTextSecondary,
             maxLines = if (isExpanded) Int.MAX_VALUE else collapsedMaxLines,
             onTextLayout = { textLayoutResult ->
                 if (!isExpanded) {
@@ -301,7 +301,7 @@ private fun LifeChangesTags(lifeChanges: List<String>) {
         lifeChanges.take(3).forEach { change ->
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = BgSurfaceVariant
+                color = themethemeBgSurfaceVariant
             ) {
                 Text(
                     text = change,
@@ -315,7 +315,7 @@ private fun LifeChangesTags(lifeChanges: List<String>) {
         if (lifeChanges.size > 3) {
             Text(
                 text = "+${lifeChanges.size - 3}",
-                color = TextDisabled,
+                color = themethemeTextDisabled,
                 style = MaterialTheme.typography.labelSmall
             )
         }
@@ -351,13 +351,13 @@ private fun StoryCardFooter(
             Icon(
                 imageVector = Icons.Filled.ChatBubbleOutline,
                 contentDescription = null,
-                tint = TextDisabled,
+                tint = themethemeTextDisabled,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = formatCount(story.replyCount),
-                color = TextDisabled,
+                color = themethemeTextDisabled,
                 style = MaterialTheme.typography.labelMedium
             )
         }
@@ -367,7 +367,7 @@ private fun StoryCardFooter(
         // Time ago (secondary placement for quick scan)
         Text(
             text = story.timeAgo(),
-            color = TextDisabled,
+            color = themethemeTextDisabled,
             style = MaterialTheme.typography.labelSmall
         )
     }
@@ -404,7 +404,7 @@ private fun LikeButton(
             Icon(
                 imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                 contentDescription = null,
-                tint = if (isLiked) AccentPink else TextDisabled,
+                tint = if (isLiked) AccentPink else themeTextDisabled,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer {
@@ -416,7 +416,7 @@ private fun LikeButton(
 
         Text(
             text = formatCount(likeCount),
-            color = if (isLiked) AccentPink else TextDisabled,
+            color = if (isLiked) AccentPink else themeTextDisabled,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal
         )
@@ -436,8 +436,8 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = BgSurface,
-            contentColor = TextPrimary
+            containerColor = themethemeBgSurface,
+            contentColor = themethemeTextPrimary
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -452,7 +452,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                 Surface(
                     modifier = Modifier.size(40.dp),
                     shape = CircleShape,
-                    color = BgSurfaceVariant
+                    color = themethemeBgSurfaceVariant
                 ) {}
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -462,7 +462,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                             .width(100.dp)
                             .height(14.dp),
                         shape = RoundedCornerShape(4.dp),
-                        color = BgSurfaceVariant
+                        color = themethemeBgSurfaceVariant
                     ) {}
                     Spacer(modifier = Modifier.height(6.dp))
                     // Time placeholder
@@ -471,7 +471,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                             .width(50.dp)
                             .height(10.dp),
                         shape = RoundedCornerShape(4.dp),
-                        color = BgSurfaceVariant
+                        color = themethemeBgSurfaceVariant
                     ) {}
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -481,7 +481,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .width(60.dp)
                         .height(22.dp),
                     shape = RoundedCornerShape(12.dp),
-                    color = BgSurfaceVariant
+                    color = themethemeBgSurfaceVariant
                 ) {}
             }
 
@@ -495,7 +495,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .height(14.dp)
                         .padding(end = if (index == 2) 80.dp else 0.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = BgSurfaceVariant
+                    color = themethemeBgSurfaceVariant
                 ) {}
                 if (index < 2) Spacer(modifier = Modifier.height(8.dp))
             }
@@ -509,7 +509,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .width(60.dp)
                         .height(14.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = BgSurfaceVariant
+                    color = themethemeBgSurfaceVariant
                 ) {}
                 Spacer(modifier = Modifier.width(20.dp))
                 Surface(
@@ -517,7 +517,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .width(50.dp)
                         .height(14.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = BgSurfaceVariant
+                    color = themethemeBgSurfaceVariant
                 ) {}
             }
         }

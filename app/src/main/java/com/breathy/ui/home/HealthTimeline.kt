@@ -48,11 +48,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.breathy.data.models.HealthMilestone
 import com.breathy.ui.theme.AccentPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import kotlinx.coroutines.delay
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -125,7 +125,7 @@ private fun HealthTimelineProgressBar(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -142,7 +142,7 @@ private fun HealthTimelineProgressBar(
                 Text(
                     text = "$achievedCount of $totalCount milestones",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -163,7 +163,7 @@ private fun HealthTimelineProgressBar(
                     .fillMaxWidth()
                     .height(6.dp),
                 color = AccentPrimary,
-                trackColor = BgSurfaceVariant,
+                trackColor = themethemeBgSurfaceVariant,
             )
         }
     }
@@ -179,8 +179,8 @@ private fun TimelineItem(
     isAchieved: Boolean,
     isLast: Boolean
 ) {
-    val accentColor = if (isAchieved) AccentPrimary else TextDisabled
-    val textColor = if (isAchieved) TextPrimary else TextSecondary
+    val accentColor = if (isAchieved) AccentPrimary else themeTextDisabled
+    val textColor = if (isAchieved) themeTextPrimary else themeTextSecondary
     val timeLabel = milestone.timeLabel()
 
     // Animated checkmark scale for achieved milestones
@@ -232,7 +232,7 @@ private fun TimelineItem(
                             radius = size.minDimension / 2
                         )
                     } else {
-                        drawCircle(color = BgSurfaceVariant)
+                        drawCircle(color = themethemethemeBgSurfaceVariant)
                     }
                 }
 
@@ -250,7 +250,7 @@ private fun TimelineItem(
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = "Locked",
-                        tint = TextDisabled,
+                        tint = themethemeTextDisabled,
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -264,7 +264,7 @@ private fun TimelineItem(
                         .height(40.dp)
                 ) {
                     drawLine(
-                        color = if (isAchieved) AccentPrimary.copy(alpha = 0.4f) else BgSurfaceVariant,
+                        color = if (isAchieved) AccentPrimary.copy(alpha = 0.4f) else themeBgSurfaceVariant,
                         start = Offset(size.width / 2, 0f),
                         end = Offset(size.width / 2, size.height),
                         strokeWidth = 2.dp.toPx()
@@ -282,7 +282,7 @@ private fun TimelineItem(
             Text(
                 text = "After $timeLabel",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = if (isAchieved) AccentPrimary else TextDisabled,
+                    color = if (isAchieved) AccentPrimary else themeTextDisabled,
                     fontWeight = FontWeight.Medium,
                     fontSize = 11.sp
                 )
@@ -302,7 +302,7 @@ private fun TimelineItem(
                 Text(
                     text = milestone.description,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
                     ),
@@ -314,7 +314,7 @@ private fun TimelineItem(
                 Text(
                     text = milestone.description,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextDisabled,
+                        color = themethemeTextDisabled,
                         fontSize = 11.sp,
                         lineHeight = 15.sp
                     ),

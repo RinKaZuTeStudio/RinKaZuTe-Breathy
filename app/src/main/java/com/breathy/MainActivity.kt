@@ -17,15 +17,12 @@ import androidx.compose.ui.Modifier
 import com.breathy.di.AppModule
 import com.breathy.ui.navigation.BreathyNavHost
 import com.breathy.ui.theme.BreathyTheme
-import com.google.android.gms.ads.MobileAds
+import com.breathy.ui.theme.ThemeMode
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -44,6 +41,9 @@ class MainActivity : ComponentActivity() {
 
     /** Google Sign-In ID token, shared with Compose navigation via state. */
     private var googleIdToken by mutableStateOf<String?>(null)
+
+    /** Reactive theme mode — changes trigger recomposition of BreathyTheme. */
+    private var themeMode by mutableStateOf(ThemeMode.SYSTEM)
 
     /** Lazy reference to the app-scoped [AppModule] for manual DI. */
     private val appModule: AppModule by lazy {
@@ -80,18 +80,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize AdMob SDK off main thread
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                MobileAds.initialize(this@MainActivity) { initializationStatus ->
-                    Timber.d("AdMob initialized: ${initializationStatus.adapterStatusMap}")
-                    // Load the app-open ad after SDK initialization succeeds
-                    appModule.adManager.loadAppOpenAd()
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to initialize AdMob")
-            }
-        }
+        // Load saved theme preference
+        val prefs = getSharedPreferences("breathy_prefs", MODE_PRIVATE)
+        val themeName = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+        themeMode = try { ThemeMode.valueOf(themeName) } catch (_: Exception) { ThemeMode.SYSTEM }
+
+        // Initialize AdMob SDK via AdManager (avoids double initialization)
+        appModule.adManager.initialize()
 
         // Request notification permission on Android 13+
         requestNotificationPermissionIfNeeded()
@@ -103,12 +98,6 @@ class MainActivity : ComponentActivity() {
         isFirstLaunch = false
 
         setContent {
-            // Read theme preference from SharedPreferences
-            val prefs = getSharedPreferences("breathy_prefs", MODE_PRIVATE)
-            val themeName = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
-            val themeMode = try { com.breathy.ui.theme.ThemeMode.valueOf(themeName) }
-                catch (_: Exception) { com.breathy.ui.theme.ThemeMode.SYSTEM }
-
             BreathyTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize()
@@ -127,6 +116,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        // Re-read theme preference in case it was changed in ProfileScreen
+        val prefs = getSharedPreferences("breathy_prefs", MODE_PRIVATE)
+        val themeName = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+        themeMode = try { ThemeMode.valueOf(themeName) } catch (_: Exception) { ThemeMode.SYSTEM }
+
         // Show app-open ad only when coming back from background (not on first launch)
         // The AdManager handles frequency capping and premium exemption
         val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser

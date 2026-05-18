@@ -89,12 +89,7 @@ import com.breathy.data.repository.AuthRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
@@ -553,7 +548,7 @@ fun AuthScreen(
             .fillMaxSize()
             .background(
                 Brush.linearGradient(
-                    colors = listOf(BgPrimary, BgSurface, BgPrimary),
+                    colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.background),
                     start = Offset(0f, 0f),
                     end = Offset(0f, 2000f)
                 )
@@ -565,8 +560,8 @@ fun AuthScreen(
         ) { data ->
             Snackbar(
                 snackbarData = data,
-                containerColor = BgSurfaceVariant,
-                contentColor = SemanticError,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.error,
                 shape = RoundedCornerShape(12.dp)
             )
         }
@@ -587,7 +582,7 @@ fun AuthScreen(
                 text = "Breathy for your Health",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -595,7 +590,7 @@ fun AuthScreen(
             Text(
                 text = if (uiState.isSignUpMode) "Create your account" else "Welcome back",
                 fontSize = 15.sp,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(36.dp))
@@ -842,12 +837,12 @@ private fun EmailField(
         value = email,
         onValueChange = onEmailChanged,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("Email", color = TextSecondary) },
+        label = { Text("Email", color = MaterialTheme.colorScheme.onSurfaceVariant) },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Email,
                 contentDescription = "Email input icon",
-                tint = TextSecondary
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         isError = error != null,
@@ -855,7 +850,7 @@ private fun EmailField(
             {
                 Text(
                     text = it,
-                    color = SemanticError,
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp
                 )
             }
@@ -868,14 +863,14 @@ private fun EmailField(
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = AccentPrimary,
-            unfocusedBorderColor = BgSurfaceVariant,
-            errorBorderColor = SemanticError,
+            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+            errorBorderColor = MaterialTheme.colorScheme.error,
             focusedLabelColor = AccentPrimary,
-            errorLabelColor = SemanticError,
+            errorLabelColor = MaterialTheme.colorScheme.error,
             cursorColor = AccentPrimary,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            errorTextColor = TextPrimary
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+            errorTextColor = MaterialTheme.colorScheme.onBackground
         ),
         shape = RoundedCornerShape(12.dp)
     )
@@ -900,12 +895,12 @@ private fun PasswordField(
         value = password,
         onValueChange = onPasswordChanged,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text(label, color = TextSecondary) },
+        label = { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant) },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Lock,
                 contentDescription = "$label input icon",
-                tint = TextSecondary
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         trailingIcon = {
@@ -915,7 +910,7 @@ private fun PasswordField(
                     Icon(
                         imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                         contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
-                        tint = TextSecondary
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             )
@@ -925,7 +920,7 @@ private fun PasswordField(
             {
                 Text(
                     text = it,
-                    color = SemanticError,
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp
                 )
             }
@@ -939,14 +934,14 @@ private fun PasswordField(
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = AccentPrimary,
-            unfocusedBorderColor = BgSurfaceVariant,
-            errorBorderColor = SemanticError,
+            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+            errorBorderColor = MaterialTheme.colorScheme.error,
             focusedLabelColor = AccentPrimary,
-            errorLabelColor = SemanticError,
+            errorLabelColor = MaterialTheme.colorScheme.error,
             cursorColor = AccentPrimary,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            errorTextColor = TextPrimary
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+            errorTextColor = MaterialTheme.colorScheme.onBackground
         ),
         shape = RoundedCornerShape(12.dp)
     )
@@ -990,13 +985,13 @@ private fun GradientButton(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = BgPrimary,
+                    color = MaterialTheme.colorScheme.background,
                     strokeWidth = 2.5.dp
                 )
             } else {
                 Text(
                     text = text,
-                    color = BgPrimary,
+                    color = MaterialTheme.colorScheme.background,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1020,19 +1015,19 @@ private fun OrDivider() {
             modifier = Modifier
                 .weight(1f)
                 .padding(end = 16.dp),
-            color = BgSurfaceVariant,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp
         )
         Text(
             text = "or",
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp
         )
         HorizontalDivider(
             modifier = Modifier
                 .weight(1f)
                 .padding(start = 16.dp),
-            color = BgSurfaceVariant,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             thickness = 1.dp
         )
     }
@@ -1056,12 +1051,12 @@ private fun GoogleSignInButton(
         shape = RoundedCornerShape(14.dp),
         border = ButtonDefaults.outlinedButtonBorder.copy(
             brush = Brush.horizontalGradient(
-                colors = listOf(BgSurfaceVariant, BgSurfaceVariant)
+                colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
             )
         ),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = BgSurface.copy(alpha = 0.6f),
-            disabledContainerColor = BgSurface.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+            disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
         )
     ) {
         // Google "G" letter as a simple text representation.
@@ -1083,7 +1078,7 @@ private fun GoogleSignInButton(
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = "Continue with Google",
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium
         )
@@ -1105,7 +1100,7 @@ private fun SignUpToggle(
     ) {
         Text(
             text = if (isSignUpMode) "Already have an account? " else "Don't have an account? ",
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 14.sp
         )
         Text(

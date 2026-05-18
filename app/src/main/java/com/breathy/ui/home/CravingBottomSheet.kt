@@ -57,11 +57,11 @@ import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentOrange
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -101,7 +101,7 @@ fun CravingBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = BgSurface,
+        containerColor = themethemeBgSurface,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         dragHandle = {
             Box(
@@ -144,7 +144,7 @@ fun CravingBottomSheet(
                 Text(
                     text = "Stay Strong! You've got this 💪",
                     style = MaterialTheme.typography.titleMedium.copy(
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         fontWeight = FontWeight.Bold
                     ),
                     textAlign = TextAlign.Center
@@ -165,7 +165,7 @@ fun CravingBottomSheet(
                     Text(
                         text = "Your first craving — you can do this!",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary
+                            color = themethemeTextSecondary
                         )
                     )
                 }
@@ -175,7 +175,7 @@ fun CravingBottomSheet(
                 Text(
                     text = "Choose a coping method to fight this craving",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary
+                        color = themethemeTextSecondary
                     )
                 )
 
@@ -258,7 +258,7 @@ fun CravingBottomSheet(
                         Text(
                             text = "Did it help?",
                             style = MaterialTheme.typography.titleSmall.copy(
-                                color = TextPrimary,
+                                color = themethemeTextPrimary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
@@ -277,7 +277,7 @@ fun CravingBottomSheet(
                                 },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = AccentPrimary,
-                                    contentColor = BgPrimary
+                                    contentColor = themeBgPrimary
                                 ),
                                 shape = RoundedCornerShape(24.dp)
                             ) {
@@ -315,7 +315,7 @@ fun CravingBottomSheet(
                     ) {
                         Text(
                             text = "I already tried something",
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontSize = 13.sp
                         )
                     }
@@ -353,7 +353,7 @@ private fun CopingMethodCard(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = BgSurfaceVariant
+            containerColor = themethemeBgSurfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp),
@@ -380,7 +380,7 @@ private fun CopingMethodCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall.copy(
-                    color = TextPrimary,
+                    color = themethemeTextPrimary,
                     fontWeight = FontWeight.Bold
                 ),
                 textAlign = TextAlign.Center
@@ -391,7 +391,7 @@ private fun CopingMethodCard(
             Text(
                 text = description,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = TextSecondary,
+                    color = themethemeTextSecondary,
                     fontSize = 11.sp,
                     lineHeight = 14.sp
                 ),

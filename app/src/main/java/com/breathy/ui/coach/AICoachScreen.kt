@@ -82,14 +82,14 @@ import com.breathy.data.repository.CoachRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
 import com.breathy.ui.theme.SemanticError
 import com.breathy.ui.theme.SemanticWarning
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -138,7 +138,7 @@ fun AICoachScreen(
     }
 
     Scaffold(
-        containerColor = BgPrimary,
+        containerColor = themethemeBgPrimary,
         topBar = {
             TopAppBar(
                 title = {
@@ -160,14 +160,14 @@ fun AICoachScreen(
                             Text(
                                 text = "AI Coach",
                                 style = MaterialTheme.typography.titleSmall.copy(
-                                    color = TextPrimary,
+                                    color = themethemeTextPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                             )
                             Text(
                                 text = "Your quit-smoking companion",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = TextSecondary,
+                                    color = themethemeTextSecondary,
                                     fontSize = 10.sp
                                 )
                             )
@@ -179,7 +179,7 @@ fun AICoachScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
@@ -188,13 +188,13 @@ fun AICoachScreen(
                         Icon(
                             imageVector = Icons.Default.DeleteSweep,
                             contentDescription = "Clear chat history",
-                            tint = TextSecondary
+                            tint = themethemeTextSecondary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgSurface,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgSurface,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
@@ -202,7 +202,7 @@ fun AICoachScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(BgSurface)
+                    .background(themethemethemeBgSurface)
                     .imePadding()
             ) {
                 // ── Rate Limit Indicator ──────────────────────────────────
@@ -215,7 +215,7 @@ fun AICoachScreen(
                             .fillMaxWidth()
                             .height(2.dp),
                         color = SemanticWarning,
-                        trackColor = BgSurfaceVariant
+                        trackColor = themethemeBgSurfaceVariant
                     )
                     Text(
                         text = "Rate limit: wait ${uiState.rateLimitSecondsRemaining}s",
@@ -275,7 +275,7 @@ fun AICoachScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Loading conversation...",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
                         )
                     }
                 }
@@ -294,7 +294,7 @@ fun AICoachScreen(
                         Text(
                             text = uiState.errorMessage!!,
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextSecondary,
+                                color = themethemeTextSecondary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         )
@@ -307,7 +307,7 @@ fun AICoachScreen(
                             Text(
                                 text = "Retry",
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                                color = BgPrimary,
+                                color = themethemeBgPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -330,7 +330,7 @@ fun AICoachScreen(
                         Text(
                             text = "Hi! I'm your AI Coach",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                color = TextPrimary,
+                                color = themethemeTextPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         )
@@ -338,7 +338,7 @@ fun AICoachScreen(
                         Text(
                             text = "Ask me anything about quitting smoking,\nmanaging cravings, or staying motivated.",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextSecondary,
+                                color = themethemeTextSecondary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         )
@@ -381,14 +381,14 @@ fun AICoachScreen(
             title = {
                 Text(
                     text = "Clear Chat History?",
-                    color = TextPrimary,
+                    color = themethemeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
                     text = "This will permanently delete all your conversation history with the AI Coach. This cannot be undone.",
-                    color = TextSecondary
+                    color = themethemeTextSecondary
                 )
             },
             confirmButton = {
@@ -407,10 +407,10 @@ fun AICoachScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text(text = "Cancel", color = TextSecondary)
+                    Text(text = "Cancel", color = themethemethemeTextSecondary)
                 }
             },
-            containerColor = BgSurface
+            containerColor = themethemeBgSurface
         )
     }
 }
@@ -463,8 +463,8 @@ private fun MessageBubble(
 ) {
     val isUser = message.isFromUser()
     val alignment = if (isUser) Alignment.End else Alignment.Start
-    val bgColor = if (isUser) AccentPrimary.copy(alpha = 0.15f) else BgSurface
-    val textColor = if (isUser) TextPrimary else TextPrimary
+    val bgColor = if (isUser) AccentPrimary.copy(alpha = 0.15f) else themeBgSurface
+    val textColor = if (isUser) themeTextPrimary else themeTextPrimary
     val timeText = formatMessageTime(message)
 
     Column(
@@ -518,7 +518,7 @@ private fun MessageBubble(
                 Text(
                     text = timeText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextDisabled,
+                        color = themethemeTextDisabled,
                         fontSize = 10.sp
                     ),
                     modifier = Modifier.padding(horizontal = 4.dp)
@@ -609,7 +609,7 @@ private fun TypingIndicatorBubble() {
         Spacer(modifier = Modifier.width(6.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = BgSurface),
+            colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
@@ -722,22 +722,22 @@ private fun MessageInputBar(
             placeholder = {
                 Text(
                     text = if (isRateLimited) "Wait a moment..." else "Ask your coach...",
-                    color = TextDisabled
+                    color = themethemeTextDisabled
                 )
             },
             maxLines = 4,
             enabled = !isSending && !isRateLimited,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
+                focusedTextColor = themeTextPrimary,
+                unfocusedTextColor = themeTextPrimary,
                 focusedBorderColor = AccentPrimary,
-                unfocusedBorderColor = BgSurfaceVariant,
+                unfocusedBorderColor = themeBgSurfaceVariant,
                 cursorColor = AccentPrimary,
-                focusedContainerColor = BgSurfaceVariant,
-                unfocusedContainerColor = BgSurfaceVariant,
-                disabledTextColor = TextDisabled,
-                disabledBorderColor = BgSurfaceVariant,
-                disabledContainerColor = BgSurfaceVariant.copy(alpha = 0.5f)
+                focusedContainerColor = themeBgSurfaceVariant,
+                unfocusedContainerColor = themeBgSurfaceVariant,
+                disabledTextColor = themeTextDisabled,
+                disabledBorderColor = themeBgSurfaceVariant,
+                disabledContainerColor = themeBgSurfaceVariant.copy(alpha = 0.5f)
             ),
             shape = RoundedCornerShape(20.dp)
         )
@@ -756,14 +756,14 @@ private fun MessageInputBar(
             if (isSending) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = BgPrimary,
+                    color = themethemeBgPrimary,
                     strokeWidth = 2.dp
                 )
             } else {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send message",
-                    tint = if (text.isNotBlank() && !isRateLimited) BgPrimary else TextDisabled,
+                    tint = if (text.isNotBlank() && !isRateLimited) themeBgPrimary else themeTextDisabled,
                     modifier = Modifier.size(20.dp)
                 )
             }

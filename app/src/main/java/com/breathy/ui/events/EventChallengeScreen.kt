@@ -94,12 +94,12 @@ import com.breathy.data.repository.EventRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -327,7 +327,7 @@ fun EventChallengeScreen(
                     Text(
                         text = uiState.event?.title ?: "Event",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -337,17 +337,17 @@ fun EventChallengeScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgPrimary,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = BgPrimary
+        containerColor = themethemeBgPrimary
     ) { innerPadding ->
         when {
             uiState.isLoading -> {
@@ -375,7 +375,7 @@ fun EventChallengeScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = uiState.errorMessage!!,
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -387,7 +387,7 @@ fun EventChallengeScreen(
                             Text(
                                 text = "Retry",
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                                color = BgPrimary,
+                                color = themethemeBgPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -403,7 +403,7 @@ fun EventChallengeScreen(
                     // ── Tab Row ────────────────────────────────────────────
                     TabRow(
                         selectedTabIndex = selectedTabIndex,
-                        containerColor = BgPrimary,
+                        containerColor = themethemeBgPrimary,
                         contentColor = AccentPrimary,
                         indicator = { tabPositions ->
                             TabRowDefaults.Indicator(
@@ -421,7 +421,7 @@ fun EventChallengeScreen(
                                     Text(
                                         text = title,
                                         fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (selectedTabIndex == index) AccentPrimary else TextSecondary
+                                        color = if (selectedTabIndex == index) AccentPrimary else themeTextSecondary
                                     )
                                 }
                             )
@@ -550,7 +550,7 @@ private fun LeaderboardTab(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Loading leaderboard...",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
                 )
             }
         }
@@ -593,7 +593,7 @@ private fun EventLeaderboardRow(
                 role = Role.Button
             },
         colors = CardDefaults.cardColors(
-            containerColor = if (entry.rank <= 3) AccentPrimary.copy(alpha = 0.06f) else BgSurface
+            containerColor = if (entry.rank <= 3) AccentPrimary.copy(alpha = 0.06f) else themeBgSurface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
@@ -615,7 +615,7 @@ private fun EventLeaderboardRow(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextSecondary
+                        color = themethemeTextSecondary
                     )
                 } else {
                     TextStyle(fontSize = 18.sp)
@@ -659,7 +659,7 @@ private fun EventLeaderboardRow(
                 Text(
                     text = profile?.nickname ?: "Unknown",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -696,7 +696,7 @@ private fun EventLeaderboardRow(
 private fun EventInfoCard(event: Event) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -708,7 +708,7 @@ private fun EventInfoCard(event: Event) {
             Text(
                 text = "About This Challenge",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = themethemeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -717,7 +717,7 @@ private fun EventInfoCard(event: Event) {
 
             Text(
                 text = event.description,
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -731,12 +731,12 @@ private fun EventInfoCard(event: Event) {
                 Icon(
                     imageVector = Icons.Filled.Timer,
                     contentDescription = null,
-                    tint = TextDisabled,
+                    tint = themethemeTextDisabled,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "${dateFormatter.format(event.startDate.toDate())} - ${dateFormatter.format(event.endDate.toDate())}",
-                    style = MaterialTheme.typography.labelMedium.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.labelMedium.copy(color = themethemethemeTextSecondary)
                 )
             }
 
@@ -750,12 +750,12 @@ private fun EventInfoCard(event: Event) {
                 Icon(
                     imageVector = Icons.Filled.LocalFireDepartment,
                     contentDescription = null,
-                    tint = TextDisabled,
+                    tint = themethemeTextDisabled,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "Daily requirement: ${event.dailyRequired}x per day",
-                    style = MaterialTheme.typography.labelMedium.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.labelMedium.copy(color = themethemethemeTextSecondary)
                 )
             }
 
@@ -769,12 +769,12 @@ private fun EventInfoCard(event: Event) {
                 Icon(
                     imageVector = Icons.Filled.EmojiEvents,
                     contentDescription = null,
-                    tint = TextDisabled,
+                    tint = themethemeTextDisabled,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "Duration: ${event.totalDays()} days",
-                    style = MaterialTheme.typography.labelMedium.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.labelMedium.copy(color = themethemethemeTextSecondary)
                 )
             }
         }
@@ -804,7 +804,7 @@ private fun CountdownCard(countdownSeconds: Long) {
             Text(
                 text = "Time Remaining",
                 style = MaterialTheme.typography.labelMedium.copy(
-                    color = TextSecondary,
+                    color = themethemeTextSecondary,
                     fontWeight = FontWeight.SemiBold
                 )
             )
@@ -864,7 +864,7 @@ private fun CountdownUnit(value: Long, label: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(
-                color = TextSecondary,
+                color = themethemeTextSecondary,
                 fontSize = 10.sp
             )
         )
@@ -880,7 +880,7 @@ private fun ProgressStatsCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -892,7 +892,7 @@ private fun ProgressStatsCard(
             Text(
                 text = "Your Progress",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = themethemeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -921,7 +921,7 @@ private fun ProgressStatsCard(
                     Text(
                         text = "Day Streak",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -945,7 +945,7 @@ private fun ProgressStatsCard(
                     Text(
                         text = "Days Approved",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -969,7 +969,7 @@ private fun ProgressStatsCard(
                     Text(
                         text = "of $totalDays Days",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -989,7 +989,7 @@ private fun ProgressStatsCard(
                     .fillMaxWidth()
                     .height(6.dp),
                 color = AccentPrimary,
-                trackColor = BgSurfaceVariant,
+                trackColor = themethemeBgSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -997,7 +997,7 @@ private fun ProgressStatsCard(
             Text(
                 text = "${(progress * 100).toInt()}% complete",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = TextSecondary,
+                    color = themethemeTextSecondary,
                     fontSize = 11.sp
                 ),
                 modifier = Modifier.fillMaxWidth(),
@@ -1011,7 +1011,7 @@ private fun ProgressStatsCard(
 private fun PrizeBreakdownCard(prizes: Map<String, String>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -1023,7 +1023,7 @@ private fun PrizeBreakdownCard(prizes: Map<String, String>) {
             Text(
                 text = "\uD83C\uDFC6 Prizes",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = themethemeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -1060,7 +1060,7 @@ private fun PrizeBreakdownCard(prizes: Map<String, String>) {
                     Text(
                         text = prize,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary
+                            color = themethemeTextSecondary
                         ),
                         modifier = Modifier.weight(1f)
                     )
@@ -1098,7 +1098,7 @@ private fun CheckinButton(
             },
         colors = ButtonDefaults.buttonColors(
             containerColor = AccentPrimary,
-            contentColor = BgPrimary
+            contentColor = themeBgPrimary
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -1129,7 +1129,7 @@ private fun JoinEventButton(onClick: () -> Unit) {
             },
         colors = ButtonDefaults.buttonColors(
             containerColor = AccentPrimary,
-            contentColor = BgPrimary
+            contentColor = themeBgPrimary
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -1179,7 +1179,7 @@ private fun CompletionBadgeCard() {
                 )
                 Text(
                     text = "Congratulations on finishing this challenge!",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
                 )
             }
         }

@@ -47,10 +47,10 @@ import androidx.compose.ui.unit.sp
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import kotlinx.coroutines.delay
 
 private enum class BreathingPhase {
@@ -178,7 +178,7 @@ fun BreathingExercise(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Cancel breathing exercise",
-                        tint = TextSecondary,
+                        tint = themethemeTextSecondary,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -191,7 +191,7 @@ fun BreathingExercise(
                     Text(
                         text = "Cycle $currentCycle of $totalCycles",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = TextSecondary,
+                            color = themethemeTextSecondary,
                             fontWeight = FontWeight.Medium
                         )
                     )
@@ -287,7 +287,7 @@ fun BreathingExercise(
                                 Text(
                                     text = phaseSecondsLeft.toString(),
                                     style = MaterialTheme.typography.displayMedium.copy(
-                                        color = TextPrimary,
+                                        color = themethemeTextPrimary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 48.sp
                                     )
@@ -329,7 +329,7 @@ fun BreathingExercise(
                         Text(
                             text = "Great job! You completed the exercise 🎉",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextPrimary,
+                                color = themethemeTextPrimary,
                                 fontWeight = FontWeight.Medium
                             ),
                             textAlign = TextAlign.Center
@@ -342,7 +342,7 @@ fun BreathingExercise(
                                 onClick = { onComplete(true) },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = AccentPrimary,
-                                    contentColor = BgPrimary
+                                    contentColor = themeBgPrimary
                                 ),
                                 shape = RoundedCornerShape(24.dp)
                             ) {
@@ -388,7 +388,7 @@ fun BreathingExercise(
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.Transparent,
-                                contentColor = TextSecondary
+                                contentColor = themethemeTextSecondary
                             )
                         ) {
                             Text(text = "Cancel", fontWeight = FontWeight.Medium)

@@ -91,13 +91,13 @@ import com.breathy.data.models.EventCheckin
 import com.breathy.data.repository.EventRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
 import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -488,7 +488,7 @@ fun AdminReviewScreen(
                     Text(
                         text = "Review Check-ins",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = themethemeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -496,7 +496,7 @@ fun AdminReviewScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
@@ -504,7 +504,7 @@ fun AdminReviewScreen(
                     // Batch mode toggle
                     Text(
                         text = if (uiState.isBatchMode) "Cancel" else "Batch",
-                        color = if (uiState.isBatchMode) AccentPrimary else TextSecondary,
+                        color = if (uiState.isBatchMode) AccentPrimary else themeTextSecondary,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier
                             .padding(horizontal = 12.dp)
@@ -526,20 +526,20 @@ fun AdminReviewScreen(
                         Text(
                             text = if (uiState.isBatchMode) "Cancel" else "Batch",
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            color = if (uiState.isBatchMode) AccentPrimary else TextSecondary,
+                            color = if (uiState.isBatchMode) AccentPrimary else themeTextSecondary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgPrimary,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = BgPrimary
+        containerColor = themethemeBgPrimary
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -642,7 +642,7 @@ fun AdminReviewScreen(
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
                 contentColor = AccentPrimary,
-                backgroundColor = BgSurface
+                backgroundColor = themeBgSurface
             )
         }
     }
@@ -673,7 +673,7 @@ private fun CheckinReviewCard(
                 role = Role.Button
             },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) AccentPrimary.copy(alpha = 0.08f) else BgSurface
+            containerColor = if (isSelected) AccentPrimary.copy(alpha = 0.08f) else themeBgSurface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
@@ -695,7 +695,7 @@ private fun CheckinReviewCard(
                     onCheckedChange = { onToggleSelection() },
                     colors = CheckboxDefaults.colors(
                         checkedColor = AccentPrimary,
-                        uncheckedColor = TextDisabled
+                        uncheckedColor = themeTextDisabled
                     ),
                     modifier = Modifier.semantics {
                         contentDescription = if (isSelected) "Deselect" else "Select"
@@ -728,7 +728,7 @@ private fun CheckinReviewCard(
                     Text(
                         text = "Day ${checkin.dayNumber}",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = themethemeTextPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -739,7 +739,7 @@ private fun CheckinReviewCard(
                 Text(
                     text = "User: ${checkin.userId.take(8)}...",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp
                     ),
@@ -750,7 +750,7 @@ private fun CheckinReviewCard(
                 Text(
                     text = "Submitted: ${dateFormatter.format(checkin.submittedAt.toDate())}",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextDisabled,
+                        color = themethemeTextDisabled,
                         fontSize = 11.sp
                     )
                 )
@@ -862,8 +862,8 @@ private fun BatchActionBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = BgSurface,
-        border = BorderStroke(0.5.dp, BgSurfaceVariant)
+        color = themethemeBgSurface,
+        border = BorderStroke(0.5.dp, themethemeBgSurfaceVariant)
     ) {
         Column(
             modifier = Modifier
@@ -879,7 +879,7 @@ private fun BatchActionBar(
                 Text(
                     text = "$selectedCount of $totalCount selected",
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -887,7 +887,7 @@ private fun BatchActionBar(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Card(
                         onClick = onSelectAll,
-                        colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurfaceVariant),
                         shape = RoundedCornerShape(8.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
@@ -902,7 +902,7 @@ private fun BatchActionBar(
                     }
                     Card(
                         onClick = onClearSelection,
-                        colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurfaceVariant),
                         shape = RoundedCornerShape(8.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
@@ -910,7 +910,7 @@ private fun BatchActionBar(
                             text = "None",
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextSecondary,
+                                color = themethemeTextSecondary,
                                 fontWeight = FontWeight.Bold
                             )
                         )
@@ -937,7 +937,7 @@ private fun BatchActionBar(
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentPrimary,
-                        contentColor = BgPrimary,
+                        contentColor = themeBgPrimary,
                         disabledContainerColor = AccentPrimary.copy(alpha = 0.3f)
                     ),
                     shape = RoundedCornerShape(10.dp)
@@ -945,7 +945,7 @@ private fun BatchActionBar(
                     if (isProcessing) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = BgPrimary,
+                            color = themethemeBgPrimary,
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -975,7 +975,7 @@ private fun BatchActionBar(
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SemanticError,
-                        contentColor = TextPrimary,
+                        contentColor = themethemeTextPrimary,
                         disabledContainerColor = SemanticError.copy(alpha = 0.3f)
                     ),
                     shape = RoundedCornerShape(10.dp)
@@ -1010,7 +1010,7 @@ private fun RejectionCommentSection(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = BgSurface,
+        color = themethemeBgSurface,
         border = BorderStroke(0.5.dp, SemanticError.copy(alpha = 0.3f))
     ) {
         Column(
@@ -1031,7 +1031,7 @@ private fun RejectionCommentSection(
                 Text(
                     text = "Rejection Reason (Optional)",
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -1050,18 +1050,18 @@ private fun RejectionCommentSection(
                 placeholder = {
                     Text(
                         text = "Explain why this check-in was rejected...",
-                        color = TextDisabled
+                        color = themethemeTextDisabled
                     )
                 },
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = SemanticError.copy(alpha = 0.5f),
-                    unfocusedBorderColor = BgSurfaceVariant,
-                    focusedContainerColor = BgPrimary,
-                    unfocusedContainerColor = BgPrimary,
+                    unfocusedBorderColor = themeBgSurfaceVariant,
+                    focusedContainerColor = themeBgPrimary,
+                    unfocusedContainerColor = themeBgPrimary,
                     cursorColor = SemanticError,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+                    focusedTextColor = themeTextPrimary,
+                    unfocusedTextColor = themeTextPrimary
                 ),
                 maxLines = 3,
                 minLines = 2
@@ -1079,8 +1079,8 @@ private fun RejectionCommentSection(
                         .weight(1f)
                         .height(40.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = BgSurfaceVariant,
-                        contentColor = TextPrimary
+                        containerColor = themethemeBgSurfaceVariant,
+                        contentColor = themethemeTextPrimary
                     ),
                     shape = RoundedCornerShape(10.dp)
                 ) {
@@ -1102,7 +1102,7 @@ private fun RejectionCommentSection(
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SemanticError,
-                        contentColor = TextPrimary
+                        contentColor = themethemeTextPrimary
                     ),
                     shape = RoundedCornerShape(10.dp)
                 ) {
@@ -1142,7 +1142,7 @@ private fun AdminLoadingState() {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Loading pending check-ins...",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
             )
         }
     }
@@ -1167,13 +1167,13 @@ private fun AdminEmptyState() {
                 text = "All Caught Up!",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = themethemeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "No pending check-ins to review",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
         }
@@ -1201,13 +1201,13 @@ private fun AdminErrorState(
                 text = "Something went wrong",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = themethemeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -1219,7 +1219,7 @@ private fun AdminErrorState(
                 Text(
                     text = "Try Again",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                    color = BgPrimary,
+                    color = themethemeBgPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }

@@ -80,12 +80,7 @@ import com.breathy.data.models.CopingMethod
 import com.breathy.ui.theme.AccentOrange
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -217,7 +212,7 @@ fun HomeScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            containerColor = BgPrimary,
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             floatingActionButton = {
                 CravingFAB(
@@ -339,7 +334,7 @@ fun HomeScreen(
                     Text(
                         text = "Health Timeline",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Bold
                         ),
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -358,7 +353,7 @@ fun HomeScreen(
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter),
                     contentColor = AccentPrimary,
-                    backgroundColor = BgSurface
+                    backgroundColor = MaterialTheme.colorScheme.surface
                 )
             }
         }
@@ -449,7 +444,7 @@ fun HomeScreen(
                     Text(
                         text = "Loading your progress...",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
@@ -468,7 +463,7 @@ fun HomeScreen(
                     Text(
                         text = uiState.errorMessage!!,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         textAlign = TextAlign.Center
                     )
@@ -481,7 +476,7 @@ fun HomeScreen(
                         Text(
                             text = "Retry",
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                            color = BgPrimary,
+                            color = MaterialTheme.colorScheme.background,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -549,14 +544,14 @@ private fun TopBar(
                 Text(
                     text = getGreeting(),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
                 )
                 Text(
                     text = nickname.ifBlank { "there" },
                     style = MaterialTheme.typography.titleMedium.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold
                     ),
                     maxLines = 1,
@@ -569,7 +564,7 @@ private fun TopBar(
         Card(
             modifier = Modifier.size(40.dp),
             shape = CircleShape,
-            colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             onClick = onNotificationClick
         ) {
@@ -621,7 +616,7 @@ private fun HeroStatCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -661,7 +656,7 @@ private fun HeroStatCard(
                 Text(
                     text = "Days Smoke-Free",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp
                     )
                 )
@@ -706,7 +701,7 @@ private fun HeroStatCard(
                         Text(
                             text = "$xpForNextLevel XP to next",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextDisabled,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                                 fontSize = 11.sp
                             )
                         )
@@ -718,7 +713,7 @@ private fun HeroStatCard(
                             .fillMaxWidth()
                             .height(4.dp),
                         color = AccentPrimary,
-                        trackColor = BgSurfaceVariant,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
                     )
                 }
             }
@@ -775,14 +770,14 @@ private fun DailyRewardBanner(
                     Text(
                         text = "Claim your daily reward!",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
                         text = "Tap to earn coins + XP",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     )
@@ -798,7 +793,7 @@ private fun DailyRewardBanner(
                     text = "Claim",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = BgPrimary,
+                        color = MaterialTheme.colorScheme.background,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -817,7 +812,7 @@ private fun DailyRewardCountdown(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -836,14 +831,14 @@ private fun DailyRewardCountdown(
                 Text(
                     text = "Daily reward claimed!",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
                 Text(
                     text = "Next reward in $countdownText",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
                 )
@@ -863,7 +858,7 @@ private fun CravingStreakCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -886,7 +881,7 @@ private fun CravingStreakCard(
                     Text(
                         text = "$successfulCount cravings defeated",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )

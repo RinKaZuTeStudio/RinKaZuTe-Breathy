@@ -1,5 +1,8 @@
 package com.breathy.ui.theme
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
 // ── Background Colors ────────────────────────────────────────────────────────
@@ -158,3 +161,50 @@ val LightOutlineVariantColor = Color(0xFFEEEEEE)
 
 /** Modal scrim (light mode). */
 val LightScrimColor = Color(0x99FFFFFF)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Theme-aware Color Accessors
+//  These read from MaterialTheme.colorScheme so they automatically switch
+//  between dark and light mode. Screens should prefer these over the
+//  hardcoded dark-mode constants above.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Theme-aware background color. Replaces hardcoded BgPrimary. */
+val themeBgPrimary: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.background
+
+/** Theme-aware surface color. Replaces hardcoded BgSurface. */
+val themeBgSurface: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surface
+
+/** Theme-aware surface variant color. Replaces hardcoded BgSurfaceVariant. */
+val themeBgSurfaceVariant: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceVariant
+
+/** Theme-aware elevated surface color. Replaces hardcoded BgSurfaceElevated. */
+val themeBgSurfaceElevated: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainerHigh
+
+/** Theme-aware primary text color. Replaces hardcoded TextPrimary. */
+val themeTextPrimary: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onBackground
+
+/** Theme-aware secondary text color. Replaces hardcoded TextSecondary. */
+val themeTextSecondary: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant
+
+/** Theme-aware disabled text color. Replaces hardcoded TextDisabled. */
+val themeTextDisabled: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
+
+/** Theme-aware inverse text color. Replaces hardcoded TextInverse. */
+val themeTextInverse: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.inverseSurface
+
+/** Theme-aware outline color. Replaces hardcoded OutlineColor. */
+val themeOutlineColor: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outline
+
+/** Theme-aware outline variant color. Replaces hardcoded OutlineVariantColor. */
+val themeOutlineVariantColor: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outlineVariant

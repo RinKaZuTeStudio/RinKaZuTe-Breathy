@@ -6,6 +6,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -60,9 +63,6 @@ import com.breathy.ui.profile.AchievementsListScreen
 import com.breathy.ui.profile.ProfileScreen
 import com.breathy.ui.subscription.SubscriptionScreen
 import com.breathy.ui.theme.AccentPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
 import com.google.firebase.auth.FirebaseAuth
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -148,7 +148,7 @@ private val noBottomBarRoutes = setOf(
 // Animation Specs
 // ═══════════════════════════════════════════════════════════════════════════════
 
-private const val ANIM_DURATION_MS = 250
+private const val ANIM_DURATION_MS = 350
 
 private val enterTransition: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
     fadeIn(animationSpec = tween(ANIM_DURATION_MS)) + slideIntoContainer(
@@ -158,11 +158,17 @@ private val enterTransition: AnimatedContentTransitionScope<*>.() -> EnterTransi
 }
 
 private val exitTransition: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
-    fadeOut(animationSpec = tween(ANIM_DURATION_MS))
+    fadeOut(animationSpec = tween(ANIM_DURATION_MS)) + slideOutOfContainer(
+        AnimatedContentTransitionScope.SlideDirection.Start,
+        animationSpec = tween(ANIM_DURATION_MS)
+    )
 }
 
 private val popEnterTransition: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
-    fadeIn(animationSpec = tween(ANIM_DURATION_MS))
+    fadeIn(animationSpec = tween(ANIM_DURATION_MS)) + slideIntoContainer(
+        AnimatedContentTransitionScope.SlideDirection.End,
+        animationSpec = tween(ANIM_DURATION_MS)
+    )
 }
 
 private val popExitTransition: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
@@ -504,8 +510,8 @@ private fun BreathyBottomBar(
     onNavigate: (String) -> Unit
 ) {
     NavigationBar(
-        containerColor = BgSurface,
-        contentColor = TextPrimary
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         bottomNavItems.forEach { item ->
             val isSelected = currentDestination?.hierarchy?.any {
@@ -517,7 +523,7 @@ private fun BreathyBottomBar(
                     Icon(
                         imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
                         contentDescription = item.label,
-                        tint = if (isSelected) AccentPrimary else TextDisabled
+                        tint = if (isSelected) AccentPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
                 },
                 label = {
@@ -534,7 +540,7 @@ private fun BreathyBottomBar(
                 colors = NavigationBarItemDefaults.colors(
                     indicatorColor = AccentPrimary.copy(alpha = 0.12f),
                     selectedIconColor = AccentPrimary,
-                    unselectedIconColor = TextDisabled
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                 )
             )
         }

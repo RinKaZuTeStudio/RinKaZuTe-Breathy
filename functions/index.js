@@ -2,12 +2,13 @@
  * Breathy Cloud Functions
  *
  * All backend logic for the Breathy quit-smoking Android app:
- *   a. updateDaysSmokeFree   — scheduled daily at 2 AM UTC
- *   b. onReplyCreated        — Firestore trigger on reply creation
- *   c. onReplyDeleted        — Firestore trigger on reply deletion
- *   d. sendChatNotification  — Firestore trigger on new chat message
- *   e. calculateEventRanks   — scheduled hourly
- *   f. openAIChat            — callable function (rate-limited)
+ *   a. updateDaysSmokeFree           — scheduled daily at 2 AM UTC
+ *   b. onReplyCreated                — Firestore trigger on reply creation
+ *   c. onReplyDeleted                — Firestore trigger on reply deletion
+ *   d. sendChatNotification          — Firestore trigger on new chat message
+ *   e. calculateEventRanks           — scheduled hourly
+ *   f. sendFriendRequestNotification — Firestore trigger on notification doc
+ *   g. openAIChat                    — callable function (rate-limited)
  */
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -517,6 +518,98 @@ exports.calculateEventRanks = onSchedule(
       logger.error("calculateEventRanks: Fatal error during rank calculation", error);
       throw error;
     }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  g. sendFriendRequestNotification — Firestore trigger on notifications/{docId}
+// ═══════════════════════════════════════════════════════════════════════════════
+exports.sendFriendRequestNotification = onDocumentCreated(
+  {
+    document: "notifications/{docId}",
+    timeoutSeconds: 60,
+    memory: "256MiB",
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) {
+      logger.warn("sendFriendRequestNotification: No snapshot data, skipping");
+      return null;
+    }
+
+    const data = snap.data();
+    if (!data) {
+      logger.warn("sendFriendRequestNotification: No data, skipping");
+      return null;
+    }
+
+    const type = data.type;
+    if (type !== "friend_request") {
+      // Only handle friend_request notifications
+      return null;
+    }
+
+    const fcmToken = data.toFcmToken;
+    const senderName = data.senderName || "Someone";
+    const senderId = data.senderId || "";
+    const requestId = data.requestId || "";
+
+    if (!fcmToken) {
+      logger.warn("sendFriendRequestNotification: No FCM token, skipping");
+      return null;
+    }
+
+    logger.info(`sendFriendRequestNotification: Sending friend request notification from ${senderName}`);
+
+    try {
+      const payload = {
+        token: fcmToken,
+        notification: {
+          title: "Friend Request",
+          body: `${senderName} wants to be your friend!`,
+        },
+        android: {
+          priority: "high" as const,
+          notification: {
+            channelId: "friend_requests",
+            clickAction: "OPEN_FRIENDS",
+            tag: `friend_request_${requestId}`,
+            defaultSound: true,
+            defaultVibrateTimings: true,
+          },
+        },
+        data: {
+          type: "friend_request",
+          senderName: senderName,
+          senderId: senderId,
+          requestId: requestId,
+          route: "friends",
+        },
+      };
+
+      const response = await messaging.send(payload);
+      logger.info(`sendFriendRequestNotification: Notification sent, message ID: ${response}`);
+
+      // Mark notification as processed
+      await snap.ref.update({ processed: true });
+    } catch (error) {
+      logger.error(`sendFriendRequestNotification: Error sending notification`, error);
+
+      // Clean up stale FCM token
+      if (error.code === "messaging/registration-token-not-registered" ||
+          error.code === "messaging/invalid-registration-token") {
+        try {
+          await db.collection("users").doc(data.toUserId).update({
+            fcmToken: FieldValue.delete(),
+          });
+          logger.info(`sendFriendRequestNotification: Removed stale FCM token for user ${data.toUserId}`);
+        } catch (cleanupError) {
+          logger.error(`sendFriendRequestNotification: Failed to clean up stale FCM token`, cleanupError);
+        }
+      }
+    }
+
+    return null;
   }
 );
 

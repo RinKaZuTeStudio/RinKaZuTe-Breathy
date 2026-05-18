@@ -71,12 +71,12 @@ import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -142,7 +142,7 @@ fun PublicProfileScreen(
                     Text(
                         text = uiState.profile?.nickname ?: "Profile",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = themethemeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -156,17 +156,17 @@ fun PublicProfileScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgPrimary,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = BgPrimary
+        containerColor = themethemeBgPrimary
     ) { innerPadding ->
         if (uiState.isLoading && uiState.profile == null) {
             // Loading state
@@ -192,13 +192,13 @@ fun PublicProfileScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "⚠️ Failed to load profile",
-                        color = TextPrimary,
+                        color = themethemeTextPrimary,
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = uiState.error ?: "",
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
                     )
@@ -245,7 +245,7 @@ fun PublicProfileScreen(
                         text = "Stories",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
@@ -261,7 +261,7 @@ fun PublicProfileScreen(
                         ) {
                             Text(
                                 text = "No stories yet",
-                                color = TextDisabled,
+                                color = themethemeTextDisabled,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -312,8 +312,8 @@ private fun ProfileHeader(profile: PublicProfile) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = BgSurface,
-            contentColor = TextPrimary
+            containerColor = themethemeBgSurface,
+            contentColor = themethemeTextPrimary
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -340,7 +340,7 @@ private fun ProfileHeader(profile: PublicProfile) {
                 text = profile.nickname,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = themethemeTextPrimary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -393,13 +393,13 @@ private fun ProfileHeader(profile: PublicProfile) {
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
                         contentDescription = null,
-                        tint = TextDisabled,
+                        tint = themethemeTextDisabled,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = profile.location,
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -417,13 +417,13 @@ private fun ProfileHeader(profile: PublicProfile) {
                     Icon(
                         imageVector = Icons.Filled.CalendarToday,
                         contentDescription = null,
-                        tint = TextDisabled,
+                        tint = themethemeTextDisabled,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Quit on ${formatQuitDate(qd.toDate())}",
-                        color = TextSecondary,
+                        color = themethemeTextSecondary,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -461,7 +461,7 @@ private fun ProfileActions(
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentSecondary,
-                        contentColor = BgPrimary
+                        contentColor = themeBgPrimary
                     ),
                     shape = RoundedCornerShape(22.dp)
                 ) {
@@ -488,7 +488,7 @@ private fun ProfileActions(
                         },
                     shape = RoundedCornerShape(22.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        disabledContentColor = TextDisabled
+                        disabledContentColor = themeTextDisabled
                     )
                 ) {
                     Icon(
@@ -511,7 +511,7 @@ private fun ProfileActions(
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentSecondary,
-                        contentColor = BgPrimary
+                        contentColor = themeBgPrimary
                     ),
                     shape = RoundedCornerShape(22.dp)
                 ) {
@@ -556,7 +556,7 @@ private fun ProfileActions(
                         .height(44.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentSecondary,
-                        contentColor = BgPrimary
+                        contentColor = themeBgPrimary
                     ),
                     shape = RoundedCornerShape(22.dp)
                 ) {
@@ -583,16 +583,16 @@ private fun ProfileActions(
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentPrimary,
-                        contentColor = BgPrimary,
+                        contentColor = themeBgPrimary,
                         disabledContainerColor = AccentPrimary.copy(alpha = 0.3f),
-                        disabledContentColor = TextDisabled
+                        disabledContentColor = themeTextDisabled
                     ),
                     shape = RoundedCornerShape(22.dp)
                 ) {
                     if (isSendingRequest) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            color = BgPrimary,
+                            color = themethemeBgPrimary,
                             strokeWidth = 2.dp
                         )
                     } else {

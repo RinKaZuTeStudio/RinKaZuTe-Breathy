@@ -667,7 +667,7 @@ class UserRepository(
 
     /** Observe public profiles ordered by XP (leaderboard). */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun observePublicProfilesOrderedByXp(limit: Int): Flow<List<PublicProfile>> =
+    fun observePublicProfilesOrderedByXp(limit: Int): Flow<List<Pair<String, PublicProfile>>> =
         callbackFlow {
             val registration = firestore.collection(PUBLIC_PROFILES_COLLECTION)
                 .orderBy("xp", Query.Direction.DESCENDING)
@@ -681,7 +681,7 @@ class UserRepository(
                     }
                     if (snapshot != null) {
                         val profiles = snapshot.documents.mapNotNull { doc ->
-                            doc.data?.let { PublicProfile.fromFirestoreMap(it) }
+                            doc.data?.let { Pair(doc.id, PublicProfile.fromFirestoreMap(it)) }
                         }
                         trySend(profiles)
                     }

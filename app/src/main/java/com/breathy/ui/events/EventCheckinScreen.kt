@@ -100,13 +100,13 @@ import com.breathy.data.models.EventCheckin
 import com.breathy.data.repository.EventRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
 import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -411,7 +411,7 @@ fun EventCheckinScreen(
                     Text(
                         text = "Check In - Day ${uiState.dayNumber}",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = themethemeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -422,17 +422,17 @@ fun EventCheckinScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgPrimary,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = BgPrimary
+        containerColor = themethemeBgPrimary
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -684,7 +684,7 @@ private fun CameraViewScreen(
                     text = "Day $dayNumber",
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = BgPrimary,
+                        color = themethemeBgPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -694,7 +694,7 @@ private fun CameraViewScreen(
         // Controls
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = BgSurface
+            color = themethemeBgSurface
         ) {
             Column(
                 modifier = Modifier
@@ -705,7 +705,7 @@ private fun CameraViewScreen(
                 Text(
                     text = if (isRecording) "Recording your check-in..." else "Tap to start recording",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextSecondary
+                        color = themethemeTextSecondary
                     )
                 )
 
@@ -775,7 +775,7 @@ private fun CameraViewScreen(
                     Text(
                         text = "Max 60 seconds",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextDisabled,
+                            color = themethemeTextDisabled,
                             fontSize = 11.sp
                         )
                     )
@@ -810,7 +810,7 @@ private fun VideoPreviewScreen(
             // ExoPlayer or Android's VideoView
             Card(
                 modifier = Modifier.fillMaxSize(),
-                colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurfaceVariant),
                 shape = RoundedCornerShape(0.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
@@ -829,14 +829,14 @@ private fun VideoPreviewScreen(
                         Text(
                             text = "Video Preview",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextPrimary,
+                                color = themethemeTextPrimary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
                         Text(
                             text = "Day $dayNumber check-in recorded",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextSecondary
+                                color = themethemeTextSecondary
                             )
                         )
                     }
@@ -847,7 +847,7 @@ private fun VideoPreviewScreen(
         // Action buttons
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = BgSurface
+            color = themethemeBgSurface
         ) {
             Row(
                 modifier = Modifier
@@ -866,8 +866,8 @@ private fun VideoPreviewScreen(
                             role = Role.Button
                         },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = BgSurfaceVariant,
-                        contentColor = TextPrimary
+                        containerColor = themethemeBgSurfaceVariant,
+                        contentColor = themethemeTextPrimary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -895,7 +895,7 @@ private fun VideoPreviewScreen(
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentPrimary,
-                        contentColor = BgPrimary
+                        contentColor = themeBgPrimary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -943,7 +943,7 @@ private fun UploadProgressScreen(
                     color = AccentPrimary,
                     strokeWidth = 6.dp,
                     strokeCap = StrokeCap.Round,
-                    trackColor = BgSurfaceVariant
+                    trackColor = themethemeBgSurfaceVariant
                 )
                 Text(
                     text = "${(progress * 100).toInt()}%",
@@ -961,7 +961,7 @@ private fun UploadProgressScreen(
             Text(
                 text = "Uploading Day $dayNumber Check-in",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = themethemeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -970,7 +970,7 @@ private fun UploadProgressScreen(
 
             Text(
                 text = "Please wait while your video is being uploaded...",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
 
@@ -982,7 +982,7 @@ private fun UploadProgressScreen(
                     .fillMaxWidth(0.6f)
                     .height(4.dp),
                 color = AccentPrimary,
-                trackColor = BgSurfaceVariant,
+                trackColor = themethemeBgSurfaceVariant,
             )
         }
     }
@@ -1056,7 +1056,7 @@ private fun UploadCompleteScreen(
             Text(
                 text = "Day $dayNumber of $eventTitle",
                 style = MaterialTheme.typography.bodyLarge.copy(
-                    color = TextPrimary,
+                    color = themethemeTextPrimary,
                     fontWeight = FontWeight.SemiBold
                 )
             )
@@ -1065,7 +1065,7 @@ private fun UploadCompleteScreen(
 
             Text(
                 text = "Your video will be reviewed shortly",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
 
@@ -1082,7 +1082,7 @@ private fun UploadCompleteScreen(
                     },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentPrimary,
-                    contentColor = BgPrimary
+                    contentColor = themeBgPrimary
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -1121,13 +1121,13 @@ private fun NoPermissionScreen(
                 text = "Camera Permission Required",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = themethemeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "We need camera access to record your check-in video",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -1135,7 +1135,7 @@ private fun NoPermissionScreen(
                 onClick = onRequestPermission,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentPrimary,
-                    contentColor = BgPrimary
+                    contentColor = themeBgPrimary
                 ),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.semantics {

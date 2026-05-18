@@ -90,13 +90,7 @@ import com.breathy.data.repository.FriendRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentSecondary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -467,7 +461,7 @@ fun FriendsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BgPrimary)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             // ── Top App Bar ────────────────────────────────────────────────
             TopAppBar(
@@ -475,7 +469,7 @@ fun FriendsScreen(
                     Text(
                         text = "Friends",
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -485,7 +479,7 @@ fun FriendsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
@@ -499,16 +493,16 @@ fun FriendsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
 
             // ── Tab Row ────────────────────────────────────────────────────
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = BgPrimary,
-                contentColor = TextPrimary,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground,
                 indicator = { tabPositions ->
                     TabRowDefaults.Indicator(
                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
@@ -545,7 +539,7 @@ fun FriendsScreen(
                                                 horizontal = 6.dp, vertical = 2.dp
                                             ),
                                             style = MaterialTheme.typography.labelSmall.copy(
-                                                color = BgPrimary,
+                                                color = MaterialTheme.colorScheme.background,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 10.sp
                                             )
@@ -555,7 +549,7 @@ fun FriendsScreen(
                             }
                         },
                         selectedContentColor = AccentPrimary,
-                        unselectedContentColor = TextSecondary
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -616,7 +610,7 @@ fun FriendsScreen(
                 title = {
                     Text(
                         text = "Remove Friend",
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -625,7 +619,7 @@ fun FriendsScreen(
                         text = "Are you sure you want to remove " +
                                 "${friend.profile.nickname} from your friends? " +
                                 "You can always send them a new request later.",
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
                 confirmButton = {
@@ -635,20 +629,20 @@ fun FriendsScreen(
                             friendToRemove = null
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = SemanticError
+                            containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Remove", color = TextPrimary)
+                        Text("Remove", color = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { friendToRemove = null }) {
-                        Text("Cancel", color = TextSecondary)
+                        Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
-                containerColor = BgSurface,
-                titleContentColor = TextPrimary,
-                textContentColor = TextSecondary
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -723,7 +717,7 @@ private fun FriendItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -774,7 +768,7 @@ private fun FriendItem(
                             .align(Alignment.BottomEnd),
                         shape = CircleShape,
                         color = AccentPrimary,
-                        border = BorderStroke(2.dp, BgSurface)
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
                     ) {}
                 }
             }
@@ -786,7 +780,7 @@ private fun FriendItem(
                 Text(
                     text = profile.nickname,
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -832,13 +826,13 @@ private fun FriendItem(
                     if (profile.location != null) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = BgSurfaceVariant
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Text(
                                 text = profile.location!!,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = TextSecondary,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 10.sp
                                 )
                             )
@@ -855,7 +849,7 @@ private fun FriendItem(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove ${profile.nickname}",
-                    tint = TextDisabled,
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -871,7 +865,7 @@ private fun FriendItem(
 private fun FriendItemSkeleton() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -884,7 +878,7 @@ private fun FriendItemSkeleton() {
             Surface(
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = BgSurfaceVariant
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {}
             Spacer(modifier = Modifier.width(12.dp))
             Column {
@@ -893,7 +887,7 @@ private fun FriendItemSkeleton() {
                         .width(120.dp)
                         .height(16.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = BgSurfaceVariant
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {}
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(
@@ -901,7 +895,7 @@ private fun FriendItemSkeleton() {
                         .width(80.dp)
                         .height(12.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = BgSurfaceVariant
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {}
             }
         }
@@ -955,7 +949,7 @@ private fun EmptyFriendsState() {
             Text(
                 text = "No Friends Yet",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -964,7 +958,7 @@ private fun EmptyFriendsState() {
 
             Text(
                 text = "Add friends to support each other\non your quit-smoking journey!",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                 textAlign = TextAlign.Center
             )
         }
@@ -1052,13 +1046,13 @@ private fun RequestsTab(
                     Icon(
                         imageVector = Icons.Default.Send,
                         contentDescription = null,
-                        tint = TextSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
                         text = "Outgoing (${outgoingRequests.size})",
                         style = MaterialTheme.typography.labelLarge.copy(
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -1089,7 +1083,7 @@ private fun IncomingRequestItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -1121,7 +1115,7 @@ private fun IncomingRequestItem(
                 Text(
                     text = "User #${request.fromUserId.take(6)}",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -1130,7 +1124,7 @@ private fun IncomingRequestItem(
                 Text(
                     text = formatRequestTime(request),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
                     )
                 )
@@ -1165,13 +1159,13 @@ private fun IncomingRequestItem(
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = SemanticError.copy(alpha = 0.15f)
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Reject friend request",
-                            tint = SemanticError,
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -1191,7 +1185,7 @@ private fun OutgoingRequestItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -1204,13 +1198,13 @@ private fun OutgoingRequestItem(
             Surface(
                 modifier = Modifier.size(44.dp),
                 shape = CircleShape,
-                color = TextSecondary.copy(alpha = 0.15f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Send,
                         contentDescription = null,
-                        tint = TextSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -1222,7 +1216,7 @@ private fun OutgoingRequestItem(
                 Text(
                     text = "User #${request.toUserId.take(6)}",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -1231,7 +1225,7 @@ private fun OutgoingRequestItem(
                 Text(
                     text = "Pending \u00B7 ${formatRequestTime(request)}",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
                     )
                 )
@@ -1240,13 +1234,13 @@ private fun OutgoingRequestItem(
             // Pending badge
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = TextSecondary.copy(alpha = 0.15f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
             ) {
                 Text(
                     text = "Pending",
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -1264,7 +1258,7 @@ private fun OutgoingRequestItem(
 private fun RequestItemSkeleton() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -1277,20 +1271,20 @@ private fun RequestItemSkeleton() {
             Surface(
                 modifier = Modifier.size(44.dp),
                 shape = CircleShape,
-                color = BgSurfaceVariant
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {}
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Surface(
                     modifier = Modifier.width(100.dp).height(14.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = BgSurfaceVariant
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {}
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(
                     modifier = Modifier.width(60.dp).height(10.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = BgSurfaceVariant
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {}
             }
         }
@@ -1313,13 +1307,13 @@ private fun EmptyRequestsState() {
             Surface(
                 modifier = Modifier.size(80.dp),
                 shape = CircleShape,
-                color = TextSecondary.copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Inbox,
                         contentDescription = null,
-                        tint = TextSecondary.copy(alpha = 0.5f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -1330,7 +1324,7 @@ private fun EmptyRequestsState() {
             Text(
                 text = "No Friend Requests",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -1339,7 +1333,7 @@ private fun EmptyRequestsState() {
 
             Text(
                 text = "When someone sends you a friend\nrequest, it will appear here.",
-                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                 textAlign = TextAlign.Center
             )
         }
@@ -1365,7 +1359,7 @@ private fun SearchUserDialog(
         title = {
             Text(
                 text = "Add Friend",
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -1376,7 +1370,7 @@ private fun SearchUserDialog(
             ) {
                 Text(
                     text = "Search by nickname to find and add friends",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 )
 
                 // Search input
@@ -1388,18 +1382,18 @@ private fun SearchUserDialog(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = TextSecondary
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                         focusedBorderColor = AccentPrimary,
-                        unfocusedBorderColor = BgSurfaceVariant,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedLabelColor = AccentPrimary,
-                        unfocusedLabelColor = TextSecondary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         cursorColor = AccentPrimary
                     ),
                     shape = RoundedCornerShape(12.dp)
@@ -1442,7 +1436,7 @@ private fun SearchUserDialog(
                     Text(
                         text = "No users found with that nickname",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = TextDisabled
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
                         ),
                         modifier = Modifier.padding(vertical = 8.dp),
                         textAlign = TextAlign.Center
@@ -1455,9 +1449,9 @@ private fun SearchUserDialog(
                 Text("Close", color = AccentPrimary)
             }
         },
-        containerColor = BgSurface,
-        titleContentColor = TextPrimary,
-        textContentColor = TextPrimary
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onBackground,
+        textContentColor = MaterialTheme.colorScheme.onBackground
     )
 }
 
@@ -1475,7 +1469,7 @@ private fun SearchResultItem(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(10.dp)
     ) {
@@ -1523,7 +1517,7 @@ private fun SearchResultItem(
                 Text(
                     text = profile.nickname,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -1532,7 +1526,7 @@ private fun SearchResultItem(
                 Text(
                     text = "${profile.daysSmokeFree}d smoke-free",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 10.sp
                     )
                 )

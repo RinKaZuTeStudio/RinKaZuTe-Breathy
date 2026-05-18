@@ -66,12 +66,7 @@ import com.breathy.data.models.Story
 import com.breathy.data.repository.StoryRepository
 import com.breathy.ui.theme.AccentPink
 import com.breathy.ui.theme.AccentPrimary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -133,7 +128,7 @@ fun StoryDetailScreen(
                     Text(
                         text = "Story",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 },
                 navigationIcon = {
@@ -147,17 +142,17 @@ fun StoryDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
-        containerColor = BgPrimary
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         if (uiState.isLoading && uiState.story == null) {
             // Full-screen loading
@@ -183,13 +178,13 @@ fun StoryDetailScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "⚠️ Failed to load story",
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = uiState.error ?: "",
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -223,7 +218,7 @@ fun StoryDetailScreen(
                             text = "Replies (${formatCount(uiState.replies.size)})",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                         )
                     }
@@ -290,8 +285,8 @@ private fun FullStoryContent(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = BgSurface,
-            contentColor = TextPrimary
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onBackground
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -324,7 +319,7 @@ private fun FullStoryContent(
                         text = story.nickname,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -344,7 +339,7 @@ private fun FullStoryContent(
                         }
                         Text(
                             text = story.timeAgo(),
-                            color = TextDisabled,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -357,7 +352,7 @@ private fun FullStoryContent(
             Text(
                 text = story.content,
                 style = MaterialTheme.typography.bodyLarge,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 lineHeight = 24.sp
             )
 
@@ -370,7 +365,7 @@ private fun FullStoryContent(
                     story.lifeChanges.forEach { change ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = BgSurfaceVariant
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Text(
                                 text = change,
@@ -403,13 +398,13 @@ private fun FullStoryContent(
                     Icon(
                         imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = null,
-                        tint = if (isLiked) AccentPink else TextDisabled,
+                        tint = if (isLiked) AccentPink else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
                 Text(
                     text = formatCount(likeCount),
-                    color = if (isLiked) AccentPink else TextDisabled,
+                    color = if (isLiked) AccentPink else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal
                 )
@@ -420,13 +415,13 @@ private fun FullStoryContent(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = null,
-                    tint = TextDisabled,
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = formatCount(story.replyCount),
-                    color = TextDisabled,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             }
@@ -458,9 +453,9 @@ private fun ReplyItem(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (indentLevel > 0)
-                BgSurfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             else
-                BgSurface
+                MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -488,13 +483,13 @@ private fun ReplyItem(
                     text = reply.nickname,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
 
                 Text(
                     text = reply.timeAgo(),
-                    color = TextDisabled,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelSmall
                 )
             }
@@ -505,7 +500,7 @@ private fun ReplyItem(
             Text(
                 text = reply.content,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -537,7 +532,7 @@ private fun ReplyInputBar(
     onCancelReplyingTo: () -> Unit
 ) {
     Surface(
-        color = BgSurface,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -563,7 +558,7 @@ private fun ReplyInputBar(
                     ) {
                         Text(
                             text = "✕",
-                            color = TextDisabled,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                             fontSize = 12.sp
                         )
                     }
@@ -587,18 +582,18 @@ private fun ReplyInputBar(
                     placeholder = {
                         Text(
                             text = "Write a reply...",
-                            color = TextDisabled
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
                         )
                     },
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = AccentPrimary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = BgSurfaceVariant,
-                        focusedContainerColor = BgPrimary,
-                        unfocusedContainerColor = BgPrimary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedContainerColor = MaterialTheme.colorScheme.background,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.background,
                         cursorColor = AccentPrimary,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground
                     ),
                     maxLines = 3,
                     trailingIcon = {
@@ -625,7 +620,7 @@ private fun ReplyInputBar(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = null,
-                        tint = if (replyText.isNotBlank() && !isSending) AccentPrimary else TextDisabled,
+                        tint = if (replyText.isNotBlank() && !isSending) AccentPrimary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                         modifier = Modifier.size(24.dp)
                     )
                 }

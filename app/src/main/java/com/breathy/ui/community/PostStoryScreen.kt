@@ -66,14 +66,14 @@ import com.breathy.BreathyApplication
 import com.breathy.data.models.Story
 import com.breathy.data.repository.StoryRepository
 import com.breathy.ui.theme.AccentPrimary
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
+import com.breathy.ui.theme.themeBgPrimary
+import com.breathy.ui.theme.themeBgSurface
+import com.breathy.ui.theme.themeBgSurfaceVariant
 import com.breathy.ui.theme.SemanticError
 import com.breathy.ui.theme.SemanticSuccess
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+import com.breathy.ui.theme.themeTextDisabled
+import com.breathy.ui.theme.themeTextPrimary
+import com.breathy.ui.theme.themeTextSecondary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -130,7 +130,7 @@ fun PostStoryScreen(
                     Text(
                         text = "Share Your Story",
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = themethemeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -144,17 +144,17 @@ fun PostStoryScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
-                            tint = TextPrimary
+                            tint = themethemeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgPrimary,
-                    titleContentColor = TextPrimary
+                    containerColor = themethemeBgPrimary,
+                    titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = BgPrimary
+        containerColor = themethemeBgPrimary
     ) { innerPadding ->
         // ── Success overlay ───────────────────────────────────────────────
         AnimatedVisibility(
@@ -232,7 +232,7 @@ private fun ContentInput(
             text = "Your Story",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary
+            color = themethemeTextPrimary
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -250,21 +250,21 @@ private fun ContentInput(
             placeholder = {
                 Text(
                     text = "Share your quit-smoking journey, tips, or encouragement...",
-                    color = TextDisabled
+                    color = themethemeTextDisabled
                 )
             },
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = if (isError) SemanticError else AccentPrimary.copy(alpha = 0.5f),
-                unfocusedBorderColor = if (isError) SemanticError else BgSurfaceVariant,
-                focusedContainerColor = BgSurface,
-                unfocusedContainerColor = BgSurface,
+                unfocusedBorderColor = if (isError) SemanticError else themeBgSurfaceVariant,
+                focusedContainerColor = themeBgSurface,
+                unfocusedContainerColor = themeBgSurface,
                 cursorColor = AccentPrimary,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
+                focusedTextColor = themeTextPrimary,
+                unfocusedTextColor = themeTextPrimary,
                 errorBorderColor = SemanticError,
-                errorTextColor = TextPrimary,
-                errorContainerColor = BgSurface
+                errorTextColor = themeTextPrimary,
+                errorContainerColor = themeBgSurface
             ),
             isError = isError,
             supportingText = if (isError && errorMessage != null) {
@@ -289,7 +289,7 @@ private fun ContentInput(
                 color = when {
                     remaining <= 0 -> SemanticError
                     remaining <= charLimit * 0.1 -> androidx.compose.ui.graphics.Color(0xFFFFD740)
-                    else -> TextDisabled
+                    else -> themeTextDisabled
                 },
                 style = MaterialTheme.typography.labelSmall
             )
@@ -311,13 +311,13 @@ private fun LifeChangesInput(
             text = "Life Changes (optional)",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary
+            color = themethemeTextPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "What positive changes have you noticed?",
             style = MaterialTheme.typography.bodySmall,
-            color = TextDisabled
+            color = themethemeTextDisabled
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -380,19 +380,19 @@ private fun LifeChangesInput(
                     placeholder = {
                         Text(
                             text = "e.g., Better breathing",
-                            color = TextDisabled
+                            color = themethemeTextDisabled
                         )
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = AccentPrimary.copy(alpha = 0.5f),
-                        unfocusedBorderColor = BgSurfaceVariant,
-                        focusedContainerColor = BgSurface,
-                        unfocusedContainerColor = BgSurface,
+                        unfocusedBorderColor = themeBgSurfaceVariant,
+                        focusedContainerColor = themeBgSurface,
+                        unfocusedContainerColor = themeBgSurface,
                         cursorColor = AccentPrimary,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedTextColor = themeTextPrimary,
+                        unfocusedTextColor = themeTextPrimary
                     )
                 )
 
@@ -404,8 +404,8 @@ private fun LifeChangesInput(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentPrimary.copy(alpha = 0.15f),
                         contentColor = AccentPrimary,
-                        disabledContainerColor = BgSurfaceVariant,
-                        disabledContentColor = TextDisabled
+                        disabledContainerColor = themeBgSurfaceVariant,
+                        disabledContentColor = themeTextDisabled
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.height(56.dp)
@@ -420,14 +420,14 @@ private fun LifeChangesInput(
             Text(
                 text = "${lifeChanges.size}/5 changes",
                 style = MaterialTheme.typography.labelSmall,
-                color = TextDisabled,
+                color = themethemeTextDisabled,
                 modifier = Modifier.padding(top = 4.dp)
             )
         } else {
             Text(
                 text = "Maximum 5 life changes reached",
                 style = MaterialTheme.typography.labelSmall,
-                color = TextDisabled
+                color = themethemeTextDisabled
             )
         }
     }
@@ -443,13 +443,13 @@ private fun PreviewCard(
             text = "Preview",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = TextSecondary
+            color = themethemeTextSecondary
         )
         Spacer(modifier = Modifier.height(8.dp))
 
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = BgSurface,
+            color = themethemeBgSurface,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -460,14 +460,14 @@ private fun PreviewCard(
                     Surface(
                         modifier = Modifier.size(32.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = BgSurfaceVariant
+                        color = themethemeBgSurfaceVariant
                     ) {}
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "You",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
+                        color = themethemeTextSecondary
                     )
                 }
 
@@ -476,7 +476,7 @@ private fun PreviewCard(
                 Text(
                     text = content,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
+                    color = themethemeTextSecondary,
                     maxLines = 4
                 )
 
@@ -488,7 +488,7 @@ private fun PreviewCard(
                         lifeChanges.forEach { change ->
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = BgSurfaceVariant
+                                color = themethemeBgSurfaceVariant
                             ) {
                                 Text(
                                     text = change,
@@ -523,16 +523,16 @@ private fun PostButton(
             },
         colors = ButtonDefaults.buttonColors(
             containerColor = AccentPrimary,
-            contentColor = BgPrimary,
+            contentColor = themeBgPrimary,
             disabledContainerColor = AccentPrimary.copy(alpha = 0.3f),
-            disabledContentColor = TextDisabled
+            disabledContentColor = themeTextDisabled
         ),
         shape = RoundedCornerShape(24.dp)
     ) {
         if (isPosting) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = BgPrimary,
+                color = themethemeBgPrimary,
                 strokeWidth = 2.dp,
                 strokeCap = StrokeCap.Round
             )
@@ -575,13 +575,13 @@ private fun SuccessOverlay() {
                 text = "Story Shared!",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = themethemeTextPrimary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Your story is now inspiring others",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
+                color = themethemeTextSecondary
             )
         }
     }

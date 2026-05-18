@@ -154,8 +154,9 @@ class AdManager(
                     "Mobile Ads SDK initialized: %d/%d adapters ready",
                     readyCount, statusMap.size
                 )
-                // Pre-load app-open ad after SDK initialization
+                // Pre-load both ad types after SDK initialization
                 loadAppOpenAd()
+                loadInterstitialAd()
             }
         } catch (e: Exception) {
             Timber.e(e, "Failed to initialize Mobile Ads SDK")

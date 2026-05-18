@@ -100,14 +100,7 @@ import com.breathy.data.repository.RewardRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
-import com.breathy.ui.theme.BgPrimary
-import com.breathy.ui.theme.BgSurface
-import com.breathy.ui.theme.BgSurfaceVariant
-import com.breathy.ui.theme.SemanticError
-import com.breathy.ui.theme.SemanticWarning
-import com.breathy.ui.theme.TextDisabled
-import com.breathy.ui.theme.TextPrimary
-import com.breathy.ui.theme.TextSecondary
+
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
@@ -184,7 +177,7 @@ fun ProfileScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            containerColor = BgPrimary
+            containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -208,6 +201,9 @@ fun ProfileScreen(
                         email = uiState.user?.email ?: "",
                         photoURL = uiState.user?.photoURL,
                         age = uiState.user?.age,
+                        xp = uiState.user?.xp ?: 0,
+                        level = uiState.user?.level ?: 1,
+                        levelProgress = uiState.levelProgress,
                         onAvatarClick = { photoPickerLauncher.launch("image/*") },
                         onEditNickname = { showEditNicknameDialog = true },
                         onEditAge = { showEditAgeDialog = true }
@@ -227,9 +223,7 @@ fun ProfileScreen(
                     ProfileStatsSection(
                         daysSmokeFree = uiState.user?.daysSmokeFree ?: 0,
                         moneySaved = uiState.user?.moneySaved() ?: 0.0,
-                        xp = uiState.user?.xp ?: 0,
-                        level = uiState.user?.level ?: 1,
-                        levelProgress = uiState.levelProgress
+                        level = uiState.user?.level ?: 1
                     )
                 }
 
@@ -303,7 +297,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Loading profile...",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                        style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -317,7 +311,7 @@ fun ProfileScreen(
             title = {
                 Text(
                     text = "Delete Account?",
-                    color = SemanticError,
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -325,7 +319,7 @@ fun ProfileScreen(
                 Text(
                     text = "This action is permanent and cannot be undone. All your data, progress, " +
                             "achievements, and stats will be permanently deleted.",
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
@@ -337,19 +331,19 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = "Delete",
-                        color = SemanticError,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(text = "Cancel", color = TextSecondary)
+                    Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = BgSurface,
-            titleContentColor = SemanticError,
-            textContentColor = TextSecondary
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.error,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 
@@ -363,7 +357,7 @@ fun ProfileScreen(
             title = {
                 Text(
                     text = "Edit Nickname",
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -377,15 +371,15 @@ fun ProfileScreen(
                     label = { Text("Nickname") },
                     singleLine = true,
                     isError = nicknameError != null,
-                    supportingText = nicknameError?.let { { Text(it, color = SemanticError) } },
+                    supportingText = nicknameError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                         focusedBorderColor = AccentPrimary,
-                        unfocusedBorderColor = TextDisabled,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                         cursorColor = AccentPrimary,
                         focusedLabelColor = AccentPrimary,
-                        unfocusedLabelColor = TextSecondary
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -405,10 +399,10 @@ fun ProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showEditNicknameDialog = false }) {
-                    Text(text = "Cancel", color = TextSecondary)
+                    Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = BgSurface
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -424,7 +418,7 @@ fun ProfileScreen(
             title = {
                 Text(
                     text = "Edit Age",
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -444,15 +438,15 @@ fun ProfileScreen(
                     label = { Text("Age (optional)") },
                     singleLine = true,
                     isError = ageError != null,
-                    supportingText = ageError?.let { { Text(it, color = SemanticError) } },
+                    supportingText = ageError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                         focusedBorderColor = AccentPrimary,
-                        unfocusedBorderColor = TextDisabled,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                         cursorColor = AccentPrimary,
                         focusedLabelColor = AccentPrimary,
-                        unfocusedLabelColor = TextSecondary
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -471,10 +465,10 @@ fun ProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showEditAgeDialog = false }) {
-                    Text(text = "Cancel", color = TextSecondary)
+                    Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = BgSurface
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -515,6 +509,9 @@ private fun ProfileHeader(
     email: String,
     photoURL: String?,
     age: Int?,
+    xp: Int,
+    level: Int,
+    levelProgress: Float,
     onAvatarClick: () -> Unit,
     onEditNickname: () -> Unit,
     onEditAge: () -> Unit
@@ -562,7 +559,7 @@ private fun ProfileHeader(
                     .size(100.dp)
                     .align(Alignment.Center),
                 shape = CircleShape,
-                colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 onClick = onAvatarClick
             ) {
@@ -605,7 +602,7 @@ private fun ProfileHeader(
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
                         contentDescription = "Change photo",
-                        tint = BgPrimary,
+                        tint = MaterialTheme.colorScheme.background,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -622,7 +619,7 @@ private fun ProfileHeader(
             Text(
                 text = nickname.ifBlank { "Quitter" },
                 style = MaterialTheme.typography.headlineSmall.copy(
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 ),
                 maxLines = 1,
@@ -630,14 +627,14 @@ private fun ProfileHeader(
             )
             Card(
                 shape = CircleShape,
-                colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 onClick = onEditNickname
             ) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "Edit nickname",
-                    tint = TextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .size(28.dp)
                         .padding(4.dp)
@@ -651,7 +648,7 @@ private fun ProfileHeader(
         Text(
             text = email,
             style = MaterialTheme.typography.bodySmall.copy(
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp
             ),
             maxLines = 1,
@@ -668,20 +665,20 @@ private fun ProfileHeader(
                 Text(
                     text = "Age: $age",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
                 )
                 Card(
                     shape = CircleShape,
-                    colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     onClick = onEditAge
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit age",
-                        tint = TextDisabled,
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                         modifier = Modifier
                             .size(20.dp)
                             .padding(3.dp)
@@ -692,7 +689,7 @@ private fun ProfileHeader(
             Spacer(modifier = Modifier.height(2.dp))
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 onClick = onEditAge
             ) {
@@ -703,6 +700,52 @@ private fun ProfileHeader(
                         color = AccentPrimary,
                         fontSize = 11.sp
                     )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // XP progress bar
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "XP: $xp",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = AccentPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Text(
+                        text = "Level $level",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = AccentPurple,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { levelProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = AccentPrimary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
         }
@@ -717,9 +760,7 @@ private fun ProfileHeader(
 private fun ProfileStatsSection(
     daysSmokeFree: Int,
     moneySaved: Double,
-    xp: Int,
-    level: Int,
-    levelProgress: Float
+    level: Int
 ) {
     // Row of 3 stat cards
     Row(
@@ -747,53 +788,6 @@ private fun ProfileStatsSection(
             accentColor = AccentPurple,
             modifier = Modifier.weight(1f)
         )
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // XP progress bar
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "XP: $xp",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = AccentPrimary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                )
-                Text(
-                    text = "Level $level",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = AccentPurple,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            LinearProgressIndicator(
-                progress = { levelProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = AccentPrimary,
-                trackColor = BgSurfaceVariant
-            )
-        }
-    }
 }
 
 @Composable
@@ -806,7 +800,7 @@ private fun StatMiniCard(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -830,7 +824,7 @@ private fun StatMiniCard(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -850,7 +844,7 @@ private fun QuitDateSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -870,14 +864,14 @@ private fun QuitDateSection(
                     Text(
                         text = "Quit Date",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     )
                     Text(
                         text = quitDate?.let { formatQuitDate(it) } ?: "Not set",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -886,7 +880,7 @@ private fun QuitDateSection(
 
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = BgSurfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 onClick = onEditQuitDate
             ) {
@@ -936,7 +930,7 @@ private fun AchievementsPreviewSection(
             Text(
                 text = "Achievements",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -963,7 +957,7 @@ private fun AchievementsPreviewSection(
         if (unlockedAchievements.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = BgSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -971,7 +965,7 @@ private fun AchievementsPreviewSection(
                     text = "Keep going to unlock your first achievement! 🏆",
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 )
@@ -1032,7 +1026,7 @@ private fun SettingsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BgSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -1048,19 +1042,19 @@ private fun SettingsSection(
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Settings",
-                    tint = TextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
                     text = "Settings",
                     style = MaterialTheme.typography.titleSmall.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold
                     )
                 )
             }
 
-            HorizontalDivider(color = BgSurfaceVariant, thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
             // Notifications toggle
             SettingsToggleRow(
@@ -1071,7 +1065,7 @@ private fun SettingsSection(
                 onCheckedChange = onNotificationsToggle
             )
 
-            HorizontalDivider(color = BgSurfaceVariant, thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
             // Theme mode selector
             Row(
@@ -1089,21 +1083,21 @@ private fun SettingsSection(
                     Icon(
                         imageVector = Icons.Default.Palette,
                         contentDescription = "Theme",
-                        tint = TextSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                     Column {
                         Text(
                             text = "Theme Mode",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 fontWeight = FontWeight.Medium
                             )
                         )
                         Text(
                             text = "Choose light or dark appearance",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -1149,7 +1143,7 @@ private fun SettingsSection(
                 }
             }
 
-            HorizontalDivider(color = BgSurfaceVariant, thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
             // Privacy toggle
             SettingsToggleRow(
@@ -1160,7 +1154,7 @@ private fun SettingsSection(
                 onCheckedChange = onPrivacyToggle
             )
 
-            HorizontalDivider(color = BgSurfaceVariant, thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
             // Friends navigation row
             Row(
@@ -1178,21 +1172,21 @@ private fun SettingsSection(
                     Icon(
                         imageVector = Icons.Default.People,
                         contentDescription = "Friends",
-                        tint = TextSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                     Column {
                         Text(
                             text = "Friends",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 fontWeight = FontWeight.Medium
                             )
                         )
                         Text(
                             text = "View and manage friends",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp
                             )
                         )
@@ -1243,21 +1237,21 @@ private fun SettingsToggleRow(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = TextSecondary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
             Column {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Medium
                     )
                 )
                 Text(
                     text = description,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
                     )
                 )
@@ -1269,9 +1263,9 @@ private fun SettingsToggleRow(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedTrackColor = AccentPrimary,
-                checkedThumbColor = BgPrimary,
-                uncheckedTrackColor = BgSurfaceVariant,
-                uncheckedThumbColor = TextDisabled
+                checkedThumbColor = MaterialTheme.colorScheme.background,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                uncheckedThumbColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
             ),
             modifier = Modifier.padding(start = 8.dp)
         )
@@ -1293,7 +1287,7 @@ private fun SubscriptionStatusSection(
             containerColor = if (subscription?.isActive() == true) {
                 AccentPrimary.copy(alpha = 0.1f)
             } else {
-                BgSurface
+                MaterialTheme.colorScheme.surface
             }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -1321,14 +1315,14 @@ private fun SubscriptionStatusSection(
                     Text(
                         text = if (subscription?.isActive() == true) "Supporter ✨" else "Support Breathy",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
                         text = if (subscription?.isActive() == true) "Thank you for your support!" else "Ad-free + supporter badge",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     )
@@ -1361,7 +1355,7 @@ private fun ActionButtonsSection(
         // Sign out
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = BgSurface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RoundedCornerShape(12.dp),
             onClick = onSignOut
@@ -1393,7 +1387,7 @@ private fun ActionButtonsSection(
         // Delete account
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = BgSurface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RoundedCornerShape(12.dp),
             onClick = onDeleteAccount
@@ -1408,14 +1402,14 @@ private fun ActionButtonsSection(
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Delete account",
-                    tint = SemanticError,
+                    tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Delete Account",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = SemanticError,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -1620,6 +1614,8 @@ class ProfileViewModel(
         try {
             val context = com.breathy.BreathyApplication.instance
             val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
+            // "enabled" means dark mode ON, "not enabled" means light mode ON
+            // We save LIGHT or DARK directly (not SYSTEM) since this is an explicit toggle
             prefs.edit().putString("theme_mode", if (enabled) "DARK" else "LIGHT").apply()
         } catch (_: Exception) { }
         Timber.i("Theme mode changed: %s", if (enabled) "DARK" else "LIGHT")
