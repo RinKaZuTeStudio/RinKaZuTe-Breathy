@@ -101,6 +101,7 @@ import com.breathy.data.repository.RewardRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
+import com.breathy.ui.theme.AccentWarning
 
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -129,17 +130,13 @@ fun ProfileScreen(
     onNavigateToAICoach: () -> Unit = {},
     onNavigateToFriends: () -> Unit = {},
     onSignOut: () -> Unit = {},
-    viewModel: ProfileViewModel = run {
-        val context = LocalContext.current
-        val app = context.applicationContext as BreathyApplication
-        viewModel(factory = ProfileViewModelFactory(
-            userRepository = app.appModule.userRepository,
-            rewardRepository = app.appModule.rewardRepository,
-            authRepository = app.appModule.authRepository,
-            auth = app.appModule.firebaseAuth,
-            firestore = app.appModule.firestore
-        ))
-    }
+    viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(
+        userRepository = (LocalContext.current.applicationContext as BreathyApplication).appModule.userRepository,
+        rewardRepository = (LocalContext.current.applicationContext as BreathyApplication).appModule.rewardRepository,
+        authRepository = (LocalContext.current.applicationContext as BreathyApplication).appModule.authRepository,
+        auth = (LocalContext.current.applicationContext as BreathyApplication).appModule.firebaseAuth,
+        firestore = (LocalContext.current.applicationContext as BreathyApplication).appModule.firestore
+    ))
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -1377,14 +1374,14 @@ private fun ActionButtonsSection(
                 Icon(
                     imageVector = Icons.Default.ExitToApp,
                     contentDescription = "Sign out",
-                    tint = SemanticWarning,
+                    tint = AccentWarning,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Sign Out",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = SemanticWarning,
+                        color = AccentWarning,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -1639,7 +1636,7 @@ class ProfileViewModel(
         try {
             val context = com.breathy.BreathyApplication.instance
             val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
-            prefs.edit().putString("theme_mode", mode).apply()
+            prefs.edit().putString("theme_mode", mode).commit()
         } catch (_: Exception) { }
         Timber.i("Theme mode changed: %s", mode)
     }
@@ -1658,11 +1655,11 @@ class ProfileViewModel(
             else -> isSystemDarkMode // SYSTEM
         }
         _uiState.update { it.copy(darkModeEnabled = darkEnabled, themeMode = mode) }
-        // Save to SharedPreferences so MainActivity can read it on recreation
+        // Save to SharedPreferences synchronously so MainActivity can read it immediately on recreation
         try {
             val context = com.breathy.BreathyApplication.instance
             val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
-            prefs.edit().putString("theme_mode", mode).apply()
+            prefs.edit().putString("theme_mode", mode).commit()
         } catch (_: Exception) { }
         Timber.i("Theme mode changed: %s", mode)
     }

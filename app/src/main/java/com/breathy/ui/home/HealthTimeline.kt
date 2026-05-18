@@ -181,6 +181,8 @@ private fun TimelineItem(
 ) {
     val accentColor = if (isAchieved) AccentPrimary else themeTextDisabled
     val textColor = if (isAchieved) themeTextPrimary else themeTextSecondary
+    // Capture @Composable colors before entering Canvas draw scope
+    val surfaceVariantColor = themeBgSurfaceVariant
     val timeLabel = milestone.timeLabel()
 
     // Animated checkmark scale for achieved milestones
@@ -232,7 +234,7 @@ private fun TimelineItem(
                             radius = size.minDimension / 2
                         )
                     } else {
-                        drawCircle(color = themeBgSurfaceVariant)
+                        drawCircle(color = surfaceVariantColor)
                     }
                 }
 
@@ -264,7 +266,7 @@ private fun TimelineItem(
                         .height(40.dp)
                 ) {
                     drawLine(
-                        color = if (isAchieved) AccentPrimary.copy(alpha = 0.4f) else themeBgSurfaceVariant,
+                        color = if (isAchieved) AccentPrimary.copy(alpha = 0.4f) else surfaceVariantColor,
                         start = Offset(size.width / 2, 0f),
                         end = Offset(size.width / 2, size.height),
                         strokeWidth = 2.dp.toPx()
