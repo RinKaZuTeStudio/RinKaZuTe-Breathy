@@ -121,9 +121,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // ── Coil (Image Loading) ──────────────────────────────────────────────
+    // ── Coil 3.x (Image Loading) ─────────────────────────────────────────
     implementation(libs.coil)
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     // ── Accompanist ────────────────────────────────────────────────────────
     implementation(libs.accompanist.permissions)
