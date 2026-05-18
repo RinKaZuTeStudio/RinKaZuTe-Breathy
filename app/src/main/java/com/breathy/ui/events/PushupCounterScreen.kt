@@ -155,9 +155,9 @@ class PushupTracker {
         val rightWrist = landmarks.getOrNull(PoseLandmark.RIGHT_WRIST) ?: return false
 
         // Only process if all landmarks have reasonable confidence
-        if (leftShoulder.likelihood < 0.5f || leftElbow.likelihood < 0.5f ||
-            leftWrist.likelihood < 0.5f || rightShoulder.likelihood < 0.5f ||
-            rightElbow.likelihood < 0.5f || rightWrist.likelihood < 0.5f
+        if (leftShoulder.inFrameLikelihood < 0.5f || leftElbow.inFrameLikelihood < 0.5f ||
+            leftWrist.inFrameLikelihood < 0.5f || rightShoulder.inFrameLikelihood < 0.5f ||
+            rightElbow.inFrameLikelihood < 0.5f || rightWrist.inFrameLikelihood < 0.5f
         ) return false
 
         // Average angle of both arms

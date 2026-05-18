@@ -230,7 +230,7 @@ fun StoryCard(
                         TextButton(
                             onClick = {
                                 showDeleteDialog = false
-                                onDeleteClick()
+                                onDeleteClick?.invoke()
                             }
                         ) {
                             Text("Delete", color = MaterialTheme.colorScheme.error)
