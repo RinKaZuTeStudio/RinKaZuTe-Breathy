@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Breathy</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --primary-dark: #388E3C;
+            --text: #333;
+            --text-light: #666;
+            --bg: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --border: #E0E0E0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 60px 20px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .header .app-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .lang-toggle {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .lang-toggle button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            margin: 0 5px;
+            transition: all 0.3s;
+        }
+
+        .lang-toggle button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .lang-toggle button.active {
+            background: var(--primary-dark);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .content-en, .content-ar {
+            transition: opacity 0.3s;
+        }
+
+        .content-ar {
+            direction: rtl;
+            text-align: right;
+            font-family: 'Segoe UI', Tahoma, 'Arial', sans-serif;
+        }
+
+        .hidden { display: none; }
+
+        .effective-date {
+            background: var(--card-bg);
+            border-left: 4px solid var(--primary);
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .effective-date strong {
+            color: var(--primary-dark);
+        }
+
+        h2 {
+            color: var(--primary-dark);
+            font-size: 1.5rem;
+            margin: 35px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h3 {
+            color: var(--text);
+            font-size: 1.15rem;
+            margin: 20px 0 10px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        ul {
+            margin: 10px 0 15px 25px;
+        }
+
+        .content-ar ul {
+            margin: 10px 25px 15px 0;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0 20px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .data-table th {
+            background: var(--primary);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .content-ar .data-table th {
+            text-align: right;
+        }
+
+        .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tr:hover td {
+            background: #F5F5F5;
+        }
+
+        .highlight-box {
+            background: #E8F5E9;
+            border: 1px solid #C8E6C9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .highlight-box.warning {
+            background: #FFF3E0;
+            border-color: #FFE0B2;
+        }
+
+        .contact-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .contact-card h3 {
+            color: var(--primary-dark);
+            margin-top: 0;
+        }
+
+        .contact-card a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .contact-card a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-light);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.8rem; }
+            .container { padding: 20px 15px; }
+            .data-table { font-size: 0.85rem; }
+            .data-table th, .data-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="app-icon">&#127793;</div>
+    <h1>Breathy</h1>
+    <p class="subtitle">Privacy Policy / سياسة الخصوصية</p>
+</div>
+
+<div class="container">
+
+    <div class="lang-toggle">
+        <button class="active" onclick="switchLang('en')">English</button>
+        <button onclick="switchLang('ar')">العربية</button>
+    </div>
+
+    <!-- ==================== ENGLISH ==================== -->
+    <div class="content-en" id="content-en">
+
+        <div class="effective-date">
+            <strong>Effective Date:</strong> May 19, 2026<br>
+            <strong>Last Updated:</strong> May 19, 2026
+        </div>
+
+        <p>Welcome to Breathy ("we," "our," or "us"). We are committed to protecting your privacy and being transparent about how we handle your data. This Privacy Policy explains what information we collect, why we collect it, how we use it, and your rights regarding your personal data when you use the Breathy mobile application.</p>
+
+        <p>By downloading and using Breathy, you agree to the practices described in this Privacy Policy. If you do not agree with this policy, please do not use the application.</p>
+
+        <h2>1. Information We Collect</h2>
+
+        <h3>1.1 Information You Provide</h3>
+        <p>We collect information that you voluntarily provide when using Breathy:</p>
+        <ul>
+            <li><strong>Account Information:</strong> Email address, display name, and profile photo when you create an account or sign in using Google Sign-In or email/password authentication.</li>
+            <li><strong>Quit Smoking Data:</strong> Your smoking quit date, daily cigarette count before quitting, and quit milestones you choose to record.</li>
+            <li><strong>Health & Activity Data:</strong> Breathing exercise sessions, craving logs (time, intensity, trigger), pushup challenge results, and streak information.</li>
+            <li><strong>Community Content:</strong> Stories, posts, comments, replies, images, and videos you share in the community feed.</li>
+            <li><strong>Chat Messages:</strong> Messages you send to friends and responses from the AI health coach feature.</li>
+            <li><strong>Event Participation:</strong> Challenge check-ins, event registrations, and leaderboard participation data.</li>
+            <li><strong>Feedback:</strong> Any feedback, bug reports, or support requests you submit.</li>
+        </ul>
+
+        <h3>1.2 Information Collected Automatically</h3>
+        <p>When you use Breathy, certain data is collected automatically:</p>
+        <ul>
+            <li><strong>Device Information:</strong> Device model, operating system version, screen resolution, and unique device identifiers for advertising (advertising ID).</li>
+            <li><strong>Usage Analytics:</strong> App usage patterns, feature interaction, session duration, and screen views collected through Firebase Analytics.</li>
+            <li><strong>Crash Reports:</strong> Automatic crash reports and performance data collected through Firebase Crashlytics to help us improve app stability.</li>
+            <li><strong>Push Notification Token:</strong> A device token stored by Firebase Cloud Messaging to deliver push notifications.</li>
+        </ul>
+
+        <h3>1.3 Camera and Media Access</h3>
+        <p>Breathy requests access to your device camera and photo library only when you choose to:</p>
+        <ul>
+            <li>Upload or change your profile photo</li>
+            <li>Share images or videos in community stories</li>
+            <li>Use the pushup counter feature (camera is used for pose detection only; video is processed on-device and never uploaded)</li>
+        </ul>
+        <p>We do not access your camera or photos without your explicit action, and we do not collect images from your gallery unless you choose to share them.</p>
+
+        <h2>2. How We Use Your Information</h2>
+        <p>We use the information we collect for the following purposes:</p>
+        <ul>
+            <li><strong>Provide Core Functionality:</strong> Authenticate your account, track your quit-smoking progress, display health timelines, and sync your data across devices.</li>
+            <li><strong>Community Features:</strong> Display your stories and posts, show your profile to other users, and enable friend interactions and messaging.</li>
+            <li><strong>AI Health Coach:</strong> Process your messages through the OpenRouter AI service to provide personalized health coaching and quit-smoking support.</li>
+            <li><strong>Events & Challenges:</strong> Register you for events, track challenge progress, and display leaderboard rankings.</li>
+            <li><strong>Notifications:</strong> Send you push notifications about milestones, achievements, friend requests, events, and motivational reminders.</li>
+            <li><strong>Improve Our App:</strong> Analyze usage patterns and crash reports to fix bugs, improve performance, and develop new features.</li>
+            <li><strong>Advertising:</strong> Display non-personalized ads through Google AdMob to support the free version of the app.</li>
+            <li><strong>Premium Services:</strong> Process in-app purchases and manage subscriptions through Google Play Billing.</li>
+        </ul>
+
+        <h2>3. Data Storage and Security</h2>
+
+        <h3>3.1 Where Your Data Is Stored</h3>
+        <p>Your data is stored securely using the following services:</p>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Data Type</th>
+                    <th>Storage Service</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Account & Profile</td>
+                    <td>Firebase Authentication & Firestore</td>
+                    <td>Google Cloud (US/EU)</td>
+                </tr>
+                <tr>
+                    <td>User Content (posts, messages)</td>
+                    <td>Firebase Firestore</td>
+                    <td>Google Cloud (US/EU)</td>
+                </tr>
+                <tr>
+                    <td>Images & Videos</td>
+                    <td>Firebase Storage & Cloudinary</td>
+                    <td>Google Cloud / Cloudinary CDN</td>
+                </tr>
+                <tr>
+                    <td>Crash & Analytics</td>
+                    <td>Firebase Crashlytics & Analytics</td>
+                    <td>Google Cloud (US)</td>
+                </tr>
+                <tr>
+                    <td>Push Notification Tokens</td>
+                    <td>Firebase Cloud Messaging</td>
+                    <td>Google Cloud (US/EU)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>3.2 Data Retention</h3>
+        <p>We retain your personal data for as long as your account is active. If you delete your account, we will delete your personal data from our servers within 30 days, except where we are required to retain certain information by law.</p>
+
+        <h3>3.3 Security Measures</h3>
+        <p>We implement industry-standard security measures to protect your data, including:</p>
+        <ul>
+            <li>Encryption of data in transit using TLS/SSL</li>
+            <li>Firebase Security Rules to restrict unauthorized access</li>
+            <li>Secure authentication through Firebase Auth</li>
+            <li>Regular security reviews and updates</li>
+        </ul>
+        <p>While we strive to protect your personal information, no method of electronic storage is 100% secure. We cannot guarantee absolute security.</p>
+
+        <h2>4. Third-Party Services</h2>
+        <p>Breathy integrates with the following third-party services, each with their own privacy policies:</p>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Purpose</th>
+                    <th>Data Shared</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Firebase (Google)</td>
+                    <td>Authentication, database, storage, analytics, crash reporting, notifications</td>
+                    <td>Account info, usage data, device info, crash logs</td>
+                </tr>
+                <tr>
+                    <td>Google AdMob</td>
+                    <td>Advertising</td>
+                    <td>Advertising ID, device info</td>
+                </tr>
+                <tr>
+                    <td>Google Play Billing</td>
+                    <td>In-app purchases & subscriptions</td>
+                    <td>Purchase details</td>
+                </tr>
+                <tr>
+                    <td>Google Sign-In</td>
+                    <td>Account authentication</td>
+                    <td>Email, name, profile photo</td>
+                </tr>
+                <tr>
+                    <td>OpenRouter</td>
+                    <td>AI health coach chatbot</td>
+                    <td>Chat messages (for generating responses)</td>
+                </tr>
+                <tr>
+                    <td>Cloudinary</td>
+                    <td>Image & video hosting</td>
+                    <td>Images and videos you upload</td>
+                </tr>
+                <tr>
+                    <td>ML Kit (Google)</td>
+                    <td>On-device pose detection for pushup counter</td>
+                    <td>None (processed entirely on-device)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="highlight-box">
+            <strong>Important:</strong> OpenRouter processes your AI coach messages to generate responses. We do not store your AI chat messages beyond the conversation history visible in the app. OpenRouter's own privacy practices are governed by their privacy policy at <a href="https://openrouter.ai/privacy" target="_blank">openrouter.ai/privacy</a>.
+        </div>
+
+        <h2>5. Data Sharing</h2>
+        <p>We do <strong>not</strong> sell, trade, or rent your personal information to third parties. We share your data only in the following circumstances:</p>
+        <ul>
+            <li><strong>With Your Consent:</strong> When you post content in the community, your display name, photo, and content are visible to other users.</li>
+            <li><strong>Service Providers:</strong> We share data with the third-party services listed above solely to provide app functionality.</li>
+            <li><strong>Legal Requirements:</strong> We may disclose data if required by law, regulation, or legal process.</li>
+            <li><strong>Safety & Security:</strong> We may disclose data to protect the rights, property, or safety of our users or the public.</li>
+        </ul>
+
+        <h2>6. Children's Privacy</h2>
+
+        <div class="highlight-box warning">
+            <strong>Not Intended for Children Under 13:</strong> Breathy is a quit-smoking application designed for users aged 13 and older. We do not knowingly collect personal information from children under 13. If we become aware that we have collected data from a child under 13, we will take steps to delete that information promptly. If you are a parent or guardian and believe your child under 13 has provided us with personal information, please contact us immediately.
+        </div>
+
+        <h2>7. Advertising</h2>
+        <p>Breathy may display advertisements provided by Google AdMob. These ads may use your device's advertising ID and other device information to serve relevant ads. You can opt out of personalized advertising by:</p>
+        <ul>
+            <li>Resetting your advertising ID in your device settings (Settings > Google > Ads > Reset advertising ID)</li>
+            <li>Opting out of ads personalization in your Google Account settings</li>
+        </ul>
+        <p>Premium subscribers do not see advertisements within the app.</p>
+
+        <h2>8. Your Rights</h2>
+        <p>Depending on your location, you may have the following rights regarding your personal data:</p>
+        <ul>
+            <li><strong>Access:</strong> Request a copy of the personal data we hold about you.</li>
+            <li><strong>Correction:</strong> Request correction of inaccurate or incomplete personal data.</li>
+            <li><strong>Deletion:</strong> Request deletion of your personal data by deleting your account within the app.</li>
+            <li><strong>Portability:</strong> Request a copy of your data in a portable format.</li>
+            <li><strong>Objection:</strong> Object to the processing of your personal data for specific purposes.</li>
+            <li><strong>Withdrawal of Consent:</strong> Withdraw consent for data processing that relies on your consent.</li>
+        </ul>
+        <p>To exercise any of these rights, please contact us at the email address below. We will respond to your request within 30 days.</p>
+
+        <h2>9. Data Deletion</h2>
+        <p>You can delete your account and all associated data at any time by:</p>
+        <ul>
+            <li>Navigating to Profile > Settings > Delete Account in the app</li>
+            <li>Or contacting us directly at the email below</li>
+        </ul>
+        <p>Upon account deletion, your personal data, posts, messages, and uploaded media will be permanently removed from our servers within 30 days.</p>
+
+        <h2>10. International Data Transfers</h2>
+        <p>Your data may be transferred to and processed in countries other than your country of residence. These countries may have different data protection laws. By using Breathy, you consent to the transfer of your data to the United States and other countries where our service providers operate. We take appropriate safeguards to ensure your data is protected during international transfers.</p>
+
+        <h2>11. Changes to This Privacy Policy</h2>
+        <p>We may update this Privacy Policy from time to time. When we make changes, we will:</p>
+        <ul>
+            <li>Update the "Last Updated" date at the top of this page</li>
+            <li>Notify you through the app or by email for material changes</li>
+            <li>Continue using the app after changes constitutes acceptance of the updated policy</li>
+        </ul>
+
+        <h2>12. Contact Us</h2>
+        <div class="contact-card">
+            <h3>RinKaZuTe Studio</h3>
+            <p>If you have any questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact us:</p>
+            <ul>
+                <li><strong>Email:</strong> <a href="mailto:rinkazute.studio@gmail.com">rinkazute.studio@gmail.com</a></li>
+                <li><strong>Developer:</strong> RinKaZuTe Studio</li>
+                <li><strong>App:</strong> Breathy - Quit Smoking</li>
+                <li><strong>Google Play:</strong> <a href="https://play.google.com/store/apps/dev?id=RinKaZuTe+Studio" target="_blank">RinKaZuTe Studio on Google Play</a></li>
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- ==================== ARABIC ==================== -->
+    <div class="content-ar hidden" id="content-ar">
+
+        <div class="effective-date">
+            <strong>تاريخ السريان:</strong> 19 مايو 2026<br>
+            <strong>آخر تحديث:</strong> 19 مايو 2026
+        </div>
+
+        <p>مرحباً بكم في تطبيق Breathy ("نحن" أو "لنا"). نحن ملتزمون بحماية خصوصيتكم والشفافية حول كيفية تعاملنا مع بياناتكم. توضح سياسة الخصوصية هذه المعلومات التي نجمعها، ولماذا نجمعها، وكيف نستخدمها، وحقوقكم المتعلقة ببياناتكم الشخصية عند استخدامكم لتطبيق Breathy.</p>
+
+        <p>عن طريق تحميل واستخدام Breathy، فإنكم توافقون على الممارسات الموضحة في سياسة الخصوصية هذه. إذا لم توافقوا على هذه السياسة، يرجى عدم استخدام التطبيق.</p>
+
+        <h2>1. المعلومات التي نجمعها</h2>
+
+        <h3>1.1 المعلومات التي تقدمونها</h3>
+        <p>نجمع المعلومات التي تقدمونها طواعية عند استخدام Breathy:</p>
+        <ul>
+            <li><strong>معلومات الحساب:</strong> عنوان البريد الإلكتروني، اسم العرض، وصورة الملف الشخصي عند إنشاء حساب أو تسجيل الدخول باستخدام Google أو المصادقة بالبريد الإلكتروني/كلمة المرور.</li>
+            <li><strong>بيانات الإقلاع عن التدخين:</strong> تاريخ الإقلاع عن التدخين، عدد السجائر اليومي قبل الإقلاع، والمعالم التي تختارون تسجيلها.</li>
+            <li><strong>بيانات الصحة والنشاط:</strong> جلسات تمارين التنفس، سجلات الرغبة في التدخين (الوقت، الشدة، المحفز)، نتائج تحدي الضغط، ومعلومات الانتصارات المتتالية.</li>
+            <li><strong>محتوى المجتمع:</strong> القصص، المنشورات، التعليقات، الردود، الصور، والفيديوهات التي تشاركونها في موجز المجتمع.</li>
+            <li><strong>رسائل الدردشة:</strong> الرسائل التي ترسلونها للأصدقاء وردود ميزة المدرب الصحي الذكي.</li>
+            <li><strong>المشاركة في الفعاليات:</strong> تسجيلات الحضور في التحديات، تسجيلات الفعاليات، وبيانات المشاركة في لوحة المتصدرين.</li>
+            <li><strong>الملاحظات:</strong> أي ملاحظات أو تقارير أخطاء أو طلبات دعم تقدمونها.</li>
+        </ul>
+
+        <h3>1.2 المعلومات المجمعة تلقائياً</h3>
+        <p>عند استخدامكم لـ Breathy، يتم جمع بيانات معينة تلقائياً:</p>
+        <ul>
+            <li><strong>معلومات الجهاز:</strong> طراز الجهاز، إصدار نظام التشغيل، دقة الشاشة، ومعرفات الجهاز الفريدة للإعلانات (معرف الإعلانات).</li>
+            <li><strong>تحليلات الاستخدام:</strong> أنماط استخدام التطبيق، تفاعل الميزات، مدة الجلسة، وعرض الشاشات من خلال Firebase Analytics.</li>
+            <li><strong>تقارير الأعطال:</strong> تقارير أعطال تلقائية وبيانات الأداء من Firebase Crashlytics لمساعدتنا في تحسين استقرار التطبيق.</li>
+            <li><strong>رمز الإشعارات الفورية:</strong> رمز جهاز مخزن في Firebase Cloud Messaging لتوصيل الإشعارات الفورية.</li>
+        </ul>
+
+        <h3>1.3 الوصول إلى الكاميرا والوسائط</h3>
+        <p>يطلب Breathy الوصول إلى كاميرا جهازكم ومكتبة الصور فقط عندما تختارون:</p>
+        <ul>
+            <li>رفع أو تغيير صورة ملفكم الشخصي</li>
+            <li>مشاركة صور أو فيديوهات في قصص المجتمع</li>
+            <li>استخدام ميزة عد الضغط (تُستخدم الكاميرا لاكتشاف الوضعية فقط؛ تتم معالجة الفيديو على الجهاز ولا يتم رفعه أبداً)</li>
+        </ul>
+        <p>لا نصل إلى كاميرتكم أو صوركم دون إجراء صريح منكم، ولا نجمع صوراً من معرضكم إلا إذا اخترتم مشاركتها.</p>
+
+        <h2>2. كيف نستخدم معلوماتكم</h2>
+        <p>نستخدم المعلومات التي نجمعها للأغراض التالية:</p>
+        <ul>
+            <li><strong>توفير الوظائف الأساسية:</strong> مصادقة حسابكم، تتبع تقدمكم في الإقلاع عن التدخين، عرض الجداول الزمنية الصحية، ومزامنة بياناتكم عبر الأجهزة.</li>
+            <li><strong>ميزات المجتمع:</strong> عرض قصصكم ومنشوراتكم، إظهار ملفكم الشخصي للمستخدمين الآخرين، وتمكين تفاعلات الأصدقاء والمراسلة.</li>
+            <li><strong>المدرب الصحي الذكي:</strong> معالجة رسائلكم من خلال خدمة OpenRouter الذكية لتقديم تدريب صحي مخصص ودعم الإقلاع عن التدخين.</li>
+            <li><strong>الفعاليات والتحديات:</strong> تسجيلكم في الفعاليات، تتبع تقدم التحديات، وعرض ترتيب لوحة المتصدرين.</li>
+            <li><strong>الإشعارات:</strong> إرسال إشعارات فورية حول المعالم والإنجازات وطلبات الصداقة والفعاليات والتذكيرات التحفيزية.</li>
+            <li><strong>تحسين تطبيقنا:</strong> تحليل أنماط الاستخدام وتقارير الأعطال لإصلاح الأخطاء وتحسين الأداء وتطوير ميزات جديدة.</li>
+            <li><strong>الإعلانات:</strong> عرض إعلانات غير مخصصة من خلال Google AdMob لدعم النسخة المجانية من التطبيق.</li>
+            <li><strong>الخدمات المميزة:</strong> معالجة عمليات الشراء داخل التطبيق وإدارة الاشتراكات من خلال Google Play Billing.</li>
+        </ul>
+
+        <h2>3. تخزين البيانات والأمان</h2>
+
+        <h3>3.1 مكان تخزين بياناتكم</h3>
+        <p>يتم تخزين بياناتكم بشكل آمن باستخدام الخدمات التالية:</p>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>نوع البيانات</th>
+                    <th>خدمة التخزين</th>
+                    <th>الموقع</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>الحساب والملف الشخصي</td>
+                    <td>Firebase Authentication & Firestore</td>
+                    <td>Google Cloud (أمريكا/أوروبا)</td>
+                </tr>
+                <tr>
+                    <td>محتوى المستخدم (المنشورات، الرسائل)</td>
+                    <td>Firebase Firestore</td>
+                    <td>Google Cloud (أمريكا/أوروبا)</td>
+                </tr>
+                <tr>
+                    <td>الصور والفيديوهات</td>
+                    <td>Firebase Storage & Cloudinary</td>
+                    <td>Google Cloud / Cloudinary CDN</td>
+                </tr>
+                <tr>
+                    <td>الأعطال والتحليلات</td>
+                    <td>Firebase Crashlytics & Analytics</td>
+                    <td>Google Cloud (أمريكا)</td>
+                </tr>
+                <tr>
+                    <td>رموز الإشعارات الفورية</td>
+                    <td>Firebase Cloud Messaging</td>
+                    <td>Google Cloud (أمريكا/أوروبا)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>3.2 الاحتفاظ بالبيانات</h3>
+        <p>نحتفظ ببياناتكم الشخصية طالما أن حسابكم نشط. إذا حذفتم حسابكم، سنحذف بياناتكم الشخصية من خوادمنا خلال 30 يوماً، إلا حيث يُطلب منا الاحتفاظ بمعلومات معينة بموجب القانون.</p>
+
+        <h3>3.3 تدابير الأمان</h3>
+        <p>ننفذ تدابير أمان معيارية في الصناعة لحماية بياناتكم، بما في ذلك:</p>
+        <ul>
+            <li>تشفير البيانات أثناء النقل باستخدام TLS/SSL</li>
+            <li>قواعد أمان Firebase لتقييد الوصول غير المصرح به</li>
+            <li>مصادقة آمنة من خلال Firebase Auth</li>
+            <li>مراجعات وتحديثات أمنية منتظمة</li>
+        </ul>
+
+        <h2>4. خدمات الطرف الثالث</h2>
+        <p>يتكامل Breathy مع خدمات الطرف الثالث التالية، لكل منها سياسات خصوصيتها الخاصة:</p>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الخدمة</th>
+                    <th>الغرض</th>
+                    <th>البيانات المشتركة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Firebase (Google)</td>
+                    <td>المصادقة، قاعدة البيانات، التخزين، التحليلات، تقارير الأعطال، الإشعارات</td>
+                    <td>معلومات الحساب، بيانات الاستخدام، معلومات الجهاز، سجلات الأعطال</td>
+                </tr>
+                <tr>
+                    <td>Google AdMob</td>
+                    <td>الإعلانات</td>
+                    <td>معرف الإعلانات، معلومات الجهاز</td>
+                </tr>
+                <tr>
+                    <td>Google Play Billing</td>
+                    <td>المشتريات داخل التطبيق والاشتراكات</td>
+                    <td>تفاصيل الشراء</td>
+                </tr>
+                <tr>
+                    <td>Google Sign-In</td>
+                    <td>مصادقة الحساب</td>
+                    <td>البريد الإلكتروني، الاسم، صورة الملف الشخصي</td>
+                </tr>
+                <tr>
+                    <td>OpenRouter</td>
+                    <td>مدرب صحي ذكي</td>
+                    <td>رسائل الدردشة (لتوليد الردود)</td>
+                </tr>
+                <tr>
+                    <td>Cloudinary</td>
+                    <td>استضافة الصور والفيديوهات</td>
+                    <td>الصور والفيديوهات التي ترفعونها</td>
+                </tr>
+                <tr>
+                    <td>ML Kit (Google)</td>
+                    <td>اكتشاف الوضعية على الجهاز لعد الضغط</td>
+                    <td>لا شيء (تتم المعالجة بالكامل على الجهاز)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="highlight-box">
+            <strong>مهم:</strong> يقوم OpenRouter بمعالجة رسائل المدرب الذكي لتوليد الردود. لا نخزن رسائل الدردشة الذكية الخاصة بكم بعد تاريخ المحادثة المرئي في التطبيق. تحكم ممارسات خصوصية OpenRouter سياسة الخصوصية الخاصة بهم على <a href="https://openrouter.ai/privacy" target="_blank">openrouter.ai/privacy</a>.
+        </div>
+
+        <h2>5. مشاركة البيانات</h2>
+        <p>نحن <strong>لا</strong> نبيع أو نتاجر أو نؤجر معلوماتكم الشخصية لأطراف ثالثة. نشارك بياناتكم فقط في الحالات التالية:</p>
+        <ul>
+            <li><strong>بموافقتكم:</strong> عند نشر محتوى في المجتمع، يكون اسم العرض والصورة والمحتوى مرئياً للمستخدمين الآخرين.</li>
+            <li><strong>مزودو الخدمة:</strong> نشارك البيانات مع خدمات الطرف الثالث المذكورة أعلاه فقط لتوفير وظائف التطبيق.</li>
+            <li><strong>المتطلبات القانونية:</strong> قد نفصح عن البيانات إذا كان مطلوباً بموجب القانون أو اللوائح أو الإجراءات القانونية.</li>
+            <li><strong>السلامة والأمان:</strong> قد نفصح عن البيانات لحماية حقوق أو ممتلكات أو سلامة مستخدمينا أو الجمهور.</li>
+        </ul>
+
+        <h2>6. خصوصية الأطفال</h2>
+
+        <div class="highlight-box warning">
+            <strong>غير مخصص للأطفال دون 13 عاماً:</strong> Breathy هو تطبيق للإقلاع عن التدخين مصمم للمستخدمين الذين تبلغ أعمارهم 13 عاماً فما فوق. لا نجمع عن قصد معلومات شخصية من الأطفال دون 13 عاماً. إذا أصبحنا على علم بأننا جمعنا بيانات من طفل دون 13 عاماً، سنتخذ خطوات لحذف تلك المعلومات فوراً. إذا كنت ولي أمر وتعتقد أن طفلك الذي يقل عمره عن 13 عاماً قدم لنا معلومات شخصية، يرجى الاتصال بنا فوراً.
+        </div>
+
+        <h2>7. الإعلانات</h2>
+        <p>قد يعرض Breathy إعلانات مقدمة من Google AdMob. قد تستخدم هذه الإعلانات معرف الإعلانات الخاص بجهازكم ومعلومات الجهاز الأخرى لعرض إعلانات ذات صلة. يمكنكم إلغاء الاشتراك في الإعلانات المخصصة عن طريق:</p>
+        <ul>
+            <li>إعادة تعيين معرف الإعلانات في إعدادات جهازكم (الإعدادات > Google > الإعلانات > إعادة تعيين معرف الإعلانات)</li>
+            <li>إلغاء تخصيص الإعلانات في إعدادات حساب Google الخاص بكم</li>
+        </ul>
+        <p>لا يرى المشتركون المميزون إعلانات داخل التطبيق.</p>
+
+        <h2>8. حقوقكم</h2>
+        <p>بناءً على موقعكم، قد يكون لديكم الحقوق التالية المتعلقة ببياناتكم الشخصية:</p>
+        <ul>
+            <li><strong>الوصول:</strong> طلب نسخة من البيانات الشخصية التي نحتفظ بها عنكم.</li>
+            <li><strong>التصحيح:</strong> طلب تصحيح البيانات الشخصية غير الدقيقة أو غير الكاملة.</li>
+            <li><strong>الحذف:</strong> طلب حذف بياناتكم الشخصية عن طريق حذف حسابكم داخل التطبيق.</li>
+            <li><strong>النقل:</strong> طلب نسخة من بياناتكم بتنسيق قابل للنقل.</li>
+            <li><strong>الاعتراض:</strong> الاعتراض على معالجة بياناتكم الشخصية لأغراض محددة.</li>
+            <li><strong>سحب الموافقة:</strong> سحب الموافقة على معالجة البيانات التي تعتمد على موافقتكم.</li>
+        </ul>
+        <p>لممارسة أي من هذه الحقوق، يرجى الاتصال بنا على عنوان البريد الإلكتروني أدناه. سنرد على طلبكم خلال 30 يوماً.</p>
+
+        <h2>9. حذف البيانات</h2>
+        <p>يمكنكم حذف حسابكم وجميع البيانات المرتبطة به في أي وقت عن طريق:</p>
+        <ul>
+            <li>الانتقال إلى الملف الشخصي > الإعدادات > حذف الحساب في التطبيق</li>
+            <li>أو الاتصال بنا مباشرة على البريد الإلكتروني أدناه</li>
+        </ul>
+        <p>عند حذف الحساب، سيتم إزالة بياناتكم الشخصية ومنشوراتكم ورسائلكم ووسائطكم المرفوعة بشكل دائم من خوادمنا خلال 30 يوماً.</p>
+
+        <h2>10. نقل البيانات الدولي</h2>
+        <p>قد يتم نقل بياناتكم ومعالجتها في دول أخرى غير دولة إقامتكم. قد تكون لهذه الدول قوانين مختلفة لحماية البيانات. باستخدام Breathy، توافقون على نقل بياناتكم إلى الولايات المتحدة ودول أخرى حيث تعمل مزودو خدماتنا. نتخذ ضمانات مناسبة لضمان حماية بياناتكم أثناء النقل الدولي.</p>
+
+        <h2>11. التغييرات على سياسة الخصوصية هذه</h2>
+        <p>قد نقوم بتحديث سياسة الخصوصية هذه من وقت لآخر. عند إجراء تغييرات، سنقوم بـ:</p>
+        <ul>
+            <li>تحديث تاريخ "آخر تحديث" في أعلى هذه الصفحة</li>
+            <li>إخطاركم من خلال التطبيق أو عبر البريد الإلكتروني للتغييرات الجوهرية</li>
+            <li>استمراركم في استخدام التطبيق بعد التغييرات يشكل قبولاً للسياسة المحدثة</li>
+        </ul>
+
+        <h2>12. اتصلوا بنا</h2>
+        <div class="contact-card">
+            <h3>RinKaZuTe Studio</h3>
+            <p>إذا كان لديكم أي أسئلة أو مخاوف أو طلبات بخصوص سياسة الخصوصية هذه أو بياناتكم الشخصية، يرجى الاتصال بنا:</p>
+            <ul>
+                <li><strong>البريد الإلكتروني:</strong> <a href="mailto:rinkazute.studio@gmail.com">rinkazute.studio@gmail.com</a></li>
+                <li><strong>المطور:</strong> RinKaZuTe Studio</li>
+                <li><strong>التطبيق:</strong> Breathy - الإقلاع عن التدخين</li>
+                <li><strong>Google Play:</strong> <a href="https://play.google.com/store/apps/dev?id=RinKaZuTe+Studio" target="_blank">RinKaZuTe Studio على Google Play</a></li>
+            </ul>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="footer">
+    <p>&copy; 2026 RinKaZuTe Studio. All rights reserved.</p>
+    <p>Breathy - Quit Smoking App</p>
+</div>
+
+<script>
+function switchLang(lang) {
+    const enContent = document.getElementById('content-en');
+    const arContent = document.getElementById('content-ar');
+    const buttons = document.querySelectorAll('.lang-toggle button');
+
+    buttons.forEach(btn => btn.classList.remove('active'));
+
+    if (lang === 'en') {
+        enContent.classList.remove('hidden');
+        arContent.classList.add('hidden');
+        buttons[0].classList.add('active');
+    } else {
+        arContent.classList.remove('hidden');
+        enContent.classList.add('hidden');
+        buttons[1].classList.add('active');
+    }
+}
+</script>
+
+</body>
+</html>
