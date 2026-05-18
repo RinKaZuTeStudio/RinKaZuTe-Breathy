@@ -93,6 +93,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breathy.ui.components.NetworkImage
 import com.breathy.ui.components.invalidateImageCache
+import com.breathy.ui.components.clearImageCache
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Achievement
 import com.breathy.data.models.Subscription
@@ -1657,6 +1658,17 @@ class ProfileViewModel(
             _uiState.update { it.copy(isPhotoUploading = true) }
             try {
                 userRepository.updatePhoto(userId, uri)
+                // Also update the public profile photoURL so other screens
+                // (community, leaderboard, chat, events) see the new image
+                val updatedUser = _uiState.value.user
+                val newPhotoUrl = updatedUser?.photoURL
+                if (newPhotoUrl != null) {
+                    try {
+                        userRepository.updatePublicProfileFields(userId, mapOf("photoURL" to newPhotoUrl))
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to update public profile photoURL")
+                    }
+                }
                 // Increment cacheBust to force NetworkImage to reload
                 _uiState.update { it.copy(
                     isPhotoUploading = false,
@@ -1667,6 +1679,8 @@ class ProfileViewModel(
                 if (currentUrl != null) {
                     invalidateImageCache(currentUrl)
                 }
+                // Also clear the entire image cache as a safety net
+                clearImageCache()
                 Timber.i("Photo updated")
             } catch (e: CancellationException) {
                 _uiState.update { it.copy(isPhotoUploading = false) }

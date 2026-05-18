@@ -136,25 +136,23 @@ class CoachRepository(
                 "userId" to uid
             )
 
-            val result = try {
-                functions.getHttpsCallable(CLOUD_FUNCTION_NAME)
+            // Determine the assistant's response content
+            val assistantContent: String = try {
+                val result = functions.getHttpsCallable(CLOUD_FUNCTION_NAME)
                     .call(functionData)
                     .await()
+                val responseData = result.getData() as? Map<*, *> ?: emptyMap<Any, Any?>()
+                responseData["content"] as? String
+                    ?: "I'm here for you. Keep going — you're stronger than you think!"
             } catch (e: Exception) {
                 Timber.e(e, "Cloud Function call failed for user: %s", uid)
-                // If the function fails, return a fallback response
-                return@withTimeoutOrNull CoachMessage(
-                    role = MessageRole.ASSISTANT,
-                    content = "I'm having trouble connecting right now. Please try again in a moment. Remember, every craving you resist makes you stronger!",
-                    timestamp = com.google.firebase.Timestamp.now()
-                )
+                // Fallback response when Cloud Function is unavailable
+                "I'm having trouble connecting right now. Please try again in a moment. Remember, every craving you resist makes you stronger!"
             }
 
-            val responseData = result.getData() as? Map<*, *> ?: emptyMap<Any, Any?>()
-            val assistantContent = responseData["content"] as? String
-                ?: "I'm here for you. Keep going — you're stronger than you think!"
-
-            // 3. Save assistant response to Firestore
+            // 3. Save assistant response to Firestore (ALWAYS, even for fallback)
+            // This is critical: the UI relies on the Firestore snapshot listener
+            // to display new messages. Without saving, the message won't appear.
             val assistantMessageData = mapOf(
                 "role" to MessageRole.ASSISTANT.value,
                 "content" to assistantContent,
@@ -185,7 +183,7 @@ class CoachRepository(
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             val snapshot = coachChatsCollection
                 .orderBy("timestamp", Query.Direction.ASCENDING)
-                .limitToLast(limit.toLong())
+                .limit(limit.toLong())
                 .get(Source.SERVER)
                 .await()
                 Unit
@@ -248,7 +246,7 @@ class CoachRepository(
         val registration = firestore.collection(USERS_COLLECTION).document(uid)
             .collection(COACH_CHATS_SUBCOLLECTION)
             .orderBy("timestamp", Query.Direction.ASCENDING)
-            .limitToLast(limit.toLong())
+            .limit(limit.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeConversation error for user: %s", uid)

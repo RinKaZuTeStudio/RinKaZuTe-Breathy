@@ -12,3 +12,6 @@ local.properties
 !Apk/*.apk
 *.aab
 *.log
+build/
+.kotlin/
+.gradle/

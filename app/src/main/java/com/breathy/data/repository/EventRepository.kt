@@ -477,17 +477,81 @@ class EventRepository(
         if (e !is CancellationException) Timber.e(e, "Failed to submit pushup count")
     }
 
-    /** Create the pushup challenge event via Cloud Function. */
+    /** Create the pushup challenge event. Tries Cloud Function first, falls back to direct Firestore write. */
     suspend fun createPushupChallengeEvent(): Result<String> = runCatching {
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val result = functions
-                ?.getHttpsCallable("createPushupChallenge")
-                ?.call(emptyMap<String, Any>())
-                ?.await()
-                ?: throw IllegalStateException("Firebase Functions not available")
+            // Check if event already exists
+            val existingEvent = firestore.collection(EVENTS_COLLECTION)
+                .whereEqualTo("type", "pushup_challenge")
+                .limit(1)
+                .get()
+                .await()
 
-            val data = result.getData() as? Map<*, *> ?: emptyMap<Any, Any?>()
-            data["eventId"] as? String ?: "pushup_challenge_2025"
+            if (!existingEvent.isEmpty) {
+                val existingDoc = existingEvent.documents.first()
+                return@withTimeoutOrNull existingDoc.id
+            }
+
+            // Try Cloud Function first
+            val cloudResult = try {
+                functions
+                    ?.getHttpsCallable("createPushupChallenge")
+                    ?.call(emptyMap<String, Any>())
+                    ?.await()
+            } catch (e: Exception) {
+                Timber.w(e, "Cloud Function createPushupChallenge failed, using local fallback")
+                null
+            }
+
+            if (cloudResult != null) {
+                val data = cloudResult.getData() as? Map<*, *> ?: emptyMap<Any, Any?>()
+                return@withTimeoutOrNull data["eventId"] as? String ?: "pushup_challenge_2025"
+            }
+
+            // Fallback: create the event directly in Firestore
+            val eventId = "pushup_challenge_may2026"
+            val startDate = com.google.firebase.Timestamp(
+                java.util.Calendar.getInstance().apply {
+                    set(2026, java.util.Calendar.MAY, 20, 0, 0, 0)
+                }.timeInMillis / 1000, 0
+            )
+            val endDate = com.google.firebase.Timestamp(
+                java.util.Calendar.getInstance().apply {
+                    set(2026, java.util.Calendar.AUGUST, 20, 23, 59, 59)
+                }.timeInMillis / 1000, 0
+            )
+
+            val eventData = mapOf(
+                "title" to "100 Pushup Challenge",
+                "description" to "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the leaderboard, and win cash prizes. Rank 1-5 win \$20, Rank 6-10 win \$10!",
+                "type" to "pushup_challenge",
+                "eventType" to "pushup_challenge",
+                "active" to true,
+                "startDate" to startDate,
+                "endDate" to endDate,
+                "dailyRequired" to 10,
+                "targetPushups" to 100,
+                "prizes" to mapOf(
+                    "1st" to "\$20",
+                    "2nd" to "\$20",
+                    "3rd" to "\$20",
+                    "4th" to "\$20",
+                    "5th" to "\$20",
+                    "6th" to "\$10",
+                    "7th" to "\$10",
+                    "8th" to "\$10",
+                    "9th" to "\$10",
+                    "10th" to "\$10"
+                ),
+                "createdAt" to FieldValue.serverTimestamp()
+            )
+
+            firestore.collection(EVENTS_COLLECTION).document(eventId)
+                .set(eventData, com.google.firebase.firestore.SetOptions.merge())
+                .await()
+            Unit
+
+            eventId
         } ?: throw IllegalStateException("Create pushup challenge timed out")
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to create pushup challenge event")
