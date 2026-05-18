@@ -258,7 +258,7 @@ fun ProfileScreen(
                         onDarkModeToggle = { viewModel.toggleDarkMode(it) },
                         onThemeModeChange = { mode ->
                             viewModel.setThemeMode(mode)
-                            (LocalContext.current as? Activity)?.recreate()
+                            (context as? Activity)?.recreate()
                         },
                         onPrivacyToggle = { viewModel.togglePrivacy(it) },
                         onNavigateToFriends = onNavigateToFriends
