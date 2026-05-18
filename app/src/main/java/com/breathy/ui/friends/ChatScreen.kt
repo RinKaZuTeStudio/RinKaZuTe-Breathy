@@ -137,6 +137,7 @@ sealed class ChatSingleEvent {
 
 class ChatViewModel(
     private val chatId: String,
+    private val otherUserId: String,
     private val chatRepository: ChatRepository,
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository
@@ -157,31 +158,30 @@ class ChatViewModel(
         }
 
     init {
+        loadOtherUserProfile()
         loadChat()
         observeMessages()
     }
 
+    private fun loadOtherUserProfile() {
+        viewModelScope.launch {
+            val profileResult = userRepository.getPublicProfile(otherUserId)
+            profileResult.onSuccess { profile ->
+                _uiState.update { it.copy(otherUserProfile = profile) }
+            }.onFailure { e ->
+                if (e !is CancellationException) {
+                    Timber.e(e, "Failed to load other user profile")
+                }
+            }
+        }
+    }
+
     internal fun loadChat() {
         viewModelScope.launch {
-            // Get chat details
-            val chatResult = chatRepository.getOrCreateChat(chatId)
+            // Get or create chat using otherUserId
+            val chatResult = chatRepository.getOrCreateChat(otherUserId)
             chatResult.onSuccess { chat ->
-                _uiState.update { it.copy(chat = chat) }
-
-                // Determine the other user
-                val otherUserId = chat.otherParticipant(currentUserId) ?: return@onSuccess
-
-                // Load other user's profile
-                val profileResult = userRepository.getPublicProfile(otherUserId)
-                profileResult.onSuccess { profile ->
-                    _uiState.update { it.copy(otherUserProfile = profile, isLoading = false) }
-                }.onFailure { e ->
-                    if (e !is CancellationException) {
-                        Timber.e(e, "Failed to load other user profile")
-                        _uiState.update { it.copy(isLoading = false) }
-                    }
-                }
-
+                _uiState.update { it.copy(chat = chat, isLoading = false) }
                 // Mark messages as read
                 chatRepository.markAsRead(chatId)
             }.onFailure { e ->
@@ -315,13 +315,14 @@ class ChatViewModel(
 
 class ChatViewModelFactory(
     private val chatId: String,
+    private val otherUserId: String,
     private val chatRepository: ChatRepository,
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return ChatViewModel(chatId, chatRepository, friendRepository, userRepository) as T
+        return ChatViewModel(chatId, otherUserId, chatRepository, friendRepository, userRepository) as T
     }
 }
 
@@ -332,13 +333,16 @@ class ChatViewModelFactory(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    chatId: String,
+    otherUserId: String,
     onNavigateBack: () -> Unit = {},
     viewModel: ChatViewModel = run {
         val context = LocalContext.current
         val app = context.applicationContext as BreathyApplication
+        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val chatId = Chat.chatId(currentUserId, otherUserId)
         viewModel(factory = ChatViewModelFactory(
             chatId = chatId,
+            otherUserId = otherUserId,
             chatRepository = app.appModule.chatRepository,
             friendRepository = app.appModule.friendRepository,
             userRepository = app.appModule.userRepository
@@ -350,7 +354,7 @@ fun ChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     DisposableEffect(Unit) {
-        Timber.d("ChatScreen: composed with chatId=%s", chatId)
+        Timber.d("ChatScreen: composed with otherUserId=%s", otherUserId)
         onDispose { Timber.d("ChatScreen: disposed") }
     }
 

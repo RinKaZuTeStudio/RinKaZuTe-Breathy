@@ -15,7 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,13 +26,15 @@ import java.io.InputStream
 /**
  * A lightweight image-loading Composable that replaces Coil's AsyncImage.
  *
- * Supports two model types:
+ * Supports three model types:
  * - **String** (URL): Loaded from network via OkHttp (already a project dependency).
+ *   Also supports Firebase Storage `gs://` URLs — automatically converts to download URL.
  * - **Uri** (local content): Loaded via ContentResolver (for camera/gallery picks).
  *
  * Features:
  * - **LRU memory cache** (8 MB) — prevents re-fetching on recomposition.
  * - **Downsampling** — large images are scaled down to prevent OOM.
+ * - **Firebase Storage** — gs:// URLs are resolved to download URLs automatically.
  * - **Placeholder support** — renders nothing while loading; caller provides fallback.
  *
  * No external image-loading library required.
@@ -63,9 +67,22 @@ fun NetworkImage(
                     }
                 }
 
-                val loaded: Bitmap? = when (model) {
-                    is String -> loadFromUrl(model)
-                    is Uri -> loadFromUri(context.contentResolver.openInputStream(model))
+                // Resolve Firebase Storage gs:// URLs to download URLs
+                val resolvedUrl = if (model is String && model.startsWith("gs://")) {
+                    try {
+                        val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(model)
+                        storageRef.downloadUrl.await().toString()
+                    } catch (e: Exception) {
+                        // If Firebase Storage resolution fails, try the URL as-is
+                        model
+                    }
+                } else {
+                    model
+                }
+
+                val loaded: Bitmap? = when (resolvedUrl) {
+                    is String -> loadFromUrl(resolvedUrl)
+                    is Uri -> loadFromUri(context.contentResolver.openInputStream(resolvedUrl))
                     else -> null
                 }
 

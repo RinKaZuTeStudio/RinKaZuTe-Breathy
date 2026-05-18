@@ -27,7 +27,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -181,67 +183,136 @@ fun CravingBottomSheet(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Coping method cards
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                // Coping method cards — 2 rows for 6 methods
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    CopingMethodCard(
-                        title = "Breathe",
-                        description = "4-7-8 breathing to calm cravings",
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Air,
-                                contentDescription = "Breathing",
-                                tint = AccentPrimary,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        },
-                        accentColor = AccentPrimary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            selectedMethod = CopingMethod.BREATHING
-                            onBreathingExercise()
-                        }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CopingMethodCard(
+                            title = "Breathe",
+                            description = "4-7-8 breathing to calm cravings",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Air,
+                                    contentDescription = "Breathing",
+                                    tint = AccentPrimary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            },
+                            accentColor = AccentPrimary,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                selectedMethod = CopingMethod.BREATHING
+                                onBreathingExercise()
+                            }
+                        )
 
-                    CopingMethodCard(
-                        title = "Distract",
-                        description = "Tap as fast as you can for 30s",
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Gamepad,
-                                contentDescription = "Mini Game",
-                                tint = AccentPurple,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        },
-                        accentColor = AccentPurple,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            selectedMethod = CopingMethod.GAME
-                            onMiniGame()
-                        }
-                    )
+                        CopingMethodCard(
+                            title = "Distract",
+                            description = "Tap as fast as you can for 30s",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Gamepad,
+                                    contentDescription = "Mini Game",
+                                    tint = AccentPurple,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            },
+                            accentColor = AccentPurple,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                selectedMethod = CopingMethod.GAME
+                                onMiniGame()
+                            }
+                        )
 
-                    CopingMethodCard(
-                        title = "Talk",
-                        description = "Chat with your AI coach",
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Chat,
-                                contentDescription = "AI Coach",
-                                tint = AccentOrange,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        },
-                        accentColor = AccentOrange,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            selectedMethod = CopingMethod.AI
-                            onAICoach()
-                        }
-                    )
+                        CopingMethodCard(
+                            title = "Talk",
+                            description = "Chat with your AI coach",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Chat,
+                                    contentDescription = "AI Coach",
+                                    tint = AccentOrange,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            },
+                            accentColor = AccentOrange,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                selectedMethod = CopingMethod.AI
+                                onAICoach()
+                            }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CopingMethodCard(
+                            title = "Pushups",
+                            description = "Do 10 pushups to redirect focus",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.FitnessCenter,
+                                    contentDescription = "Pushups",
+                                    tint = Color(0xFF00BCD4),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            },
+                            accentColor = Color(0xFF00BCD4),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                selectedMethod = CopingMethod.EXERCISE
+                                onLogCraving(CopingMethod.EXERCISE, true)
+                                showConfetti = true
+                            }
+                        )
+
+                        CopingMethodCard(
+                            title = "Squats",
+                            description = "Do 15 squats to burn the urge",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.SelfImprovement,
+                                    contentDescription = "Squats",
+                                    tint = Color(0xFFE91E63),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            },
+                            accentColor = Color(0xFFE91E63),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                selectedMethod = CopingMethod.EXERCISE
+                                onLogCraving(CopingMethod.EXERCISE, true)
+                                showConfetti = true
+                            }
+                        )
+
+                        CopingMethodCard(
+                            title = "Plank",
+                            description = "Hold a 30s plank for discipline",
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.FitnessCenter,
+                                    contentDescription = "Plank",
+                                    tint = Color(0xFFFFC107),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            },
+                            accentColor = Color(0xFFFFC107),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                selectedMethod = CopingMethod.EXERCISE
+                                onLogCraving(CopingMethod.EXERCISE, true)
+                                showConfetti = true
+                            }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

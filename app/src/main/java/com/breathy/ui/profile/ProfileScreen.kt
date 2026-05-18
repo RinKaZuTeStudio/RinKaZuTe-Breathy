@@ -1449,7 +1449,7 @@ private fun formatMoney(amount: Double): String {
 }
 
 private fun formatQuitDate(timestamp: Timestamp): String {
-    val sdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+    val sdf = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     return sdf.format(timestamp.toDate())
 }
 
@@ -1485,7 +1485,7 @@ class ProfileViewModel(
         get() = auth.currentUser?.uid ?: throw IllegalStateException("Not authenticated")
 
     init {
-        // Read saved theme preference to initialize state correctly
+        // Read saved preferences to initialize state correctly
         try {
             val context = com.breathy.BreathyApplication.instance
             val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
@@ -1498,7 +1498,16 @@ class ProfileViewModel(
                 "LIGHT" -> false
                 else -> isSystemDarkMode // SYSTEM
             }
-            _uiState.update { it.copy(darkModeEnabled = darkEnabled, themeMode = savedTheme) }
+            val notificationsEnabled = prefs.getBoolean("notifications_enabled", true)
+            val privacyEnabled = prefs.getBoolean("privacy_enabled", false)
+            _uiState.update {
+                it.copy(
+                    darkModeEnabled = darkEnabled,
+                    themeMode = savedTheme,
+                    notificationsEnabled = notificationsEnabled,
+                    privacyEnabled = privacyEnabled
+                )
+            }
         } catch (_: Exception) { }
 
         loadProfile()
@@ -1639,7 +1648,12 @@ class ProfileViewModel(
 
     fun toggleNotifications(enabled: Boolean) {
         _uiState.update { it.copy(notificationsEnabled = enabled) }
-        // Persist to SharedPreferences or Firestore in production
+        // Persist to SharedPreferences
+        try {
+            val context = com.breathy.BreathyApplication.instance
+            val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("notifications_enabled", enabled).apply()
+        } catch (_: Exception) { }
         Timber.i("Notifications toggled: %s", enabled)
     }
 
@@ -1680,6 +1694,12 @@ class ProfileViewModel(
 
     fun togglePrivacy(enabled: Boolean) {
         _uiState.update { it.copy(privacyEnabled = enabled) }
+        // Persist to SharedPreferences
+        try {
+            val context = com.breathy.BreathyApplication.instance
+            val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("privacy_enabled", enabled).apply()
+        } catch (_: Exception) { }
         Timber.i("Privacy toggled: %s", enabled)
     }
 

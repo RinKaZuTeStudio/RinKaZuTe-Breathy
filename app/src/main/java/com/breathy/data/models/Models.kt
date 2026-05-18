@@ -68,7 +68,8 @@ enum class CheckinStatus(val value: String) {
 enum class CopingMethod(val value: String) {
     @SerialName("breathing") BREATHING("breathing"),
     @SerialName("game") GAME("game"),
-    @SerialName("ai") AI("ai");
+    @SerialName("ai") AI("ai"),
+    @SerialName("exercise") EXERCISE("exercise");
 
     override fun toString(): String = value
 

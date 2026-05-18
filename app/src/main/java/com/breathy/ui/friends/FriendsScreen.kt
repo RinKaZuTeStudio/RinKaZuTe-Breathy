@@ -83,7 +83,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
-import com.breathy.data.models.Chat
 import com.breathy.data.models.FriendRequest
 import com.breathy.data.models.PublicProfile
 import com.breathy.data.repository.FriendRepository
@@ -556,14 +555,8 @@ fun FriendsScreen(
                         FirebaseAuth.getInstance().currentUser?.uid ?: ""
                     } catch (_: Exception) { "" },
                     onFriendClick = { friend ->
-                        // Use deterministic chat ID from both user IDs
-                        val chatId = Chat.chatId(
-                            try {
-                                FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                            } catch (_: Exception) { "" },
-                            friend.userId
-                        )
-                        onNavigateToChat(chatId)
+                        // Pass the other user's ID directly — ChatScreen handles chat ID computation
+                        onNavigateToChat(friend.userId)
                     },
                     onFriendRemove = { friend ->
                         friendToRemove = friend

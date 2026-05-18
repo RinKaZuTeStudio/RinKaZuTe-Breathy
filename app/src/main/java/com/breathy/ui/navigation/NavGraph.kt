@@ -92,7 +92,7 @@ object BreathyRoutes {
     const val POST_STORY = "postStory"
     const val PUBLIC_PROFILE = "publicProfile/{userId}"
     const val FRIENDS = "friends"
-    const val CHAT = "chat/{chatId}"
+    const val CHAT = "chat/{otherUserId}"
     const val EVENT_CHALLENGE = "eventChallenge/{eventId}"
     const val EVENT_CHECKIN = "eventCheckin/{eventId}"
     const val ADMIN_REVIEW = "adminReview"
@@ -105,7 +105,7 @@ object BreathyRoutes {
 
     fun storyDetail(storyId: String): String = "storyDetail/$storyId"
     fun publicProfile(userId: String): String = "publicProfile/$userId"
-    fun chat(chatId: String): String = "chat/$chatId"
+    fun chat(otherUserId: String): String = "chat/$otherUserId"
     fun eventChallenge(eventId: String): String = "eventChallenge/$eventId"
     fun eventCheckin(eventId: String): String = "eventCheckin/$eventId"
 
@@ -402,13 +402,13 @@ fun BreathyNavHost(
             composable(
                 route = BreathyRoutes.CHAT,
                 arguments = listOf(
-                    navArgument("chatId") { type = NavType.StringType }
+                    navArgument("otherUserId") { type = NavType.StringType }
                 )
             ) { backStackEntry ->
-                val chatId = backStackEntry.arguments?.getString("chatId")
+                val otherUserId = backStackEntry.arguments?.getString("otherUserId")
                     ?: return@composable
                 ChatScreen(
-                    chatId = chatId,
+                    otherUserId = otherUserId,
                     onNavigateBack = { navigateBack() }
                 )
             }

@@ -231,10 +231,8 @@ fun PublicProfileScreen(
                         isSendingRequest = uiState.isSendingRequest,
                         onAddFriend = viewModel::sendFriendRequest,
                         onMessage = {
-                            // Generate chat ID deterministically
-                            val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return@ProfileActions
-                            val chatId = com.breathy.data.models.Chat.chatId(currentUid, userId)
-                            onNavigateToChat(chatId)
+                            // Pass the other user's ID directly — ChatScreen handles chat ID computation
+                            onNavigateToChat(userId)
                         }
                     )
                 }
