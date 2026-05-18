@@ -782,6 +782,7 @@ private fun ProfileStatsSection(
             accentColor = AccentPurple,
             modifier = Modifier.weight(1f)
         )
+    }
 }
 
 @Composable
