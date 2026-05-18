@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -464,10 +465,9 @@ private fun CameraCountingScreen(
                     // Image analysis for pose detection
                     val imageAnalysis = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .setTargetFrameRate(15)
                         .build()
 
-                    imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                    imageAnalysis.setAnalyzer(executor) { imageProxy: ImageProxy ->
                         try {
                             val mediaImage = imageProxy.image
                             if (mediaImage != null) {
