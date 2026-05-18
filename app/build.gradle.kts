@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-    namespace = "com.breathy"
+    namespace = "breathy.com"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.breathy"
+        applicationId = "breathy.com"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1

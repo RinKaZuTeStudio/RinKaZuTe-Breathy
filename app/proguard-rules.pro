@@ -22,9 +22,9 @@
 -dontnote kotlinx.serialization.AnnotationsKt
 -keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
 -keepclasseswithmembers class kotlinx.serialization.json.** { kotlinx.serialization.KSerializer serializer(...); }
--keep,includedescriptorclasses class com.breathy.**$$serializer { *; }
--keepclassmembers class com.breathy.** { *** Companion; }
--keepclasseswithmembers class com.breathy.** { kotlinx.serialization.KSerializer serializer(...); }
+-keep,includedescriptorclasses class breathy.com.**$$serializer { *; }
+-keepclassmembers class breathy.com.** { *** Companion; }
+-keepclasseswithmembers class breathy.com.** { kotlinx.serialization.KSerializer serializer(...); }
 
 # Coil
 -dontwarn coil.**

@@ -6,7 +6,7 @@ workflows:
 
     environment:
       vars:
-        PACKAGE_NAME: "com.breathy"
+        PACKAGE_NAME: "breathy.com"
 
     triggering:
       events:

@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:956462842979:android:55b5bb62f889f0a0c8a456",
         "android_client_info": {
-          "package_name": "Breathy.com"
+          "package_name": "breathy.com"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "956462842979-gsiagtvp4mn2batg1mjkkm1b7clpqtaa.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "Breathy.com",
+            "package_name": "breathy.com",
             "certificate_hash": "7b70faeb443341e17b4b064b833b63fe82c84f87"
           }
         },
@@ -46,7 +46,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:956462842979:android:79edf71fb185baa7c8a456",
         "android_client_info": {
-          "package_name": "com.breathy"
+          "package_name": "breathy.com"
         }
       },
       "oauth_client": [
@@ -54,7 +54,7 @@
           "client_id": "956462842979-o6jdns2r7v2uve22ltum3kjt2ejkiob3.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.breathy",
+            "package_name": "breathy.com",
             "certificate_hash": "7b70faeb443341e17b4b064b833b63fe82c84f87"
           }
         },
