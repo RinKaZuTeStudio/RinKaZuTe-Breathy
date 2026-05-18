@@ -16,6 +16,7 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineString } = require("firebase-functions/params");
 const { logger } = require("firebase-functions");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
@@ -32,7 +33,14 @@ const messaging = getMessaging();
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BATCH_SIZE = 500;
-const OPENAI_MODEL = "gpt-4o-mini";
+const OPENROUTER_MODEL = "google/gemma-2-9b-it:free";
+const OPENROUTER_FALLBACK_MODEL = "deepseek/deepseek-chat";
+
+// OpenRouter API key parameter (set with: firebase functions:secrets:set OPENROUTER_API_KEY)
+const openrouterApiKeyParam = defineString("OPENROUTER_API_KEY", {
+  description: "OpenRouter API key for AI Coach chatbot",
+  default: ""
+});
 const OPENAI_TEMPERATURE = 0.7;
 const OPENAI_MAX_CONTEXT_MESSAGES = 20;
 const RATE_LIMIT_MAX_MESSAGES = 10;
@@ -716,9 +724,18 @@ exports.openAIChat = onCall(
       // Continue anyway — the conversation can proceed without persistence
     }
 
-    // ── 5. Call OpenAI API ───────────────────────────────────────────────────
+    // ── 5. Call OpenRouter API (OpenAI-compatible) ──────────────────────────
+    const openrouterApiKey = openrouterApiKeyParam.value();
+    if (!openrouterApiKey) {
+      throw new HttpsError("internal", "AI Coach API key not configured. Set OPENROUTER_API_KEY in Firebase.");
+    }
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: openrouterApiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: {
+        "HTTP-Referer": "https://breathy-healthy.web.app",
+        "X-Title": "Breathy AI Coach"
+      }
     });
 
     // Build messages array with system prompt + history + new message
@@ -731,7 +748,7 @@ exports.openAIChat = onCall(
     let assistantContent;
     try {
       const completion = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
+        model: OPENROUTER_MODEL,
         messages: openaiMessages,
         temperature: OPENAI_TEMPERATURE,
         max_tokens: 1024,
@@ -743,18 +760,41 @@ exports.openAIChat = onCall(
       assistantContent =
         completion.choices?.[0]?.message?.content?.trim() ||
         "I'm here for you. Keep going — you're stronger than you think!";
-    } catch (error) {
-      logger.error(`openAIChat: OpenAI API error for user ${uid}`, {
-        error: error.message,
-        status: error.status,
-        type: error.type,
+    } catch (primaryError) {
+      logger.warn(`openAIChat: Primary model (${OPENROUTER_MODEL}) failed for user ${uid}, trying fallback`, {
+        error: primaryError.message,
+        status: primaryError.status,
       });
 
-      // Graceful fallback on API error
-      assistantContent =
-        "I'm having trouble connecting right now. Please try again in a moment. " +
-        "Remember, every craving you resist makes you stronger! " +
-        "Try a 4-7-8 breathing exercise: breathe in for 4 seconds, hold for 7, exhale for 8.";
+      // Try fallback model
+      try {
+        const fallbackCompletion = await openai.chat.completions.create({
+          model: OPENROUTER_FALLBACK_MODEL,
+          messages: openaiMessages,
+          temperature: OPENAI_TEMPERATURE,
+          max_tokens: 1024,
+          top_p: 1,
+          frequency_penalty: 0,
+          presence_penalty: 0,
+        });
+
+        assistantContent =
+          fallbackCompletion.choices?.[0]?.message?.content?.trim() ||
+          "I'm here for you. Keep going — you're stronger than you think!";
+
+        logger.info(`openAIChat: Fallback model succeeded for user ${uid}`);
+      } catch (fallbackError) {
+        logger.error(`openAIChat: Both models failed for user ${uid}`, {
+          primaryError: primaryError.message,
+          fallbackError: fallbackError.message,
+        });
+
+        // Graceful fallback on API error
+        assistantContent =
+          "I'm having trouble connecting right now. Please try again in a moment. " +
+          "Remember, every craving you resist makes you stronger! " +
+          "Try a 4-7-8 breathing exercise: breathe in for 4 seconds, hold for 7, exhale for 8.";
+      }
     }
 
     // ── 6. Save assistant response to coach_chats ────────────────────────────
