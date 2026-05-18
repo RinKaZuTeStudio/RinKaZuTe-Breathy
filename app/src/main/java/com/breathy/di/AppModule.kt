@@ -16,6 +16,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.storage.FirebaseStorage
 import timber.log.Timber
 
 /**
@@ -67,10 +68,21 @@ class AppModule(
         }
     }
 
-    /** Cloudinary uploader instance — replaces Firebase Storage for file uploads. */
+    /** Cloudinary uploader instance — primary upload mechanism for file uploads. */
     val cloudinaryUploader: CloudinaryUploader by lazy {
         Timber.d("Initializing CloudinaryUploader")
         CloudinaryUploader(applicationContext)
+    }
+
+    /** Firebase Storage instance — used as fallback for profile image uploads. */
+    val firebaseStorage: FirebaseStorage by lazy {
+        Timber.d("Initializing FirebaseStorage")
+        try {
+            FirebaseStorage.getInstance("gs://breathy-healthy.firebasestorage.app")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to initialize Firebase Storage with explicit bucket, falling back to default")
+            FirebaseStorage.getInstance()
+        }
     }
 
     /** Cloud Functions for Firebase instance. */
@@ -104,7 +116,8 @@ class AppModule(
         UserRepository(
             firestore = firestore,
             auth = firebaseAuth,
-            cloudinaryUploader = cloudinaryUploader
+            cloudinaryUploader = cloudinaryUploader,
+            firebaseStorage = firebaseStorage
         )
     }
 
@@ -115,7 +128,8 @@ class AppModule(
         Timber.d("Initializing StoryRepository")
         StoryRepository(
             firestore = firestore,
-            auth = firebaseAuth
+            auth = firebaseAuth,
+            firebaseStorage = firebaseStorage
         )
     }
 
@@ -152,7 +166,8 @@ class AppModule(
         EventRepository(
             firestore = firestore,
             auth = firebaseAuth,
-            cloudinaryUploader = cloudinaryUploader
+            cloudinaryUploader = cloudinaryUploader,
+            functions = firebaseFunctions
         )
     }
 
@@ -224,7 +239,8 @@ class AppModule(
     fun createUserRepository(): UserRepository = UserRepository(
         firestore = firestore,
         auth = firebaseAuth,
-        cloudinaryUploader = cloudinaryUploader
+        cloudinaryUploader = cloudinaryUploader,
+        firebaseStorage = firebaseStorage
     )
 
     /**
@@ -232,7 +248,8 @@ class AppModule(
      */
     fun createStoryRepository(): StoryRepository = StoryRepository(
         firestore = firestore,
-        auth = firebaseAuth
+        auth = firebaseAuth,
+        firebaseStorage = firebaseStorage
     )
 
     /**
@@ -257,7 +274,8 @@ class AppModule(
     fun createEventRepository(): EventRepository = EventRepository(
         firestore = firestore,
         auth = firebaseAuth,
-        cloudinaryUploader = cloudinaryUploader
+        cloudinaryUploader = cloudinaryUploader,
+        functions = firebaseFunctions
     )
 
     /**

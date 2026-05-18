@@ -164,6 +164,10 @@ dependencies {
     // ── ExifInterface (for ImageUploader EXIF orientation) ────────────────
     implementation(libs.exifinterface)
 
+    // ── ML Kit Pose Detection (for pushup counting) ───────────────────────
+    implementation(libs.mlkit.pose.detection)
+    implementation(libs.mlkit.pose.detection.accurate)
+
     // ── Testing ────────────────────────────────────────────────────────────
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)

@@ -83,8 +83,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breathy.ui.components.NetworkImage
 import com.breathy.BreathyApplication
+import com.breathy.data.models.Chat
 import com.breathy.data.models.FriendRequest
 import com.breathy.data.models.PublicProfile
+import com.breathy.data.repository.ChatRepository
 import com.breathy.data.repository.FriendRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
@@ -127,9 +129,17 @@ data class SearchResult(
 //  UI State
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Wrapper for a chat with the other user's profile for display in the chat list. */
+data class ChatWithProfile(
+    val chat: Chat,
+    val otherUserProfile: PublicProfile?,
+    val unreadCount: Int = 0
+)
+
 data class FriendsUiState(
     val isLoading: Boolean = true,
     val friends: List<FriendWithProfile> = emptyList(),
+    val chats: List<ChatWithProfile> = emptyList(),
     val incomingRequests: List<FriendRequest> = emptyList(),
     val outgoingRequests: List<FriendRequest> = emptyList(),
     val searchResults: List<SearchResult> = emptyList(),
@@ -154,6 +164,7 @@ sealed class FriendsSingleEvent {
 class FriendsViewModel(
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository,
+    private val chatRepository: ChatRepository,
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
@@ -173,6 +184,7 @@ class FriendsViewModel(
         observeFriends()
         observeIncomingRequests()
         observeOutgoingRequests()
+        observeChats()
     }
 
     private fun observeFriends() {
@@ -228,6 +240,34 @@ class FriendsViewModel(
         viewModelScope.launch {
             friendRepository.observeOutgoingRequests().collect { requests ->
                 _uiState.update { it.copy(outgoingRequests = requests) }
+            }
+        }
+    }
+
+    private fun observeChats() {
+        viewModelScope.launch {
+            chatRepository.observeChats().collect { chats ->
+                val uid = currentUserId
+                // For each chat, load the other user's profile and unread count
+                val chatWithProfiles = chats.map { chat ->
+                    val otherUserId = chat.otherParticipant(uid) ?: ""
+                    val profile = profileCache[otherUserId] ?: run {
+                        try {
+                            val result = userRepository.getPublicProfile(otherUserId)
+                            result.getOrNull()?.also { profileCache[otherUserId] = it }
+                        } catch (_: Exception) { null }
+                    }
+                    // Count unread messages from other user
+                    val unreadCount = try {
+                        chatRepository.getUnreadCountForChat(chat.id).getOrDefault(0)
+                    } catch (_: Exception) { 0 }
+                    ChatWithProfile(
+                        chat = chat,
+                        otherUserProfile = profile,
+                        unreadCount = unreadCount
+                    )
+                }
+                _uiState.update { it.copy(chats = chatWithProfiles) }
             }
         }
     }
@@ -368,11 +408,12 @@ class FriendsViewModel(
 class FriendsViewModelFactory(
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository,
+    private val chatRepository: ChatRepository,
     private val auth: FirebaseAuth
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return FriendsViewModel(friendRepository, userRepository, auth) as T
+        return FriendsViewModel(friendRepository, userRepository, chatRepository, auth) as T
     }
 }
 
@@ -391,6 +432,7 @@ fun FriendsScreen(
         viewModel(factory = FriendsViewModelFactory(
             friendRepository = app.appModule.friendRepository,
             userRepository = app.appModule.userRepository,
+            chatRepository = app.appModule.chatRepository,
             auth = app.appModule.firebaseAuth
         ))
     }
@@ -446,7 +488,7 @@ fun FriendsScreen(
         onDispose { Timber.d("FriendsScreen: disposed") }
     }
 
-    val tabs = listOf("Friends", "Requests")
+    val tabs = listOf("Chats", "Friends", "Requests")
     val incomingCount = uiState.incomingRequests.size
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -548,7 +590,17 @@ fun FriendsScreen(
 
             // ── Tab Content ────────────────────────────────────────────────
             when (selectedTab) {
-                0 -> FriendsListTab(
+                0 -> ChatsListTab(
+                    chats = uiState.chats,
+                    isLoading = uiState.isLoading,
+                    onChatClick = { chatWithProfile ->
+                        onNavigateToChat(chatWithProfile.chat.otherParticipant(
+                            try { FirebaseAuth.getInstance().currentUser?.uid ?: "" } catch (_: Exception) { "" }
+                        ) ?: "")
+                    }
+                )
+
+                1 -> FriendsListTab(
                     friends = uiState.friends,
                     isLoading = uiState.isLoading,
                     currentUserId = try {
@@ -563,7 +615,7 @@ fun FriendsScreen(
                     }
                 )
 
-                1 -> RequestsTab(
+                2 -> RequestsTab(
                     incomingRequests = uiState.incomingRequests,
                     outgoingRequests = uiState.outgoingRequests,
                     isLoading = uiState.isLoading,
@@ -637,6 +689,180 @@ fun FriendsScreen(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Chats List Tab
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ChatsListTab(
+    chats: List<ChatWithProfile>,
+    isLoading: Boolean,
+    onChatClick: (ChatWithProfile) -> Unit
+) {
+    if (isLoading && chats.isEmpty()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(3) { FriendItemSkeleton() }
+        }
+        return
+    }
+
+    if (chats.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Inbox,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "No conversations yet",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Start a chat from the Friends tab",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                )
+            }
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(
+            items = chats,
+            key = { it.chat.id }
+        ) { chatWithProfile ->
+            ChatListItem(
+                chatWithProfile = chatWithProfile,
+                onClick = { onChatClick(chatWithProfile) }
+            )
+        }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun ChatListItem(
+    chatWithProfile: ChatWithProfile,
+    onClick: () -> Unit
+) {
+    val profile = chatWithProfile.otherUserProfile
+    val chat = chatWithProfile.chat
+    val unreadCount = chatWithProfile.unreadCount
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar
+            Card(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = AccentPrimary.copy(alpha = 0.15f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                if (profile?.photoURL != null) {
+                    NetworkImage(
+                        model = profile.photoURL,
+                        contentDescription = "${profile.nickname}'s avatar",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = (profile?.nickname ?: "?").take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = AccentPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Info Column
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = profile?.nickname ?: "User",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = if (unreadCount > 0) FontWeight.Bold else FontWeight.SemiBold
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = chat.lastMessage.ifBlank { "No messages yet" },
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = if (unreadCount > 0) MaterialTheme.colorScheme.onBackground
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (unreadCount > 0) FontWeight.Medium else FontWeight.Normal
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Unread count badge
+            if (unreadCount > 0) {
+                Surface(
+                    shape = CircleShape,
+                    color = AccentPrimary
+                ) {
+                    Text(
+                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = MaterialTheme.colorScheme.background,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+            }
+        }
     }
 }
 

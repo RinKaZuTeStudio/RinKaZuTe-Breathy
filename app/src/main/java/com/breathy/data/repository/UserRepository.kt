@@ -14,7 +14,9 @@ import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
@@ -40,7 +42,8 @@ import java.util.concurrent.TimeUnit
 class UserRepository(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
-    private val cloudinaryUploader: CloudinaryUploader
+    private val cloudinaryUploader: CloudinaryUploader,
+    private val firebaseStorage: FirebaseStorage? = null
 ) {
 
     companion object {
@@ -165,28 +168,119 @@ class UserRepository(
 
     /** Upload a new avatar photo and update both user and publicProfile documents. */
     suspend fun updatePhoto(userId: String, photoUri: Uri): Result<String> = runCatching {
-        val uploadResult = cloudinaryUploader.uploadProfileImageFromUri(
-            imageUri = photoUri,
-            userId = userId
-        ) ?: throw IllegalStateException("Failed to upload photo to Cloudinary")
+        // Try Cloudinary first, fall back to Firebase Storage if it fails
+        val urlString = try {
+            val uploadResult = cloudinaryUploader.uploadProfileImageFromUri(
+                imageUri = photoUri,
+                userId = userId
+            )
+            if (uploadResult != null) {
+                uploadResult.secureUrl
+            } else {
+                Timber.w("Cloudinary upload failed, falling back to Firebase Storage")
+                uploadToFirebaseStorage(userId, photoUri)
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Cloudinary upload failed, falling back to Firebase Storage")
+            uploadToFirebaseStorage(userId, photoUri)
+        }
 
-        val urlString = uploadResult.secureUrl
-
+        // Update both user and publicProfile documents using set-with-merge
+        // (update() fails if the document doesn't exist; set-merge creates it if needed)
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val userRef = firestore.collection(USERS_COLLECTION).document(userId)
+            val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
+
             val batch = firestore.batch()
-            batch.update(
-                firestore.collection(USERS_COLLECTION).document(userId),
-                "photoURL", urlString
-            )
-            batch.update(
-                firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId),
-                "photoURL", urlString
-            )
+            batch.update(userRef, "photoURL", urlString)
+            // Use set-with-merge for publicProfile in case it doesn't exist yet
+            batch.set(profileRef, mapOf("photoURL" to urlString), SetOptions.merge())
             batch.commit().await()
+
             urlString
         } ?: throw IllegalStateException("Firestore update timed out after 30 seconds")
+
+        // Propagate the new photo URL to denormalized locations (stories, replies)
+        try {
+            propagatePhotoURL(userId, urlString)
+        } catch (e: Exception) {
+            // Non-critical — the profile is updated, propagation is best-effort
+            Timber.w(e, "Failed to propagate photoURL for user: %s", userId)
+        }
+
+        urlString
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to update photo for user: %s", userId)
+    }
+
+    /**
+     * Upload a profile image to Firebase Storage as a fallback.
+     * Stores the image at `profileImages/{userId}.jpg` in the configured bucket.
+     *
+     * @return The download URL string on success.
+     * @throws Exception if the upload fails.
+     */
+    private suspend fun uploadToFirebaseStorage(userId: String, photoUri: Uri): String {
+        val storage = firebaseStorage
+            ?: throw IllegalStateException("Firebase Storage not configured")
+
+        val storageRef = storage.reference.child("profileImages/$userId.jpg")
+        storageRef.putFile(photoUri).await()
+        val downloadUrl = storageRef.downloadUrl.await()
+        Timber.i("Uploaded profile image to Firebase Storage: %s", downloadUrl)
+        return downloadUrl.toString()
+    }
+
+    /**
+     * Propagate the new photo URL to denormalized locations:
+     * - All stories authored by this user (stories collection)
+     * - All replies authored by this user (stories/{storyId}/replies subcollection)
+     *
+     * This is a best-effort operation — failures are logged but don't fail the
+     * overall photo update.
+     */
+    private suspend fun propagatePhotoURL(userId: String, photoURL: String) {
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val batch = firestore.batch()
+            var operationCount = 0
+
+            // Update all stories by this user
+            val storiesSnapshot = firestore.collection("stories")
+                .whereEqualTo("userId", userId)
+                .limit(50)
+                .get()
+                .await()
+
+            for (storyDoc in storiesSnapshot.documents) {
+                batch.update(storyDoc.reference, "photoURL", photoURL)
+                operationCount++
+
+                // Also update replies by this user within each story
+                val repliesSnapshot = storyDoc.reference
+                    .collection("replies")
+                    .whereEqualTo("userId", userId)
+                    .limit(50)
+                    .get()
+                    .await()
+
+                for (replyDoc in repliesSnapshot.documents) {
+                    batch.update(replyDoc.reference, "photoURL", photoURL)
+                    operationCount++
+                }
+
+                // Firestore batches support max 500 operations
+                if (operationCount >= 450) {
+                    batch.commit().await()
+                    operationCount = 0
+                }
+            }
+
+            if (operationCount > 0) {
+                batch.commit().await()
+            }
+
+            Timber.i("Propagated photoURL for user %s across %d locations", userId, operationCount)
+        }
     }
 
     /** Fetch a public profile by user ID. */

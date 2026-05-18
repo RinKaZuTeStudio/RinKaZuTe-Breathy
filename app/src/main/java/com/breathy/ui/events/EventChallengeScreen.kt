@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Videocam
@@ -127,7 +128,8 @@ data class EventChallengeUiState(
     val currentDayNumber: Int = 1,
     val canCheckinToday: Boolean = false,
     val errorMessage: String? = null,
-    val countdownSeconds: Long = 0L
+    val countdownSeconds: Long = 0L,
+    val isPushupChallenge: Boolean = false
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -197,7 +199,8 @@ class EventChallengeViewModel(
                         currentDayNumber = dayNumber,
                         canCheckinToday = canCheckin,
                         countdownSeconds = countdownSeconds,
-                        errorMessage = null
+                        errorMessage = null,
+                        isPushupChallenge = event.isPushupChallenge()
                     )
                 }
             } catch (e: CancellationException) {
@@ -213,7 +216,13 @@ class EventChallengeViewModel(
 
     fun loadLeaderboard() {
         viewModelScope.launch {
-            eventRepository.getEventLeaderboard(eventId).fold(
+            val event = _uiState.value.event
+            val leaderboardResult = if (event != null && event.isPushupChallenge()) {
+                eventRepository.getPushupLeaderboard(eventId)
+            } else {
+                eventRepository.getEventLeaderboard(eventId)
+            }
+            leaderboardResult.fold(
                 onSuccess = { entries ->
                     _uiState.update { it.copy(leaderboard = entries) }
                 },
@@ -277,6 +286,7 @@ fun EventChallengeScreen(
     eventId: String,
     onNavigateBack: () -> Unit = {},
     onNavigateToCheckin: (String) -> Unit = {},
+    onNavigateToPushupCounter: (String) -> Unit = {},
     onNavigateToProfile: (String) -> Unit = {},
     viewModel: EventChallengeViewModel = run {
         val context = LocalContext.current
@@ -433,7 +443,14 @@ fun EventChallengeScreen(
                         0 -> DetailsTab(
                             uiState = uiState,
                             countdownSeconds = countdownSeconds,
-                            onCheckin = { onNavigateToCheckin(eventId) },
+                            onCheckin = {
+                                val event = uiState.event
+                                if (event != null && event.isPushupChallenge()) {
+                                    onNavigateToPushupCounter(eventId)
+                                } else {
+                                    onNavigateToCheckin(eventId)
+                                }
+                            },
                             onJoin = { viewModel.joinEvent() }
                         )
                         1 -> LeaderboardTab(
@@ -499,10 +516,18 @@ private fun DetailsTab(
         // ── Check-in Button (if joined and active) ─────────────────────
         if (uiState.isJoined && event.isCurrentlyActive() && participant?.completed != true) {
             item {
-                CheckinButton(
-                    onClick = onCheckin,
-                    currentDayNumber = uiState.currentDayNumber
-                )
+                if (uiState.isPushupChallenge) {
+                    PushupCheckinButton(
+                        onClick = onCheckin,
+                        targetPushups = event.targetPushups,
+                        currentPushups = participant?.totalPushups ?: 0
+                    )
+                } else {
+                    CheckinButton(
+                        onClick = onCheckin,
+                        currentDayNumber = uiState.currentDayNumber
+                    )
+                }
             }
         }
 
@@ -666,7 +691,11 @@ private fun EventLeaderboardRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "\uD83D\uDD25 ${entry.participant.currentStreak} day streak",
+                    text = if (entry.participant.totalPushups > 0) {
+                        "\uD83D\uDCAA ${entry.participant.totalPushups} pushups"
+                    } else {
+                        "\uD83D\uDD25 ${entry.participant.currentStreak} day streak"
+                    },
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = AccentPrimary,
                         fontSize = 11.sp
@@ -674,9 +703,13 @@ private fun EventLeaderboardRow(
                 )
             }
 
-            // Approved days
+            // Score
             Text(
-                text = "${entry.participant.totalApprovedDays}d",
+                text = if (entry.participant.totalPushups > 0) {
+                    "${entry.participant.totalPushups}"
+                } else {
+                    "${entry.participant.totalApprovedDays}d"
+                },
                 style = TextStyle(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 14.sp,
@@ -1113,6 +1146,79 @@ private fun CheckinButton(
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp
         )
+    }
+}
+
+@Composable
+private fun PushupCheckinButton(
+    onClick: () -> Unit,
+    targetPushups: Int,
+    currentPushups: Int
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pushup_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.03f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pushup_pulse_scale"
+    )
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Pushup progress
+        if (targetPushups > 0) {
+            LinearProgressIndicator(
+                progress = { (currentPushups.toFloat() / targetPushups).coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp),
+                color = AccentPrimary,
+                trackColor = themeBgSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$currentPushups / $targetPushups pushups",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = AccentPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .scale(pulseScale)
+                .semantics {
+                    contentDescription = "Start pushup counting with AI"
+                    role = Role.Button
+                },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentPrimary,
+                contentColor = themeBgPrimary
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.FitnessCenter,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Do Pushups",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
     }
 }
 

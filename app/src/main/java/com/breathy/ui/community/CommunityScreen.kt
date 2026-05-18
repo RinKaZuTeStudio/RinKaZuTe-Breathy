@@ -193,6 +193,8 @@ fun CommunityScreen(
                         onStoryClick = onNavigateToStoryDetail,
                         onAvatarClick = onNavigateToProfile,
                         onLikeClick = viewModel::toggleLike,
+                        onDeleteStory = viewModel::deleteStory,
+                        currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -312,6 +314,8 @@ private fun StoryList(
     onStoryClick: (String) -> Unit,
     onAvatarClick: (String) -> Unit,
     onLikeClick: (String) -> Unit,
+    onDeleteStory: (String) -> Unit,
+    currentUserId: String?,
     modifier: Modifier = Modifier
 ) {
     // Detect when to load more
@@ -346,9 +350,11 @@ private fun StoryList(
                 StoryCard(
                     story = story,
                     isLiked = uiState.likedStoryIds.contains(story.id),
+                    isOwner = currentUserId != null && story.userId == currentUserId,
                     onLikeClick = { onLikeClick(story.id) },
                     onClick = { onStoryClick(story.id) },
-                    onAvatarClick = { onAvatarClick(story.userId) }
+                    onAvatarClick = { onAvatarClick(story.userId) },
+                    onDeleteClick = { onDeleteStory(story.id) }
                 )
             }
 
@@ -528,7 +534,8 @@ data class CommunityUiState(
     val hasMore: Boolean = true,
     val error: String? = null,
     val searchQuery: String = "",
-    val likedStoryIds: Set<String> = emptySet()
+    val likedStoryIds: Set<String> = emptySet(),
+    val isDeletingStory: Boolean = false
 )
 
 class CommunityViewModel(
@@ -741,6 +748,31 @@ class CommunityViewModel(
                     )
                 }
             }
+        }
+    }
+
+    fun deleteStory(storyId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isDeletingStory = true)
+
+            storyRepository.deleteStory(storyId)
+                .onSuccess {
+                    // Remove the story from both lists instantly
+                    allStories = allStories.filter { it.id != storyId }
+                    val updatedLikedIds = _uiState.value.likedStoryIds - storyId
+                    _uiState.value = _uiState.value.copy(
+                        stories = allStories,
+                        likedStoryIds = updatedLikedIds,
+                        isDeletingStory = false
+                    )
+                    Timber.d("Story deleted successfully: %s", storyId)
+                }
+                .onFailure { e ->
+                    if (e !is CancellationException) {
+                        Timber.e(e, "Failed to delete story: %s", storyId)
+                        _uiState.value = _uiState.value.copy(isDeletingStory = false)
+                    }
+                }
         }
     }
 }

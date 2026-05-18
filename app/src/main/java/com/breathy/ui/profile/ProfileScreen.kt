@@ -92,6 +92,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.breathy.ui.components.NetworkImage
+import com.breathy.ui.components.invalidateImageCache
 import com.breathy.BreathyApplication
 import com.breathy.data.models.Achievement
 import com.breathy.data.models.Subscription
@@ -205,6 +206,8 @@ fun ProfileScreen(
                         xp = uiState.user?.xp ?: 0,
                         level = uiState.user?.level ?: 1,
                         levelProgress = uiState.levelProgress,
+                        isPhotoUploading = uiState.isPhotoUploading,
+                        photoCacheBust = uiState.photoCacheBust,
                         onAvatarClick = { photoPickerLauncher.launch("image/*") },
                         onEditNickname = { showEditNicknameDialog = true },
                         onEditAge = { showEditAgeDialog = true }
@@ -528,6 +531,8 @@ private fun ProfileHeader(
     xp: Int,
     level: Int,
     levelProgress: Float,
+    isPhotoUploading: Boolean = false,
+    photoCacheBust: Long = 0L,
     onAvatarClick: () -> Unit,
     onEditNickname: () -> Unit,
     onEditAge: () -> Unit
@@ -577,16 +582,29 @@ private fun ProfileHeader(
                 shape = CircleShape,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                onClick = onAvatarClick
+                onClick = if (isPhotoUploading) { {} } else onAvatarClick
             ) {
-                if (!photoURL.isNullOrBlank()) {
+                if (isPhotoUploading) {
+                    // Show loading spinner while uploading
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            color = AccentPrimary,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                } else if (!photoURL.isNullOrBlank()) {
                     NetworkImage(
                         model = photoURL,
                         contentDescription = "Your avatar",
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        cacheBust = photoCacheBust
                     )
                 } else {
                     Box(
@@ -1467,6 +1485,8 @@ data class ProfileUiState(
     val themeMode: String = "SYSTEM",
     val privacyEnabled: Boolean = false,
     val isLoading: Boolean = true,
+    val isPhotoUploading: Boolean = false,
+    val photoCacheBust: Long = 0L,
     val errorMessage: String? = null
 )
 
@@ -1634,12 +1654,25 @@ class ProfileViewModel(
     fun updatePhoto(uri: Uri) {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
+            _uiState.update { it.copy(isPhotoUploading = true) }
             try {
                 userRepository.updatePhoto(userId, uri)
+                // Increment cacheBust to force NetworkImage to reload
+                _uiState.update { it.copy(
+                    isPhotoUploading = false,
+                    photoCacheBust = System.currentTimeMillis()
+                ) }
+                // Also invalidate the in-memory cache for the old URL
+                val currentUrl = _uiState.value.user?.photoURL
+                if (currentUrl != null) {
+                    invalidateImageCache(currentUrl)
+                }
                 Timber.i("Photo updated")
             } catch (e: CancellationException) {
+                _uiState.update { it.copy(isPhotoUploading = false) }
                 throw e
             } catch (e: Exception) {
+                _uiState.update { it.copy(isPhotoUploading = false) }
                 Timber.e(e, "Failed to update photo")
                 _uiState.update { it.copy(errorMessage = "Failed to update photo") }
             }

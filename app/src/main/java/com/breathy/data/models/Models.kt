@@ -552,7 +552,11 @@ data class Event(
     @PropertyName("prizes")
     val prizes: Map<String, String> = emptyMap(),
     @PropertyName("dailyRequired")
-    val dailyRequired: Int = 0
+    val dailyRequired: Int = 0,
+    @PropertyName("eventType")
+    val eventType: String = "default",
+    @PropertyName("targetPushups")
+    val targetPushups: Int = 0
 ){
     companion object {
         fun fromFirestoreMap(id: String, map: Map<String, Any?>): Event {
@@ -570,7 +574,9 @@ data class Event(
                 endDate = map["endDate"] as? Timestamp ?: Timestamp.now(),
                 active = map["active"] as? Boolean ?: false,
                 prizes = prizesMap,
-                dailyRequired = (map["dailyRequired"] as? Long)?.toInt() ?: 0
+                dailyRequired = (map["dailyRequired"] as? Long)?.toInt() ?: 0,
+                eventType = map["eventType"] as? String ?: "default",
+                targetPushups = (map["targetPushups"] as? Long)?.toInt() ?: 0
             )
         }
     }
@@ -583,6 +589,9 @@ data class Event(
         val end = endDate.toDate().time
         return now in start..end
     }
+
+    /** Check if event is a pushup challenge. */
+    fun isPushupChallenge(): Boolean = eventType == "pushup"
 
     /** Calculate total days in the event. */
     fun totalDays(): Int {
@@ -612,6 +621,8 @@ data class EventParticipant(
     val currentStreak: Int = 0,
     @PropertyName("totalApprovedDays")
     val totalApprovedDays: Int = 0,
+    @PropertyName("totalPushups")
+    val totalPushups: Int = 0,
     @PropertyName("completed")
     val completed: Boolean = false,
     @PropertyName("completionTimestamp")
@@ -634,6 +645,7 @@ data class EventParticipant(
                 eventId = map["eventId"] as? String ?: "",
                 currentStreak = (map["currentStreak"] as? Long)?.toInt() ?: 0,
                 totalApprovedDays = (map["totalApprovedDays"] as? Long)?.toInt() ?: 0,
+                totalPushups = (map["totalPushups"] as? Long)?.toInt() ?: 0,
                 completed = map["completed"] as? Boolean ?: false,
                 completionTimestamp = map["completionTimestamp"] as? Timestamp,
                 joinedAt = map["joinedAt"] as? Timestamp ?: Timestamp.now(),

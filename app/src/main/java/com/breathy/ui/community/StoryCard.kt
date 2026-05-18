@@ -19,8 +19,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -28,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -87,11 +90,14 @@ import com.breathy.ui.theme.themeTextDisabled
 fun StoryCard(
     story: Story,
     isLiked: Boolean,
+    isOwner: Boolean = false,
     onLikeClick: () -> Unit,
     onClick: () -> Unit,
     onAvatarClick: () -> Unit,
+    onDeleteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -112,11 +118,132 @@ fun StoryCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // ── Header: Avatar + Nickname + Days Badge ─────────────────────
-            StoryCardHeader(
-                story = story,
-                onAvatarClick = onAvatarClick
-            )
+            // ── Header: Avatar + Nickname + Days Badge + Delete ───────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Avatar
+                val photoUrl = story.photoURL?.takeIf { it.isNotBlank() }
+                if (photoUrl != null) {
+                    NetworkImage(
+                        model = photoUrl,
+                        contentDescription = "${story.nickname}'s avatar",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onAvatarClick)
+                            .semantics {
+                                contentDescription = "View ${story.nickname}'s profile"
+                                role = Role.Button
+                            },
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Fallback avatar with initial letter
+                    Surface(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onAvatarClick)
+                            .semantics {
+                                contentDescription = "View ${story.nickname}'s profile"
+                                role = Role.Button
+                            },
+                        shape = CircleShape,
+                        color = AccentPrimary.copy(alpha = 0.15f)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = story.nickname.take(1).uppercase(),
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    color = AccentPrimary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    // Nickname
+                    Text(
+                        text = story.nickname,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = themeTextPrimary
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Time ago
+                    Text(
+                        text = story.timeAgo(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = themeTextDisabled
+                    )
+                }
+
+                // Days smoke-free badge
+                DaysSmokeFreeBadge(days = story.daysSmokeFree)
+
+                // Delete button (only for story owners)
+                if (isOwner && onDeleteClick != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Delete story",
+                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // ── Delete Confirmation Dialog ────────────────────────────────────
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = {
+                        Text(
+                            text = "Delete Story",
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "Are you sure you want to delete this story? This action cannot be undone.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                                onDeleteClick()
+                            }
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

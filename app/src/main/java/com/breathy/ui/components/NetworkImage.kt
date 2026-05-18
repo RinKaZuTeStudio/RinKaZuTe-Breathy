@@ -35,6 +35,8 @@ import java.io.InputStream
  * - **LRU memory cache** (8 MB) — prevents re-fetching on recomposition.
  * - **Downsampling** — large images are scaled down to prevent OOM.
  * - **Firebase Storage** — gs:// URLs are resolved to download URLs automatically.
+ * - **Cache-busting** — Cloudinary URLs with the same path but updated content
+ *   are handled by appending a cache-bust timestamp when [cacheBust] changes.
  * - **Placeholder support** — renders nothing while loading; caller provides fallback.
  *
  * No external image-loading library required.
@@ -44,21 +46,34 @@ fun NetworkImage(
     model: Any?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Crop
+    contentScale: ContentScale = ContentScale.Crop,
+    cacheBust: Long = 0
 ) {
     val context = LocalContext.current
-    var bitmap by remember(model) { mutableStateOf<Bitmap?>(null) }
+    // Include cacheBust in the remember key so the image reloads when it changes
+    var bitmap by remember(model, cacheBust) { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(model) {
+    LaunchedEffect(model, cacheBust) {
         model ?: return@LaunchedEffect
         withContext(Dispatchers.IO) {
             try {
-                // Check cache first
+                // Build a cache key that includes the cacheBust token.
+                // This ensures that when a user uploads a new photo, the
+                // stale cached bitmap is bypassed even if the URL is the same
+                // (which happens with Cloudinary's deterministic public IDs).
                 val cacheKey = when (model) {
-                    is String -> "url:$model"
+                    is String -> "url:$model:$cacheBust"
                     is Uri -> "uri:$model"
                     else -> null
                 }
+
+                // Always evict the old cache entry for the base URL when cacheBust != 0
+                // This prevents stale entries from being served after a photo update
+                if (cacheBust != 0L && model is String) {
+                    val oldCacheKey = "url:$model:0"
+                    imageCache.remove(oldCacheKey)
+                }
+
                 if (cacheKey != null) {
                     val cached = imageCache[cacheKey]
                     if (cached != null && !cached.isRecycled) {
@@ -80,9 +95,20 @@ fun NetworkImage(
                     model
                 }
 
-                val loaded: Bitmap? = when (resolvedUrl) {
-                    is String -> loadFromUrl(resolvedUrl)
-                    is Uri -> loadFromUri(context.contentResolver.openInputStream(resolvedUrl))
+                // For Cloudinary URLs with cacheBust, append a timestamp parameter
+                // to bypass CDN caching. Cloudinary ignores unknown URL params.
+                val urlWithCacheBust = if (cacheBust != 0L && resolvedUrl is String &&
+                    resolvedUrl.contains("res.cloudinary.com")
+                ) {
+                    val separator = if ("?" in resolvedUrl) "&" else "?"
+                    "${resolvedUrl}${separator}_t=$cacheBust"
+                } else {
+                    resolvedUrl
+                }
+
+                val loaded: Bitmap? = when (urlWithCacheBust) {
+                    is String -> loadFromUrl(urlWithCacheBust)
+                    is Uri -> loadFromUri(context.contentResolver.openInputStream(urlWithCacheBust))
                     else -> null
                 }
 
@@ -121,6 +147,28 @@ fun NetworkImage(
     }
     // If bitmap is null (still loading or failed), nothing is rendered.
     // The calling code typically wraps this in a Card/Box with a fallback icon.
+}
+
+// ── Cache management utilities ─────────────────────────────────────────────
+
+/**
+ * Invalidate the cache entry for a given URL.
+ * Call this after a successful photo upload to ensure the old cached
+ * bitmap is not served on the next recomposition.
+ */
+fun invalidateImageCache(url: String) {
+    // Remove all cache entries for this URL regardless of cacheBust value
+    // Since we can't iterate LruCache keys efficiently, we remove the common ones
+    imageCache.remove("url:$url:0")
+    imageCache.remove("url:$url")
+}
+
+/**
+ * Clear the entire image memory cache.
+ * Use sparingly — only when a full refresh is needed.
+ */
+fun clearImageCache() {
+    imageCache.evictAll()
 }
 
 // ── Internal helpers ────────────────────────────────────────────────────────

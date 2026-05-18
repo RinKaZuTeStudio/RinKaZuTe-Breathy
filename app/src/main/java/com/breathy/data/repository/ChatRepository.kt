@@ -61,14 +61,29 @@ class ChatRepository(
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             val chatRef = firestore.collection(CHATS_COLLECTION).document(chatId)
-            val chatDoc = chatRef.get(Source.SERVER).await()
-            Unit
 
-            if (chatDoc.exists()) {
+            // Try DEFAULT first (allows cache fallback for offline support),
+            // then fall back to CACHE if server is unreachable.
+            val chatDoc = try {
+                chatRef.get(Source.DEFAULT).await()
+            } catch (e: Exception) {
+                Timber.w(e, "DEFAULT source failed for chat %s — trying CACHE", chatId)
+                try {
+                    chatRef.get(Source.CACHE).await()
+                } catch (cacheEx: Exception) {
+                    // Cache also failed — treat as non-existent so we create it
+                    null
+                }
+            }
+
+            if (chatDoc != null && chatDoc.exists()) {
                 return@withTimeoutOrNull Chat.fromFirestoreMap(chatId, chatDoc.data ?: emptyMap())
             }
 
-            // Create new chat document
+            // Chat document doesn't exist yet — create a new one.
+            // If the document was created by the other user in the meantime,
+            // Firestore's set() will overwrite, which is safe since the data
+            // is identical (deterministic ID guarantees same participants).
             val chatData = mapOf(
                 "participants" to listOf(uid, otherUserId).sorted(),
                 "lastMessage" to "",
@@ -100,7 +115,7 @@ class ChatRepository(
             val snapshot = firestore.collection(CHATS_COLLECTION)
                 .whereArrayContains("participants", currentUserId)
                 .orderBy("lastUpdated", Query.Direction.DESCENDING)
-                .get(Source.SERVER)
+                .get(Source.DEFAULT)
                 .await()
                 Unit
             snapshot.documents.mapNotNull { doc ->
@@ -171,18 +186,24 @@ class ChatRepository(
         val uid = currentUserId
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val unreadMessages = firestore.collection(CHATS_COLLECTION).document(chatId)
+            // Simplified query: only filter by "read == false" to avoid
+            // requiring a composite index. We filter senderId client-side.
+            val unreadSnapshot = firestore.collection(CHATS_COLLECTION).document(chatId)
                 .collection(MESSAGES_SUBCOLLECTION)
                 .whereEqualTo("read", false)
-                .whereNotEqualTo("senderId", uid)
-                .get(Source.SERVER)
+                .get(Source.DEFAULT)
                 .await()
                 Unit
 
-            if (unreadMessages.isEmpty) return@withTimeoutOrNull
+            // Filter out the current user's own messages client-side
+            val otherUserUnread = unreadSnapshot.documents.filter { doc ->
+                doc.getString("senderId") != uid
+            }
+
+            if (otherUserUnread.isEmpty()) return@withTimeoutOrNull
 
             val batch = firestore.batch()
-            for (doc in unreadMessages.documents) {
+            for (doc in otherUserUnread) {
                 batch.update(doc.reference, "read", true)
             }
             batch.commit().await()
@@ -234,7 +255,7 @@ class ChatRepository(
                 .collection(MESSAGES_SUBCOLLECTION)
                 .orderBy("timestamp", Query.Direction.ASCENDING)
                 .limitToLast(limit.toLong())
-                .get(Source.SERVER)
+                .get(Source.DEFAULT)
                 .await()
                 Unit
             snapshot.documents.mapNotNull { doc ->
@@ -249,24 +270,42 @@ class ChatRepository(
     //  Unread count
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /** Count unread messages from other users in a specific chat. */
+    suspend fun getUnreadCountForChat(chatId: String): Result<Int> = runCatching {
+        val uid = currentUserId
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val unread = firestore.collection(CHATS_COLLECTION).document(chatId)
+                .collection(MESSAGES_SUBCOLLECTION)
+                .whereEqualTo("read", false)
+                .get(Source.DEFAULT)
+                .await()
+            // Only count messages from other users
+            unread.documents.count { it.getString("senderId") != uid }
+        } ?: 0
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to get unread count for chat: %s", chatId)
+    }
+
     /** Count the total number of unread messages across all chats. */
     suspend fun getUnreadCount(): Result<Int> = runCatching {
+        val uid = currentUserId
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             val chats = firestore.collection(CHATS_COLLECTION)
-                .whereArrayContains("participants", currentUserId)
-                .get(Source.SERVER)
+                .whereArrayContains("participants", uid)
+                .get(Source.DEFAULT)
                 .await()
                 Unit
 
             var totalUnread = 0
             for (chatDoc in chats.documents) {
+                // Use simple query (no composite index needed), filter client-side
                 val unread = chatDoc.reference.collection(MESSAGES_SUBCOLLECTION)
                     .whereEqualTo("read", false)
-                    .whereNotEqualTo("senderId", currentUserId)
                     .get()
                     .await()
                     Unit
-                totalUnread += unread.size()
+                // Only count messages from other users
+                totalUnread += unread.documents.count { it.getString("senderId") != uid }
             }
             totalUnread
         } ?: throw IllegalStateException("Get unread count timed out after 30 seconds")
@@ -317,6 +356,15 @@ class ChatRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeMessages error for chat: %s", chatId)
+                    // Log the Firestore index creation URL if the error is due to
+                    // a missing composite index. Firestore includes this URL in the
+                    // error message, making it easy to create the index in the console.
+                    val errorMsg = error.message ?: ""
+                    if (errorMsg.contains("index")) {
+                        Timber.e("Firestore index required for observeMessages. " +
+                            "Check the Firebase Console for the auto-generated index creation URL. " +
+                            "Error: %s", errorMsg)
+                    }
                     // Don't close the flow on transient errors — emit empty list
                     // as fallback so the UI can still render.
                     trySend(emptyList())

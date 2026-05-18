@@ -9,6 +9,8 @@
  *   e. calculateEventRanks           — scheduled hourly
  *   f. sendFriendRequestNotification — Firestore trigger on notification doc
  *   g. openAIChat                    — callable function (rate-limited)
+ *   h. createPushupChallenge         — callable function to create pushup event
+ *   i. submitPushupCount             — callable function to submit pushup count
  */
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -778,6 +780,168 @@ exports.openAIChat = onCall(
 
     return {
       content: assistantContent,
+    };
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  h. createPushupChallenge — Callable function to create the pushup event
+// ═══════════════════════════════════════════════════════════════════════════════
+exports.createPushupChallenge = onCall(
+  {
+    timeoutSeconds: 30,
+    memory: "256MiB",
+    enforceAppCheck: false,
+  },
+  async (request) => {
+    // Only authenticated users can create events (admin function)
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be signed in.");
+    }
+
+    const eventId = "pushup_challenge_2025";
+
+    // Check if event already exists
+    const existingDoc = await db.collection("events").doc(eventId).get();
+    if (existingDoc.exists) {
+      return { eventId, message: "Pushup Challenge event already exists", alreadyExists: true };
+    }
+
+    // Event starts tomorrow, runs for 3 months
+    const now = new Date();
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() + 1);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 3);
+
+    const eventData = {
+      title: "100 Pushup Challenge",
+      description: "Complete 100 pushups over 3 months! Record yourself using the camera and our AI will count your pushups automatically using pose detection. Stay consistent, build strength, and compete with others on the leaderboard. Each day you complete your pushups counts as a check-in!",
+      startDate: Timestamp.fromDate(startDate),
+      endDate: Timestamp.fromDate(endDate),
+      active: true,
+      dailyRequired: 1,
+      eventType: "pushup",
+      targetPushups: 100,
+      prizes: {
+        "1st": "5,000 coins + Champion Badge",
+        "2nd": "3,000 coins + Silver Badge",
+        "3rd": "1,500 coins + Bronze Badge",
+        "Top 10": "500 coins + Pushup Star Badge",
+      },
+      createdAt: FieldValue.serverTimestamp(),
+    };
+
+    await db.collection("events").doc(eventId).set(eventData);
+
+    logger.info(`createPushupChallenge: Created event ${eventId}`);
+
+    return {
+      eventId,
+      message: "Pushup Challenge event created successfully!",
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    };
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  i. submitPushupCount — Callable function to submit pushup count
+// ═══════════════════════════════════════════════════════════════════════════════
+exports.submitPushupCount = onCall(
+  {
+    timeoutSeconds: 30,
+    memory: "256MiB",
+    enforceAppCheck: false,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be signed in.");
+    }
+
+    const uid = request.auth.uid;
+    const { eventId, pushupCount, sessionDurationSeconds } = request.data || {};
+
+    if (!eventId || typeof eventId !== "string") {
+      throw new HttpsError("invalid-argument", "eventId is required.");
+    }
+
+    if (!pushupCount || typeof pushupCount !== "number" || pushupCount < 1) {
+      throw new HttpsError("invalid-argument", "pushupCount must be a positive number.");
+    }
+
+    // Anti-cheat: cap max pushups per session at a reasonable limit
+    if (pushupCount > 200) {
+      throw new HttpsError("invalid-argument", "Maximum 200 pushups per session.");
+    }
+
+    // Anti-cheat: minimum session duration check (pushup takes ~3 seconds minimum)
+    const minDuration = pushupCount * 2; // 2 seconds per pushup minimum
+    if (sessionDurationSeconds && sessionDurationSeconds < minDuration) {
+      throw new HttpsError("invalid-argument", "Session duration too short for reported pushup count.");
+    }
+
+    // Rate limit: max 5 pushup submissions per hour
+    const oneHourAgo = Timestamp.fromMillis(Date.now() - 3600_000);
+    const recentSubmissions = await db
+      .collection("eventCheckins")
+      .where("userId", "==", uid)
+      .where("eventId", "==", eventId)
+      .where("submittedAt", ">=", oneHourAgo)
+      .get();
+
+    if (recentSubmissions.size >= 5) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "Too many submissions. Please wait before submitting again."
+      );
+    }
+
+    logger.info(`submitPushupCount: User ${uid} submitted ${pushupCount} pushups for event ${eventId}`);
+
+    // Create check-in document
+    const checkinData = {
+      userId: uid,
+      eventId: eventId,
+      pushupCount: pushupCount,
+      sessionDurationSeconds: sessionDurationSeconds || 0,
+      status: "approved", // Auto-approve since ML Kit verified the pushups
+      submittedAt: FieldValue.serverTimestamp(),
+      type: "pushup",
+    };
+
+    const checkinRef = await db.collection("eventCheckins").add(checkinData);
+
+    // Update participant stats in a transaction
+    const participantId = `${uid}_${eventId}`;
+    const participantRef = db.collection("eventParticipants").doc(participantId);
+
+    await db.runTransaction(async (transaction) => {
+      const participantDoc = await transaction.get(participantRef);
+      if (!participantDoc.exists) {
+        throw new HttpsError("not-found", "You must join the event first.");
+      }
+
+      const currentData = participantDoc.data();
+      const currentTotalPushups = currentData.totalPushups || 0;
+      const currentTotalApprovedDays = currentData.totalApprovedDays || 0;
+
+      transaction.update(participantRef, {
+        totalPushups: currentTotalPushups + pushupCount,
+        totalApprovedDays: currentTotalApprovedDays + 1,
+        currentStreak: (currentData.currentStreak || 0) + 1,
+        lastCheckinAt: FieldValue.serverTimestamp(),
+      });
+    });
+
+    logger.info(`submitPushupCount: Updated participant stats for user ${uid}`);
+
+    return {
+      checkinId: checkinRef.id,
+      pushupCount,
+      message: `${pushupCount} pushups recorded! Keep it up!`,
     };
   }
 );

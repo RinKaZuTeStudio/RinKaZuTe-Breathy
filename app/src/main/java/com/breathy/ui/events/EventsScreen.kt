@@ -122,7 +122,8 @@ data class EventsUiState(
     val isRefreshing: Boolean = false,
     val events: List<EventWithStatus> = emptyList(),
     val errorMessage: String? = null,
-    val joiningEventId: String? = null
+    val joiningEventId: String? = null,
+    val pushupEventCreated: Boolean = false
 )
 
 data class EventWithStatus(
@@ -240,6 +241,29 @@ class EventsViewModel(
             _uiState.update { it.copy(isRefreshing = false) }
         }
     }
+
+    fun ensurePushupChallengeExists() {
+        viewModelScope.launch {
+            // Check if pushup challenge already exists in the events list
+            val hasPushupEvent = _uiState.value.events.any {
+                it.event.isPushupChallenge()
+            }
+            if (!hasPushupEvent) {
+                eventRepository.createPushupChallengeEvent().fold(
+                    onSuccess = {
+                        _uiState.update { it.copy(pushupEventCreated = true) }
+                        // Reload events to include the new one
+                        loadEvents()
+                    },
+                    onFailure = { e ->
+                        if (e !is CancellationException) {
+                            Timber.e(e, "Failed to create pushup challenge event")
+                        }
+                    }
+                )
+            }
+        }
+    }
 }
 
 class EventsViewModelFactory(
@@ -284,6 +308,13 @@ fun EventsScreen(
     LaunchedEffect(Unit) {
         delay(100)
         contentVisible = true
+    }
+
+    // Ensure pushup challenge event exists
+    LaunchedEffect(uiState.events) {
+        if (!uiState.isLoading && uiState.events.isNotEmpty()) {
+            viewModel.ensurePushupChallengeExists()
+        }
     }
 
     DisposableEffect(Unit) {
@@ -376,6 +407,15 @@ fun EventsScreen(
                                     onJoin = { viewModel.joinEvent(eventWithStatus.event.id) },
                                     onClick = { onNavigateToEventDetail(eventWithStatus.event.id) }
                                 )
+                            }
+
+                            // Pushup challenge creation card if not found
+                            if (!uiState.events.any { it.event.isPushupChallenge() } && !uiState.isLoading) {
+                                item {
+                                    CreatePushupChallengeCard(
+                                        onCreate = { viewModel.ensurePushupChallengeExists() }
+                                    )
+                                }
                             }
                         }
                     }
@@ -748,6 +788,71 @@ private fun EventsErrorState(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                     color = themeBgPrimary,
                     fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Create Pushup Challenge Card
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun CreatePushupChallengeCard(
+    onCreate: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "Create 100 Pushup Challenge event"
+                role = Role.Button
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = AccentPrimary.copy(alpha = 0.06f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, AccentPrimary.copy(alpha = 0.3f)),
+        onClick = onCreate
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "💪", fontSize = 36.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "100 Pushup Challenge",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = themeTextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "3-month challenge with AI pushup counting",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = themeTextSecondary
+                ),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = AccentPrimary),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Text(
+                    text = "Create Event",
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = themeBgPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
                 )
             }
         }

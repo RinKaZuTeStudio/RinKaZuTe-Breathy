@@ -19,9 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Reply
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +36,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -113,11 +116,22 @@ fun StoryDetailScreen(
     )
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val currentUserId = try {
+        com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+    } catch (_: Exception) { null }
 
     DisposableEffect(viewModel) {
         onDispose {
             viewModel.cleanup()
             Timber.d("StoryDetailScreen disposed")
+        }
+    }
+
+    // Handle post-deletion navigation
+    LaunchedEffect(uiState.isDeleted) {
+        if (uiState.isDeleted) {
+            onNavigateBack()
         }
     }
 
@@ -146,6 +160,25 @@ fun StoryDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    // Delete button (only for story owners)
+                    if (uiState.story != null && currentUserId != null &&
+                        uiState.story!!.userId == currentUserId) {
+                        IconButton(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Delete story"
+                                role = Role.Button
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.54f)
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground
@@ -154,6 +187,41 @@ fun StoryDetailScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
+        // ── Delete Confirmation Dialog ──────────────────────────────────────
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = {
+                    Text(
+                        text = "Delete Story",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Are you sure you want to delete this story? This action cannot be undone.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteDialog = false
+                            viewModel.deleteStory()
+                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        }
         if (uiState.isLoading && uiState.story == null) {
             // Full-screen loading
             Box(
@@ -663,7 +731,8 @@ data class StoryDetailUiState(
     val replyingTo: Reply? = null,
     val isSendingReply: Boolean = false,
     val error: String? = null,
-    val hasMoreReplies: Boolean = true
+    val hasMoreReplies: Boolean = true,
+    val isDeleted: Boolean = false
 )
 
 class StoryDetailViewModel(
@@ -880,6 +949,21 @@ class StoryDetailViewModel(
         }
 
         return result
+    }
+
+    fun deleteStory() {
+        viewModelScope.launch {
+            storyRepository.deleteStory(storyId)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(isDeleted = true)
+                    Timber.d("Story deleted successfully: %s", storyId)
+                }
+                .onFailure { e ->
+                    if (e !is CancellationException) {
+                        Timber.e(e, "Failed to delete story: %s", storyId)
+                    }
+                }
+        }
     }
 
     fun cleanup() {

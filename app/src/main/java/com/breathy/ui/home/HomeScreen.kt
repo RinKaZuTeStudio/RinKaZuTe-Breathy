@@ -239,7 +239,8 @@ fun HomeScreen(
                         nickname = uiState.nickname,
                         photoURL = uiState.photoURL,
                         onAvatarClick = onNavigateToProfile,
-                        onNotificationClick = onNavigateToNotifications
+                        onNotificationClick = onNavigateToNotifications,
+                        onAICoachClick = onNavigateToAICoach
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -495,7 +496,8 @@ private fun TopBar(
     nickname: String,
     photoURL: String?,
     onAvatarClick: () -> Unit,
-    onNotificationClick: () -> Unit
+    onNotificationClick: () -> Unit,
+    onAICoachClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -560,22 +562,46 @@ private fun TopBar(
             }
         }
 
-        // Notification bell
-        Card(
-            modifier = Modifier.size(40.dp),
-            shape = CircleShape,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            onClick = onNotificationClick
+        // AI Coach + Notification icons
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+            // AI Coach button
+            Card(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.15f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                onClick = onAICoachClick
             ) {
-                Text(
-                    text = "🔔",
-                    fontSize = 18.sp
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🤖",
+                        fontSize = 18.sp
+                    )
+                }
+            }
+
+            // Notification bell
+            Card(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                onClick = onNotificationClick
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🔔",
+                        fontSize = 18.sp
+                    )
+                }
             }
         }
     }

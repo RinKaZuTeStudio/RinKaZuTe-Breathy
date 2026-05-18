@@ -58,6 +58,7 @@ import com.breathy.ui.events.AdminReviewScreen
 import com.breathy.ui.events.EventChallengeScreen
 import com.breathy.ui.events.EventCheckinScreen
 import com.breathy.ui.events.EventsScreen
+import com.breathy.ui.events.PushupCounterScreen
 import com.breathy.ui.friends.ChatScreen
 import com.breathy.ui.friends.FriendsScreen
 import com.breathy.ui.home.HomeScreen
@@ -95,6 +96,7 @@ object BreathyRoutes {
     const val CHAT = "chat/{otherUserId}"
     const val EVENT_CHALLENGE = "eventChallenge/{eventId}"
     const val EVENT_CHECKIN = "eventCheckin/{eventId}"
+    const val PUSHUP_COUNTER = "pushupCounter/{eventId}"
     const val ADMIN_REVIEW = "adminReview"
     const val AI_COACH = "aiCoach"
     const val ACHIEVEMENTS = "achievements"
@@ -108,6 +110,7 @@ object BreathyRoutes {
     fun chat(otherUserId: String): String = "chat/$otherUserId"
     fun eventChallenge(eventId: String): String = "eventChallenge/$eventId"
     fun eventCheckin(eventId: String): String = "eventCheckin/$eventId"
+    fun pushupCounter(eventId: String): String = "pushupCounter/$eventId"
 
     fun baseRoute(route: String?): String? {
         if (route == null) return null
@@ -141,6 +144,7 @@ private val noBottomBarRoutes = setOf(
     BreathyRoutes.POST_STORY,
     BreathyRoutes.CHAT,
     BreathyRoutes.EVENT_CHECKIN,
+    BreathyRoutes.PUSHUP_COUNTER,
     BreathyRoutes.ADMIN_REVIEW,
     BreathyRoutes.AI_COACH,
     BreathyRoutes.SUBSCRIPTION,
@@ -444,7 +448,10 @@ fun BreathyNavHost(
                     ?: return@composable
                 EventChallengeScreen(
                     eventId = eventId,
-                    onNavigateBack = { navigateBack() }
+                    onNavigateBack = { navigateBack() },
+                    onNavigateToPushupCounter = { eId ->
+                        navigateToWithAd(BreathyRoutes.pushupCounter(eId))
+                    }
                 )
             }
 
@@ -460,6 +467,22 @@ fun BreathyNavHost(
                 EventCheckinScreen(
                     eventId = eventId,
                     onNavigateBack = { navigateBack() }
+                )
+            }
+
+            // ── Pushup Counter ──────────────────────────────────────
+            composable(
+                route = BreathyRoutes.PUSHUP_COUNTER,
+                arguments = listOf(
+                    navArgument("eventId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val eventId = backStackEntry.arguments?.getString("eventId")
+                    ?: return@composable
+                PushupCounterScreen(
+                    eventId = eventId,
+                    onNavigateBack = { navigateBack() },
+                    onSubmitComplete = { navigateBack() }
                 )
             }
 

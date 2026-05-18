@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
@@ -29,7 +30,8 @@ import timber.log.Timber
  */
 class StoryRepository(
     private val firestore: FirebaseFirestore,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val firebaseStorage: FirebaseStorage? = null
 ) {
 
     companion object {
@@ -190,6 +192,7 @@ class StoryRepository(
     /**
      * Delete a story and all its replies.
      * Only the story author can delete their own story.
+     * Also deletes images from Firebase Storage if the story has a photoURL.
      */
     suspend fun deleteStory(storyId: String): Result<Unit> = runCatching {
         val uid = currentUserId ?: throw IllegalStateException("Not authenticated")
@@ -207,6 +210,21 @@ class StoryRepository(
             val storyUserId = storyDoc.getString("userId")
             if (storyUserId != uid) {
                 throw SecurityException("You can only delete your own stories")
+            }
+
+            // Delete images from Firebase Storage if photoURL is present
+            val photoURL = storyDoc.getString("photoURL")
+            if (!photoURL.isNullOrBlank() && firebaseStorage != null) {
+                try {
+                    // Extract storage path from the download URL
+                    // Firebase Storage URLs contain the path after /o/
+                    val storageRef = firebaseStorage.getReferenceFromUrl(photoURL)
+                    storageRef.delete().await()
+                    Timber.d("Deleted story image from storage: %s", photoURL)
+                } catch (e: Exception) {
+                    // Image deletion is best-effort — don't fail the whole operation
+                    Timber.w(e, "Failed to delete story image from storage: %s", photoURL)
+                }
             }
 
             // Delete the story document and all replies subcollection

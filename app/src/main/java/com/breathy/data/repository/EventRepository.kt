@@ -41,7 +41,8 @@ import timber.log.Timber
 class EventRepository(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
-    private val cloudinaryUploader: CloudinaryUploader
+    private val cloudinaryUploader: CloudinaryUploader,
+    private val functions: com.google.firebase.functions.FirebaseFunctions? = null
 ) {
 
     companion object {
@@ -398,6 +399,153 @@ class EventRepository(
         val publicProfile: PublicProfile?,
         val rank: Int
     )
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  Pushup Challenge
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /** Submit pushup count via Cloud Function. */
+    suspend fun submitPushupCount(
+        eventId: String,
+        pushupCount: Int,
+        sessionDurationSeconds: Int
+    ): Result<Int> = runCatching {
+        val uid = currentUserId
+
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            // Try Cloud Function first
+            val result = try {
+                functions
+                    ?.getHttpsCallable("submitPushupCount")
+                    ?.call(mapOf(
+                        "eventId" to eventId,
+                        "pushupCount" to pushupCount,
+                        "sessionDurationSeconds" to sessionDurationSeconds
+                    ))
+                    ?.await()
+            } catch (e: Exception) {
+                Timber.w(e, "Cloud Function submitPushupCount failed, using local fallback")
+                null
+            }
+
+            // If cloud function succeeded, return the count
+            if (result != null) {
+                return@withTimeoutOrNull pushupCount
+            }
+
+            // Fallback: write directly to Firestore
+            val participantId = EventParticipant.participantId(uid, eventId)
+            val participantRef = firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
+                .document(participantId)
+
+            firestore.runTransaction { transaction ->
+                val participantDoc = transaction.get(participantRef)
+                if (!participantDoc.exists()) {
+                    throw IllegalStateException("You must join the event first.")
+                }
+
+                val currentData = participantDoc.data ?: emptyMap<String, Any>()
+                val currentTotalPushups = (currentData["totalPushups"] as? Long)?.toInt() ?: 0
+                val currentTotalApprovedDays = (currentData["totalApprovedDays"] as? Long)?.toInt() ?: 0
+                val currentStreak = (currentData["currentStreak"] as? Long)?.toInt() ?: 0
+
+                transaction.update(participantRef, mapOf(
+                    "totalPushups" to (currentTotalPushups + pushupCount),
+                    "totalApprovedDays" to (currentTotalApprovedDays + 1),
+                    "currentStreak" to (currentStreak + 1),
+                    "lastCheckinAt" to FieldValue.serverTimestamp()
+                ))
+            }.await()
+            Unit
+
+            // Also create checkin doc
+            val checkinData = mapOf(
+                "userId" to uid,
+                "eventId" to eventId,
+                "pushupCount" to pushupCount,
+                "sessionDurationSeconds" to sessionDurationSeconds,
+                "status" to "approved",
+                "submittedAt" to FieldValue.serverTimestamp(),
+                "type" to "pushup"
+            )
+            firestore.collection(EVENT_CHECKINS_COLLECTION).add(checkinData).await()
+            Unit
+
+            pushupCount
+        } ?: throw IllegalStateException("Submit pushup count timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to submit pushup count")
+    }
+
+    /** Create the pushup challenge event via Cloud Function. */
+    suspend fun createPushupChallengeEvent(): Result<String> = runCatching {
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val result = functions
+                ?.getHttpsCallable("createPushupChallenge")
+                ?.call(emptyMap<String, Any>())
+                ?.await()
+                ?: throw IllegalStateException("Firebase Functions not available")
+
+            val data = result.getData() as? Map<*, *> ?: emptyMap<Any, Any?>()
+            data["eventId"] as? String ?: "pushup_challenge_2025"
+        } ?: throw IllegalStateException("Create pushup challenge timed out")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to create pushup challenge event")
+    }
+
+    /** Get pushup-specific leaderboard sorted by totalPushups descending. */
+    suspend fun getPushupLeaderboard(
+        eventId: String,
+        limit: Int = LEADERBOARD_LIMIT.toInt()
+    ): Result<List<EventLeaderboardEntry>> = runCatching {
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val snapshot = firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
+                .whereEqualTo("eventId", eventId)
+                .orderBy("totalPushups", Query.Direction.DESCENDING)
+                .limit(limit.toLong())
+                .get(Source.SERVER)
+                .await()
+                Unit
+
+            val participants = snapshot.documents.mapNotNull { doc ->
+                doc.data?.let { EventParticipant.fromFirestoreMap(doc.id, it) }
+            }
+
+            // Fetch public profiles concurrently
+            val entries = coroutineScope {
+                participants.mapIndexed { index, participant ->
+                    async {
+                        try {
+                            val profileDoc = firestore.collection(PUBLIC_PROFILES_COLLECTION)
+                                .document(participant.userId)
+                                .get()
+                                .await()
+                                Unit
+                            val profile = if (profileDoc.exists()) {
+                                PublicProfile.fromFirestoreMap(participant.userId, profileDoc.data ?: emptyMap())
+                            } else null
+
+                            EventLeaderboardEntry(
+                                participant = participant,
+                                publicProfile = profile,
+                                rank = index + 1
+                            )
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to fetch profile for pushup leaderboard: %s", participant.userId)
+                            EventLeaderboardEntry(
+                                participant = participant,
+                                publicProfile = null,
+                                rank = index + 1
+                            )
+                        }
+                    }
+                }.awaitAll()
+            }
+            entries
+        } ?: throw IllegalStateException("Get pushup leaderboard timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to get pushup leaderboard: %s", eventId)
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  Real-time observers
