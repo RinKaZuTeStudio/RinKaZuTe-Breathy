@@ -560,6 +560,37 @@ class UserRepository(
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    //  Nickname uniqueness check
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Check if a nickname is available (not taken by another user).
+     * Queries the publicProfiles collection for an exact nickname match.
+     * @param nickname The nickname to check.
+     * @param excludeUserId Optional user ID to exclude (for when editing own nickname).
+     * @return true if the nickname is available, false if already taken.
+     */
+    suspend fun isNicknameAvailable(nickname: String, excludeUserId: String? = null): Boolean {
+        return try {
+            withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+                val snapshot = firestore.collection(PUBLIC_PROFILES_COLLECTION)
+                    .whereEqualTo("nickname", nickname)
+                    .limit(2)
+                    .get()
+                    .await()
+                // If excludeUserId is provided, filter out that user's own document
+                val otherUsers = snapshot.documents.filter { doc ->
+                    doc.id != excludeUserId
+                }
+                otherUsers.isEmpty()
+            } ?: true // On timeout, allow the nickname (best-effort)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to check nickname availability for: %s", nickname)
+            true // On error, allow the nickname (best-effort)
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     //  Search users
     // ═══════════════════════════════════════════════════════════════════════════
 

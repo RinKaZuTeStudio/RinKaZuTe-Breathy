@@ -259,7 +259,7 @@ fun BreathyNavHost(
             if (showBottomBar) {
                 BreathyBottomBar(
                     currentDestination = currentDestination,
-                    onNavigate = { route -> navigateTo(route) }
+                    onNavigate = { route -> navigateToWithAd(route) }
                 )
             }
         }
@@ -307,8 +307,8 @@ fun BreathyNavHost(
             // ── Home ────────────────────────────────────────────────────
             composable(BreathyRoutes.HOME) {
                 HomeScreen(
-                    onNavigateToProfile = { navigateTo(BreathyRoutes.PROFILE) },
-                    onNavigateToAICoach = { navigateTo(BreathyRoutes.AI_COACH) }
+                    onNavigateToProfile = { navigateToWithAd(BreathyRoutes.PROFILE) },
+                    onNavigateToAICoach = { navigateToWithAd(BreathyRoutes.AI_COACH) }
                 )
             }
 
@@ -318,11 +318,11 @@ fun BreathyNavHost(
                     onNavigateToStoryDetail = { storyId ->
                         navigateToWithAd(BreathyRoutes.storyDetail(storyId))
                     },
-                    onNavigateToPostStory = { navigateTo(BreathyRoutes.POST_STORY) },
+                    onNavigateToPostStory = { navigateToWithAd(BreathyRoutes.POST_STORY) },
                     onNavigateToProfile = { userId ->
                         navigateToWithAd(BreathyRoutes.publicProfile(userId))
                     },
-                    onNavigateToFriends = { navController.navigate(BreathyRoutes.FRIENDS) }
+                    onNavigateToFriends = { navigateToWithAd(BreathyRoutes.FRIENDS) }
                 )
             }
 
@@ -369,7 +369,7 @@ fun BreathyNavHost(
                     userId = userId,
                     onNavigateBack = { navigateBack() },
                     onNavigateToStoryDetail = { sId ->
-                        navController.navigate(BreathyRoutes.storyDetail(sId))
+                        navigateToWithAd(BreathyRoutes.storyDetail(sId))
                     },
                     onNavigateToChat = { chatId ->
                         navigateToWithAd(BreathyRoutes.chat(chatId))
@@ -469,10 +469,10 @@ fun BreathyNavHost(
             // ── Profile ─────────────────────────────────────────────────
             composable(BreathyRoutes.PROFILE) {
                 ProfileScreen(
-                    onNavigateToAchievements = { navigateTo(BreathyRoutes.ACHIEVEMENTS) },
-                    onNavigateToSubscription = { navigateTo(BreathyRoutes.SUBSCRIPTION) },
-                    onNavigateToAICoach = { navigateTo(BreathyRoutes.AI_COACH) },
-                    onNavigateToFriends = { navController.navigate(BreathyRoutes.FRIENDS) },
+                    onNavigateToAchievements = { navigateToWithAd(BreathyRoutes.ACHIEVEMENTS) },
+                    onNavigateToSubscription = { navigateToWithAd(BreathyRoutes.SUBSCRIPTION) },
+                    onNavigateToAICoach = { navigateToWithAd(BreathyRoutes.AI_COACH) },
+                    onNavigateToFriends = { navigateToWithAd(BreathyRoutes.FRIENDS) },
                     onSignOut = { signOutAndNavigateToAuth() }
                 )
             }

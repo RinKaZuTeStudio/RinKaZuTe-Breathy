@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.Canvas
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -583,7 +584,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Breathe Free",
+                text = "Breathy for your Health",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -766,18 +767,62 @@ private fun BreathyLogo() {
                 )
         )
 
-        // Breathing lung/air icon
-        Icon(
-            imageVector = Icons.Default.Air,
-            contentDescription = "Breathy app logo — breathing air icon",
-            tint = AccentPrimary,
+        // Breathing lung icon — drawn with Canvas
+        Canvas(
             modifier = Modifier
                 .size(64.dp)
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
                 }
-        )
+        ) {
+            val width = size.width
+            val height = size.height
+            val lungColor = AccentPrimary
+
+            // Trachea (windpipe) — center vertical line
+            drawLine(
+                color = lungColor,
+                start = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.05f),
+                end = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.4f),
+                strokeWidth = 4.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+
+            // Left bronchus — branch to left lung
+            drawLine(
+                color = lungColor,
+                start = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.35f),
+                end = androidx.compose.ui.geometry.Offset(width * 0.3f, height * 0.5f),
+                strokeWidth = 3.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+
+            // Right bronchus — branch to right lung
+            drawLine(
+                color = lungColor,
+                start = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.35f),
+                end = androidx.compose.ui.geometry.Offset(width * 0.7f, height * 0.5f),
+                strokeWidth = 3.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+
+            // Left lung shape
+            drawOval(
+                color = lungColor,
+                topLeft = androidx.compose.ui.geometry.Offset(width * 0.05f, height * 0.4f),
+                size = androidx.compose.ui.geometry.Size(width * 0.4f, height * 0.55f),
+                alpha = 0.7f
+            )
+
+            // Right lung shape
+            drawOval(
+                color = lungColor,
+                topLeft = androidx.compose.ui.geometry.Offset(width * 0.55f, height * 0.4f),
+                size = androidx.compose.ui.geometry.Size(width * 0.4f, height * 0.55f),
+                alpha = 0.7f
+            )
+        }
     }
 }
 

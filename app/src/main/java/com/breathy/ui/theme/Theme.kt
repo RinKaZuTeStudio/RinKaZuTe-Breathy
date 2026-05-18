@@ -1,9 +1,11 @@
 package com.breathy.ui.theme
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
@@ -113,76 +115,128 @@ val LocalBreathyTypography = staticCompositionLocalOf { BreathyTypography }
 val LocalBreathyComponents = staticCompositionLocalOf { BreathyComponents }
 val LocalBreathySpacing = staticCompositionLocalOf { BreathySpacing }
 
+// ── Theme preference ───────────────────────────────────────────────────────
+
+enum class ThemeMode {
+    SYSTEM,   // Follow system setting
+    LIGHT,    // Always light
+    DARK      // Always dark
+}
+
+val LocalThemeMode = staticCompositionLocalOf { ThemeMode.SYSTEM }
+
 // ── Material 3 Dark Color Scheme ───────────────────────────────────────────
 
 private val BreathyDarkColorScheme = darkColorScheme(
-    // Primary — neon green for main interactive elements
     primary = AccentPrimary,
     onPrimary = TextInverse,
     primaryContainer = AccentPrimary.copy(alpha = 0.15f),
     onPrimaryContainer = AccentPrimary,
 
-    // Secondary — neon red/coral for secondary actions
     secondary = AccentSecondary,
     onSecondary = TextInverse,
     secondaryContainer = AccentSecondary.copy(alpha = 0.15f),
     onSecondaryContainer = AccentSecondary,
 
-    // Tertiary — purple for premium/achievement contexts
     tertiary = AccentPurple,
     onTertiary = TextInverse,
     tertiaryContainer = AccentPurple.copy(alpha = 0.15f),
     onTertiaryContainer = AccentPurple,
 
-    // Background — deepest layer
     background = BgPrimary,
     onBackground = TextPrimary,
 
-    // Surface — card/sheet layer
     surface = BgSurface,
     onSurface = TextPrimary,
 
-    // Surface variant — elevated sub-surfaces
     surfaceVariant = BgSurfaceVariant,
     onSurfaceVariant = TextSecondary,
 
-    // Error states
     error = SemanticError,
     onError = TextPrimary,
     errorContainer = SemanticError.copy(alpha = 0.15f),
     onErrorContainer = SemanticError,
 
-    // Outlines and dividers
     outline = OutlineColor,
     outlineVariant = OutlineVariantColor,
 
-    // Inverse (for rare light-on-dark overrides)
     inverseSurface = TextPrimary,
     inverseOnSurface = BgPrimary,
     inversePrimary = AccentPrimaryPressed,
 
-    // Surface containers (M3)
     surfaceContainerLowest = BgPrimary,
     surfaceContainerLow = BgSurface,
     surfaceContainer = BgSurfaceVariant,
     surfaceContainerHigh = BgSurfaceElevated,
     surfaceContainerHighest = BgSurfaceElevated,
 
-    // Scrim for modals
     scrim = ScrimColor
+)
+
+// ── Material 3 Light Color Scheme ──────────────────────────────────────────
+
+private val BreathyLightColorScheme = lightColorScheme(
+    primary = LightAccentPrimary,
+    onPrimary = LightTextInverse,
+    primaryContainer = LightAccentPrimary.copy(alpha = 0.12f),
+    onPrimaryContainer = LightAccentPrimary,
+
+    secondary = AccentSecondary,
+    onSecondary = LightTextInverse,
+    secondaryContainer = AccentSecondary.copy(alpha = 0.12f),
+    onSecondaryContainer = AccentSecondary,
+
+    tertiary = AccentPurple,
+    onTertiary = LightTextInverse,
+    tertiaryContainer = AccentPurple.copy(alpha = 0.12f),
+    onTertiaryContainer = AccentPurple,
+
+    background = LightBgPrimary,
+    onBackground = LightTextPrimary,
+
+    surface = LightBgSurface,
+    onSurface = LightTextPrimary,
+
+    surfaceVariant = LightBgSurfaceVariant,
+    onSurfaceVariant = LightTextSecondary,
+
+    error = SemanticError,
+    onError = LightTextInverse,
+    errorContainer = SemanticError.copy(alpha = 0.12f),
+    onErrorContainer = SemanticError,
+
+    outline = LightOutlineColor,
+    outlineVariant = LightOutlineVariantColor,
+
+    inverseSurface = LightTextPrimary,
+    inverseOnSurface = LightBgPrimary,
+    inversePrimary = AccentPrimary,
+
+    surfaceContainerLowest = LightBgPrimary,
+    surfaceContainerLow = LightBgSurface,
+    surfaceContainer = LightBgSurfaceVariant,
+    surfaceContainerHigh = LightBgSurfaceElevated,
+    surfaceContainerHighest = LightBgSurfaceElevated,
+
+    scrim = LightScrimColor
 )
 
 // ── Theme Composable ───────────────────────────────────────────────────────
 
 @Composable
 fun BreathyTheme(
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
-    // Breathy is dark-mode only; always use the dark color scheme
-    val colorScheme = BreathyDarkColorScheme
+    val useDarkTheme = when (themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
+    val colorScheme = if (useDarkTheme) BreathyDarkColorScheme else BreathyLightColorScheme
 
     // Merge our custom typography with Material 3's typography
-    // (Type definitions come from Type.kt)
     val materialTypography = androidx.compose.material3.Typography(
         headlineLarge = BreathyTypography.headlineLarge,
         headlineMedium = BreathyTypography.headlineMedium,
@@ -210,7 +264,8 @@ fun BreathyTheme(
     CompositionLocalProvider(
         LocalBreathyTypography provides BreathyTypography,
         LocalBreathyComponents provides BreathyComponents,
-        LocalBreathySpacing provides BreathySpacing
+        LocalBreathySpacing provides BreathySpacing,
+        LocalThemeMode provides themeMode
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -232,4 +287,7 @@ object BreathyTheme {
 
     val spacing: BreathySpacing
         @Composable @ReadOnlyComposable get() = LocalBreathySpacing.current
+
+    val themeMode: ThemeMode
+        @Composable @ReadOnlyComposable get() = LocalThemeMode.current
 }

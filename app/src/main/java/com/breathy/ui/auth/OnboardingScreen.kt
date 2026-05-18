@@ -171,7 +171,8 @@ data class OnboardingUiState(
 class OnboardingViewModel(
     private val firestore: FirebaseFirestore,
     private val firebaseAuth: FirebaseAuth,
-    private val cloudinaryUploader: com.breathy.utils.CloudinaryUploader
+    private val cloudinaryUploader: com.breathy.utils.CloudinaryUploader,
+    private val userRepository: com.breathy.data.repository.UserRepository
 ) : ViewModel() {
 
     companion object {
@@ -309,7 +310,20 @@ class OnboardingViewModel(
             return
         }
 
+        // Check nickname uniqueness before saving
         _uiState.update { it.copy(isLoading = true, errorMessage = null, nicknameError = null) }
+
+        val isAvailable = userRepository.isNicknameAvailable(state.nickname)
+        if (!isAvailable) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    nicknameError = "This nickname is already taken.",
+                    errorMessage = "Please choose a different nickname."
+                )
+            }
+            return
+        }
 
         // ── Safety-net: guarantee navigation even if the coroutine hangs ──────
         // This prevents the user from being stuck on loading forever.
@@ -503,14 +517,15 @@ class OnboardingViewModel(
 class OnboardingViewModelFactory(
     private val firestore: FirebaseFirestore,
     private val firebaseAuth: FirebaseAuth,
-    private val cloudinaryUploader: com.breathy.utils.CloudinaryUploader
+    private val cloudinaryUploader: com.breathy.utils.CloudinaryUploader,
+    private val userRepository: com.breathy.data.repository.UserRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(OnboardingViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
-        return OnboardingViewModel(firestore, firebaseAuth, cloudinaryUploader) as T
+        return OnboardingViewModel(firestore, firebaseAuth, cloudinaryUploader, userRepository) as T
     }
 }
 
@@ -571,7 +586,7 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = run {
         val context = LocalContext.current
         val appModule = (context.applicationContext as BreathyApplication).appModule
-        viewModel(factory = OnboardingViewModelFactory(appModule.firestore, appModule.firebaseAuth, appModule.cloudinaryUploader))
+        viewModel(factory = OnboardingViewModelFactory(appModule.firestore, appModule.firebaseAuth, appModule.cloudinaryUploader, appModule.userRepository))
     }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

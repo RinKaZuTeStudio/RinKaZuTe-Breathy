@@ -120,3 +120,41 @@ val OverlayDark = Color(0xCC0D1117)
 
 /** Transparent color for no-fill cases. */
 val Transparent = Color(0x00000000)
+
+// ── Light Mode Colors ──────────────────────────────────────────────────────────
+
+/** Full-screen background, behind all surfaces (light mode). */
+val LightBgPrimary = Color(0xFFFFFFFF)
+
+/** Card backgrounds, bottom sheets, dialog surfaces (light mode). */
+val LightBgSurface = Color(0xFFF5F5F5)
+
+/** Elevated sub-surfaces (light mode). */
+val LightBgSurfaceVariant = Color(0xFFEEEEEE)
+
+/** Highest elevation surface (light mode). */
+val LightBgSurfaceElevated = Color(0xFFE0E0E0)
+
+/** Headlines, body text (light mode). */
+val LightTextPrimary = Color(0xFF1A1A1A)
+
+/** Subtitles, helper text (light mode). */
+val LightTextSecondary = Color(0xFF666666)
+
+/** Disabled states (light mode). */
+val LightTextDisabled = Color(0xFF9E9E9E)
+
+/** Inverse text — for use on dark/accent backgrounds (light mode). */
+val LightTextInverse = Color(0xFFFFFFFF)
+
+/** Primary accent for light mode — slightly darker green for contrast. */
+val LightAccentPrimary = Color(0xFF00C853)
+
+/** Card outlines (light mode). */
+val LightOutlineColor = Color(0xFFE0E0E0)
+
+/** Subtle dividers (light mode). */
+val LightOutlineVariantColor = Color(0xFFEEEEEE)
+
+/** Modal scrim (light mode). */
+val LightScrimColor = Color(0x99FFFFFF)

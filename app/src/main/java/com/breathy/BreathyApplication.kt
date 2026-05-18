@@ -44,6 +44,7 @@ class BreathyApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
 
         // ── Global Crash Safety Net ────────────────────────────────────────────
         // Catch any uncaught exception on the main thread so the app doesn't
@@ -159,6 +160,10 @@ class BreathyApplication : Application() {
     }
 
     companion object {
+        /** Global reference to the application context for utility access. */
+        lateinit var instance: BreathyApplication
+            private set
+
         /** 100 MB cache size for Firestore offline persistence. */
         private const val FIRESTORE_CACHE_SIZE_BYTES = 100L * 1024L * 1024L
     }

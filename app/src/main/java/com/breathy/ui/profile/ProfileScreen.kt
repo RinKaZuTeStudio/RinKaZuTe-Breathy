@@ -1,6 +1,7 @@
 package com.breathy.ui.profile
 
 import android.app.DatePickerDialog
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Delete
@@ -40,6 +42,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -52,6 +55,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -1068,14 +1073,81 @@ private fun SettingsSection(
 
             HorizontalDivider(color = BgSurfaceVariant, thickness = 1.dp)
 
-            // Dark mode toggle
-            SettingsToggleRow(
-                icon = Icons.Default.Lock,
-                label = "Dark Mode",
-                description = "Always-on dark theme",
-                checked = darkModeEnabled,
-                onCheckedChange = onDarkModeToggle
-            )
+            // Theme mode selector
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = "Theme",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Theme Mode",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                        Text(
+                            text = "Choose light or dark appearance",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = TextSecondary
+                            )
+                        )
+                    }
+                }
+                // Theme mode dropdown
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    TextButton(onClick = { expanded = true }) {
+                        Text(
+                            text = when (darkModeEnabled) {
+                                true -> "Dark"
+                                false -> "Light"
+                            },
+                            color = AccentPrimary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Select theme",
+                            tint = AccentPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Light") },
+                            onClick = {
+                                expanded = false
+                                onDarkModeToggle(false)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Dark") },
+                            onClick = {
+                                expanded = false
+                                onDarkModeToggle(true)
+                            }
+                        )
+                    }
+                }
+            }
 
             HorizontalDivider(color = BgSurfaceVariant, thickness = 1.dp)
 
@@ -1471,6 +1543,12 @@ class ProfileViewModel(
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
+                // Check nickname uniqueness before updating
+                val isAvailable = userRepository.isNicknameAvailable(nickname, excludeUserId = userId)
+                if (!isAvailable) {
+                    _uiState.update { it.copy(errorMessage = "This nickname is already taken by another user.") }
+                    return@launch
+                }
                 userRepository.updateUserFields(userId, mapOf("nickname" to nickname))
                 userRepository.updatePublicProfileFields(userId, mapOf("nickname" to nickname))
                 Timber.i("Nickname updated")
@@ -1538,7 +1616,13 @@ class ProfileViewModel(
 
     fun toggleDarkMode(enabled: Boolean) {
         _uiState.update { it.copy(darkModeEnabled = enabled) }
-        Timber.i("Dark mode toggled: %s", enabled)
+        // Save to SharedPreferences so MainActivity can read it on recreation
+        try {
+            val context = com.breathy.BreathyApplication.instance
+            val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putString("theme_mode", if (enabled) "DARK" else "LIGHT").apply()
+        } catch (_: Exception) { }
+        Timber.i("Theme mode changed: %s", if (enabled) "DARK" else "LIGHT")
     }
 
     fun togglePrivacy(enabled: Boolean) {

@@ -103,7 +103,13 @@ class MainActivity : ComponentActivity() {
         isFirstLaunch = false
 
         setContent {
-            BreathyTheme {
+            // Read theme preference from SharedPreferences
+            val prefs = getSharedPreferences("breathy_prefs", MODE_PRIVATE)
+            val themeName = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+            val themeMode = try { com.breathy.ui.theme.ThemeMode.valueOf(themeName) }
+                catch (_: Exception) { com.breathy.ui.theme.ThemeMode.SYSTEM }
+
+            BreathyTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {
