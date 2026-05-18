@@ -142,7 +142,7 @@ fun PublicProfileScreen(
                     Text(
                         text = uiState.profile?.nickname ?: "Profile",
                         fontWeight = FontWeight.Bold,
-                        color = themethemeTextPrimary
+                        color = themeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -156,17 +156,17 @@ fun PublicProfileScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgPrimary,
+                    containerColor = themeBgPrimary,
                     titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = themethemeBgPrimary
+        containerColor = themeBgPrimary
     ) { innerPadding ->
         if (uiState.isLoading && uiState.profile == null) {
             // Loading state
@@ -192,13 +192,13 @@ fun PublicProfileScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "⚠️ Failed to load profile",
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = uiState.error ?: "",
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
                     )
@@ -245,7 +245,7 @@ fun PublicProfileScreen(
                         text = "Stories",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
@@ -261,7 +261,7 @@ fun PublicProfileScreen(
                         ) {
                             Text(
                                 text = "No stories yet",
-                                color = themethemeTextDisabled,
+                                color = themeTextDisabled,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -312,8 +312,8 @@ private fun ProfileHeader(profile: PublicProfile) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = themethemeBgSurface,
-            contentColor = themethemeTextPrimary
+            containerColor = themeBgSurface,
+            contentColor = themeTextPrimary
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -340,7 +340,7 @@ private fun ProfileHeader(profile: PublicProfile) {
                 text = profile.nickname,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = themethemeTextPrimary
+                color = themeTextPrimary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -393,13 +393,13 @@ private fun ProfileHeader(profile: PublicProfile) {
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
                         contentDescription = null,
-                        tint = themethemeTextDisabled,
+                        tint = themeTextDisabled,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = profile.location,
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -417,13 +417,13 @@ private fun ProfileHeader(profile: PublicProfile) {
                     Icon(
                         imageVector = Icons.Filled.CalendarToday,
                         contentDescription = null,
-                        tint = themethemeTextDisabled,
+                        tint = themeTextDisabled,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Quit on ${formatQuitDate(qd.toDate())}",
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -592,7 +592,7 @@ private fun ProfileActions(
                     if (isSendingRequest) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            color = themethemeBgPrimary,
+                            color = themeBgPrimary,
                             strokeWidth = 2.dp
                         )
                     } else {

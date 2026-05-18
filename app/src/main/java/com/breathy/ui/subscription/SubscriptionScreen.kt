@@ -153,14 +153,14 @@ fun SubscriptionScreen(
     }
 
     Scaffold(
-        containerColor = themethemeBgPrimary,
+        containerColor = themeBgPrimary,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "Support Breathy",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = themethemeTextPrimary,
+                            color = themeTextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -170,12 +170,12 @@ fun SubscriptionScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgSurface,
+                    containerColor = themeBgSurface,
                     titleContentColor = themeTextPrimary
                 )
             )
@@ -270,7 +270,7 @@ fun SubscriptionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Loading...",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                    style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                 )
             }
         }
@@ -296,7 +296,7 @@ private fun SupportHeaderSection() {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(20.dp)
     ) {
@@ -339,7 +339,7 @@ private fun SupportHeaderSection() {
                 Text(
                     text = "Support Breathy",
                     style = MaterialTheme.typography.headlineSmall.copy(
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -347,7 +347,7 @@ private fun SupportHeaderSection() {
                 Text(
                     text = "Help us keep helping others quit smoking",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         textAlign = TextAlign.Center
                     )
                 )
@@ -405,7 +405,7 @@ private fun ThankYouSection() {
             Text(
                 text = "You're a Breathy Supporter!\nYour support helps thousands of people quit smoking.",
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = themethemeTextSecondary,
+                    color = themeTextSecondary,
                     textAlign = TextAlign.Center
                 )
             )
@@ -429,7 +429,7 @@ private fun BenefitsList(benefits: List<SupporterBenefit>) {
         Text(
             text = "What you get",
             style = MaterialTheme.typography.titleMedium.copy(
-                color = themethemeTextPrimary,
+                color = themeTextPrimary,
                 fontWeight = FontWeight.Bold
             )
         )
@@ -455,7 +455,7 @@ private fun BenefitRow(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -486,14 +486,14 @@ private fun BenefitRow(
                 Text(
                     text = benefit.title,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
                 Text(
                     text = benefit.description,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         fontSize = 12.sp
                     )
                 )
@@ -528,7 +528,7 @@ private fun PurchaseSection(
         // Price display
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+            colors = CardDefaults.cardColors(containerColor = themeBgSurface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
@@ -541,7 +541,7 @@ private fun PurchaseSection(
                 Text(
                     text = "One-time purchase",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         fontSize = 12.sp
                     )
                 )
@@ -557,7 +557,7 @@ private fun PurchaseSection(
                 Text(
                     text = "No subscriptions, no recurring charges",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = themethemeTextDisabled,
+                        color = themeTextDisabled,
                         fontSize = 11.sp
                     )
                 )
@@ -584,14 +584,14 @@ private fun PurchaseSection(
                 if (isPurchasing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = themethemeBgPrimary,
+                        color = themeBgPrimary,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Processing...",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = themethemeBgPrimary,
+                            color = themeBgPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -606,7 +606,7 @@ private fun PurchaseSection(
                     Text(
                         text = "Support for $priceText",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = themethemeBgPrimary,
+                            color = themeBgPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -637,7 +637,7 @@ private fun PurchaseSection(
 private fun AlreadySubscribedSection(subscription: Subscription?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -658,7 +658,7 @@ private fun AlreadySubscribedSection(subscription: Subscription?) {
                 Text(
                     text = "Active Supporter",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -666,7 +666,7 @@ private fun AlreadySubscribedSection(subscription: Subscription?) {
                     text = if (subscription?.plan?.isNotBlank() == true) "Plan: ${subscription.plan}"
                     else "One-time purchase",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         fontSize = 12.sp
                     )
                 )

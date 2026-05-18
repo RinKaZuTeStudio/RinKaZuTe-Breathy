@@ -411,7 +411,7 @@ fun EventCheckinScreen(
                     Text(
                         text = "Check In - Day ${uiState.dayNumber}",
                         fontWeight = FontWeight.Bold,
-                        color = themethemeTextPrimary
+                        color = themeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -422,17 +422,17 @@ fun EventCheckinScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgPrimary,
+                    containerColor = themeBgPrimary,
                     titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = themethemeBgPrimary
+        containerColor = themeBgPrimary
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -684,7 +684,7 @@ private fun CameraViewScreen(
                     text = "Day $dayNumber",
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = themethemeBgPrimary,
+                        color = themeBgPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -694,7 +694,7 @@ private fun CameraViewScreen(
         // Controls
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = themethemeBgSurface
+            color = themeBgSurface
         ) {
             Column(
                 modifier = Modifier
@@ -705,7 +705,7 @@ private fun CameraViewScreen(
                 Text(
                     text = if (isRecording) "Recording your check-in..." else "Tap to start recording",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = themethemeTextSecondary
+                        color = themeTextSecondary
                     )
                 )
 
@@ -775,7 +775,7 @@ private fun CameraViewScreen(
                     Text(
                         text = "Max 60 seconds",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextDisabled,
+                            color = themeTextDisabled,
                             fontSize = 11.sp
                         )
                     )
@@ -810,7 +810,7 @@ private fun VideoPreviewScreen(
             // ExoPlayer or Android's VideoView
             Card(
                 modifier = Modifier.fillMaxSize(),
-                colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = themeBgSurfaceVariant),
                 shape = RoundedCornerShape(0.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
@@ -829,14 +829,14 @@ private fun VideoPreviewScreen(
                         Text(
                             text = "Video Preview",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = themethemeTextPrimary,
+                                color = themeTextPrimary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
                         Text(
                             text = "Day $dayNumber check-in recorded",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = themethemeTextSecondary
+                                color = themeTextSecondary
                             )
                         )
                     }
@@ -847,7 +847,7 @@ private fun VideoPreviewScreen(
         // Action buttons
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = themethemeBgSurface
+            color = themeBgSurface
         ) {
             Row(
                 modifier = Modifier
@@ -866,8 +866,8 @@ private fun VideoPreviewScreen(
                             role = Role.Button
                         },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = themethemeBgSurfaceVariant,
-                        contentColor = themethemeTextPrimary
+                        containerColor = themeBgSurfaceVariant,
+                        contentColor = themeTextPrimary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -943,7 +943,7 @@ private fun UploadProgressScreen(
                     color = AccentPrimary,
                     strokeWidth = 6.dp,
                     strokeCap = StrokeCap.Round,
-                    trackColor = themethemeBgSurfaceVariant
+                    trackColor = themeBgSurfaceVariant
                 )
                 Text(
                     text = "${(progress * 100).toInt()}%",
@@ -961,7 +961,7 @@ private fun UploadProgressScreen(
             Text(
                 text = "Uploading Day $dayNumber Check-in",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = themethemeTextPrimary,
+                    color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -970,7 +970,7 @@ private fun UploadProgressScreen(
 
             Text(
                 text = "Please wait while your video is being uploaded...",
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
 
@@ -982,7 +982,7 @@ private fun UploadProgressScreen(
                     .fillMaxWidth(0.6f)
                     .height(4.dp),
                 color = AccentPrimary,
-                trackColor = themethemeBgSurfaceVariant,
+                trackColor = themeBgSurfaceVariant,
             )
         }
     }
@@ -1056,7 +1056,7 @@ private fun UploadCompleteScreen(
             Text(
                 text = "Day $dayNumber of $eventTitle",
                 style = MaterialTheme.typography.bodyLarge.copy(
-                    color = themethemeTextPrimary,
+                    color = themeTextPrimary,
                     fontWeight = FontWeight.SemiBold
                 )
             )
@@ -1065,7 +1065,7 @@ private fun UploadCompleteScreen(
 
             Text(
                 text = "Your video will be reviewed shortly",
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
 
@@ -1121,13 +1121,13 @@ private fun NoPermissionScreen(
                 text = "Camera Permission Required",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = themethemeTextPrimary
+                    color = themeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "We need camera access to record your check-in video",
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))

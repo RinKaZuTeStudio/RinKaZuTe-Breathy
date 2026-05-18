@@ -310,7 +310,7 @@ fun EventsScreen(
                     Text(
                         text = "Events & Challenges",
                         fontWeight = FontWeight.Bold,
-                        color = themethemeTextPrimary
+                        color = themeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -318,17 +318,17 @@ fun EventsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgPrimary,
+                    containerColor = themeBgPrimary,
                     titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = themethemeBgPrimary
+        containerColor = themeBgPrimary
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -460,7 +460,7 @@ private fun EventCard(
                     Text(
                         text = event.title,
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = themethemeTextPrimary,
+                            color = themeTextPrimary,
                             fontWeight = FontWeight.Bold
                         ),
                         maxLines = 1,
@@ -494,7 +494,7 @@ private fun EventCard(
             Text(
                 text = event.description,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = themethemeTextSecondary
+                    color = themeTextSecondary
                 ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -516,13 +516,13 @@ private fun EventCard(
                     Icon(
                         imageVector = Icons.Filled.CalendarMonth,
                         contentDescription = null,
-                        tint = themethemeTextDisabled,
+                        tint = themeTextDisabled,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "${dateFormatter.format(event.startDate.toDate())} - ${dateFormatter.format(event.endDate.toDate())}",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextDisabled,
+                            color = themeTextDisabled,
                             fontSize = 11.sp
                         )
                     )
@@ -536,13 +536,13 @@ private fun EventCard(
                     Icon(
                         imageVector = Icons.Filled.Timer,
                         contentDescription = null,
-                        tint = themethemeTextDisabled,
+                        tint = themeTextDisabled,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "${event.dailyRequired}x daily",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextDisabled,
+                            color = themeTextDisabled,
                             fontSize = 11.sp
                         )
                     )
@@ -589,7 +589,7 @@ private fun EventCard(
                     Text(
                         text = "Finished",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = themethemeTextDisabled,
+                            color = themeTextDisabled,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
@@ -626,7 +626,7 @@ private fun EventCard(
                         if (isJoining) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                color = themethemeBgPrimary,
+                                color = themeBgPrimary,
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -641,7 +641,7 @@ private fun EventCard(
                     Text(
                         text = "Coming Soon",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = themethemeTextDisabled
+                            color = themeTextDisabled
                         )
                     )
                 }
@@ -669,7 +669,7 @@ private fun EventsLoadingState() {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Loading events...",
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
         }
     }
@@ -694,13 +694,13 @@ private fun EventsEmptyState() {
                 text = "No Active Events",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = themethemeTextPrimary
+                    color = themeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Check back soon for new challenges and events!",
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
         }
@@ -728,13 +728,13 @@ private fun EventsErrorState(
                 text = "Something went wrong",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = themethemeTextPrimary
+                    color = themeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -746,7 +746,7 @@ private fun EventsErrorState(
                 Text(
                     text = "Try Again",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                    color = themethemeBgPrimary,
+                    color = themeBgPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }

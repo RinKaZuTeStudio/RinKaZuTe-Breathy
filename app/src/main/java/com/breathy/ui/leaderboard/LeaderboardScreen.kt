@@ -86,19 +86,7 @@ import com.breathy.data.models.PublicProfile
 import com.breathy.data.repository.EventRepository
 import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
-import com.breathy.ui.theme.themeBgPrimary
-import com.breathy.ui.theme.themeBgSurface
-import com.breathy.ui.theme.themeBgSurfaceVariant
-import com.breathy.ui.theme.themeTextPrimary
-import com.breathy.ui.theme.themeTextSecondary
-import com.breathy.ui.theme.themeTextDisabled
 import com.breathy.ui.theme.AccentPurple
-import com.breathy.ui.theme.themeBgPrimary
-import com.breathy.ui.theme.themeBgSurface
-import com.breathy.ui.theme.themeBgSurfaceVariant
-import com.breathy.ui.theme.themeTextPrimary
-import com.breathy.ui.theme.themeTextSecondary
-import com.breathy.ui.theme.themeTextDisabled
 import com.breathy.ui.theme.AccentSecondary
 import com.breathy.ui.theme.themeBgPrimary
 import com.breathy.ui.theme.themeBgSurface
@@ -337,7 +325,7 @@ fun LeaderboardScreen(
                     Text(
                         text = "Leaderboard",
                         fontWeight = FontWeight.Bold,
-                        color = themethemeTextPrimary
+                        color = themeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -345,7 +333,7 @@ fun LeaderboardScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
@@ -447,7 +435,7 @@ fun LeaderboardScreen(
                                             Text(
                                                 text = "Top 3 are on the podium above!",
                                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                                    color = themethemeTextSecondary
+                                                    color = themeTextSecondary
                                                 )
                                             )
                                         }
@@ -700,7 +688,7 @@ private fun PodiumCard(
                 Text(
                     text = entry.nickname,
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -820,7 +808,7 @@ private fun LeaderboardRow(
                 Text(
                     text = "${entry.daysSmokeFree} days smoke-free",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         fontSize = 11.sp
                     )
                 )
@@ -923,7 +911,7 @@ private fun CurrentUserBottomBar(
                     Text(
                         text = "${entry.daysSmokeFree} days smoke-free",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextSecondary,
+                            color = themeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -962,7 +950,7 @@ private fun LoadingState() {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Loading leaderboard...",
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
         }
     }
@@ -989,13 +977,13 @@ private fun ErrorState(
                 text = "Something went wrong",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = themethemeTextPrimary
+                    color = themeTextPrimary
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))

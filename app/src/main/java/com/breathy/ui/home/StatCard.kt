@@ -123,7 +123,7 @@ fun StatCard(
             scaleX = scale
             scaleY = scale
         },
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -172,7 +172,7 @@ fun StatCard(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     ),

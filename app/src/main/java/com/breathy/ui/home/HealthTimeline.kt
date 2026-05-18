@@ -125,7 +125,7 @@ private fun HealthTimelineProgressBar(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -142,7 +142,7 @@ private fun HealthTimelineProgressBar(
                 Text(
                     text = "$achievedCount of $totalCount milestones",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
@@ -163,7 +163,7 @@ private fun HealthTimelineProgressBar(
                     .fillMaxWidth()
                     .height(6.dp),
                 color = AccentPrimary,
-                trackColor = themethemeBgSurfaceVariant,
+                trackColor = themeBgSurfaceVariant,
             )
         }
     }
@@ -232,7 +232,7 @@ private fun TimelineItem(
                             radius = size.minDimension / 2
                         )
                     } else {
-                        drawCircle(color = themethemethemeBgSurfaceVariant)
+                        drawCircle(color = themeBgSurfaceVariant)
                     }
                 }
 
@@ -250,7 +250,7 @@ private fun TimelineItem(
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = "Locked",
-                        tint = themethemeTextDisabled,
+                        tint = themeTextDisabled,
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -302,7 +302,7 @@ private fun TimelineItem(
                 Text(
                     text = milestone.description,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = themethemeTextSecondary,
+                        color = themeTextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
                     ),
@@ -314,7 +314,7 @@ private fun TimelineItem(
                 Text(
                     text = milestone.description,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = themethemeTextDisabled,
+                        color = themeTextDisabled,
                         fontSize = 11.sp,
                         lineHeight = 15.sp
                     ),

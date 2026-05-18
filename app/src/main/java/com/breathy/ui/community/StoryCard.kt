@@ -102,8 +102,8 @@ fun StoryCard(
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = themethemeBgSurface,
-            contentColor = themethemeTextPrimary
+            containerColor = themeBgSurface,
+            contentColor = themeTextPrimary
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -210,7 +210,7 @@ private fun StoryCardHeader(
                 text = story.nickname,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = themethemeTextPrimary
+                color = themeTextPrimary
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -219,7 +219,7 @@ private fun StoryCardHeader(
             Text(
                 text = story.timeAgo(),
                 style = MaterialTheme.typography.labelSmall,
-                color = themethemeTextDisabled
+                color = themeTextDisabled
             )
         }
 
@@ -261,7 +261,7 @@ private fun ExpandableText(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = themethemeTextSecondary,
+            color = themeTextSecondary,
             maxLines = if (isExpanded) Int.MAX_VALUE else collapsedMaxLines,
             onTextLayout = { textLayoutResult ->
                 if (!isExpanded) {
@@ -301,7 +301,7 @@ private fun LifeChangesTags(lifeChanges: List<String>) {
         lifeChanges.take(3).forEach { change ->
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = themethemeBgSurfaceVariant
+                color = themeBgSurfaceVariant
             ) {
                 Text(
                     text = change,
@@ -315,7 +315,7 @@ private fun LifeChangesTags(lifeChanges: List<String>) {
         if (lifeChanges.size > 3) {
             Text(
                 text = "+${lifeChanges.size - 3}",
-                color = themethemeTextDisabled,
+                color = themeTextDisabled,
                 style = MaterialTheme.typography.labelSmall
             )
         }
@@ -351,13 +351,13 @@ private fun StoryCardFooter(
             Icon(
                 imageVector = Icons.Filled.ChatBubbleOutline,
                 contentDescription = null,
-                tint = themethemeTextDisabled,
+                tint = themeTextDisabled,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = formatCount(story.replyCount),
-                color = themethemeTextDisabled,
+                color = themeTextDisabled,
                 style = MaterialTheme.typography.labelMedium
             )
         }
@@ -367,7 +367,7 @@ private fun StoryCardFooter(
         // Time ago (secondary placement for quick scan)
         Text(
             text = story.timeAgo(),
-            color = themethemeTextDisabled,
+            color = themeTextDisabled,
             style = MaterialTheme.typography.labelSmall
         )
     }
@@ -436,8 +436,8 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = themethemeBgSurface,
-            contentColor = themethemeTextPrimary
+            containerColor = themeBgSurface,
+            contentColor = themeTextPrimary
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -452,7 +452,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                 Surface(
                     modifier = Modifier.size(40.dp),
                     shape = CircleShape,
-                    color = themethemeBgSurfaceVariant
+                    color = themeBgSurfaceVariant
                 ) {}
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -462,7 +462,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                             .width(100.dp)
                             .height(14.dp),
                         shape = RoundedCornerShape(4.dp),
-                        color = themethemeBgSurfaceVariant
+                        color = themeBgSurfaceVariant
                     ) {}
                     Spacer(modifier = Modifier.height(6.dp))
                     // Time placeholder
@@ -471,7 +471,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                             .width(50.dp)
                             .height(10.dp),
                         shape = RoundedCornerShape(4.dp),
-                        color = themethemeBgSurfaceVariant
+                        color = themeBgSurfaceVariant
                     ) {}
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -481,7 +481,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .width(60.dp)
                         .height(22.dp),
                     shape = RoundedCornerShape(12.dp),
-                    color = themethemeBgSurfaceVariant
+                    color = themeBgSurfaceVariant
                 ) {}
             }
 
@@ -495,7 +495,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .height(14.dp)
                         .padding(end = if (index == 2) 80.dp else 0.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = themethemeBgSurfaceVariant
+                    color = themeBgSurfaceVariant
                 ) {}
                 if (index < 2) Spacer(modifier = Modifier.height(8.dp))
             }
@@ -509,7 +509,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .width(60.dp)
                         .height(14.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = themethemeBgSurfaceVariant
+                    color = themeBgSurfaceVariant
                 ) {}
                 Spacer(modifier = Modifier.width(20.dp))
                 Surface(
@@ -517,7 +517,7 @@ fun StoryCardSkeleton(modifier: Modifier = Modifier) {
                         .width(50.dp)
                         .height(14.dp),
                     shape = RoundedCornerShape(4.dp),
-                    color = themethemeBgSurfaceVariant
+                    color = themeBgSurfaceVariant
                 ) {}
             }
         }

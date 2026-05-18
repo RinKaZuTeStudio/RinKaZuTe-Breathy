@@ -327,7 +327,7 @@ fun EventChallengeScreen(
                     Text(
                         text = uiState.event?.title ?: "Event",
                         fontWeight = FontWeight.Bold,
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -337,17 +337,17 @@ fun EventChallengeScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgPrimary,
+                    containerColor = themeBgPrimary,
                     titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = themethemeBgPrimary
+        containerColor = themeBgPrimary
     ) { innerPadding ->
         when {
             uiState.isLoading -> {
@@ -375,7 +375,7 @@ fun EventChallengeScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = uiState.errorMessage!!,
-                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -387,7 +387,7 @@ fun EventChallengeScreen(
                             Text(
                                 text = "Retry",
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                                color = themethemeBgPrimary,
+                                color = themeBgPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -403,7 +403,7 @@ fun EventChallengeScreen(
                     // ── Tab Row ────────────────────────────────────────────
                     TabRow(
                         selectedTabIndex = selectedTabIndex,
-                        containerColor = themethemeBgPrimary,
+                        containerColor = themeBgPrimary,
                         contentColor = AccentPrimary,
                         indicator = { tabPositions ->
                             TabRowDefaults.Indicator(
@@ -550,7 +550,7 @@ private fun LeaderboardTab(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Loading leaderboard...",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                    style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                 )
             }
         }
@@ -615,7 +615,7 @@ private fun EventLeaderboardRow(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = themethemeTextSecondary
+                        color = themeTextSecondary
                     )
                 } else {
                     TextStyle(fontSize = 18.sp)
@@ -659,7 +659,7 @@ private fun EventLeaderboardRow(
                 Text(
                     text = profile?.nickname ?: "Unknown",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = themethemeTextPrimary,
+                        color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 1,
@@ -696,7 +696,7 @@ private fun EventLeaderboardRow(
 private fun EventInfoCard(event: Event) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -708,7 +708,7 @@ private fun EventInfoCard(event: Event) {
             Text(
                 text = "About This Challenge",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = themethemeTextPrimary,
+                    color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -717,7 +717,7 @@ private fun EventInfoCard(event: Event) {
 
             Text(
                 text = event.description,
-                style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -731,12 +731,12 @@ private fun EventInfoCard(event: Event) {
                 Icon(
                     imageVector = Icons.Filled.Timer,
                     contentDescription = null,
-                    tint = themethemeTextDisabled,
+                    tint = themeTextDisabled,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "${dateFormatter.format(event.startDate.toDate())} - ${dateFormatter.format(event.endDate.toDate())}",
-                    style = MaterialTheme.typography.labelMedium.copy(color = themethemethemeTextSecondary)
+                    style = MaterialTheme.typography.labelMedium.copy(color = themeTextSecondary)
                 )
             }
 
@@ -750,12 +750,12 @@ private fun EventInfoCard(event: Event) {
                 Icon(
                     imageVector = Icons.Filled.LocalFireDepartment,
                     contentDescription = null,
-                    tint = themethemeTextDisabled,
+                    tint = themeTextDisabled,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "Daily requirement: ${event.dailyRequired}x per day",
-                    style = MaterialTheme.typography.labelMedium.copy(color = themethemethemeTextSecondary)
+                    style = MaterialTheme.typography.labelMedium.copy(color = themeTextSecondary)
                 )
             }
 
@@ -769,12 +769,12 @@ private fun EventInfoCard(event: Event) {
                 Icon(
                     imageVector = Icons.Filled.EmojiEvents,
                     contentDescription = null,
-                    tint = themethemeTextDisabled,
+                    tint = themeTextDisabled,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "Duration: ${event.totalDays()} days",
-                    style = MaterialTheme.typography.labelMedium.copy(color = themethemethemeTextSecondary)
+                    style = MaterialTheme.typography.labelMedium.copy(color = themeTextSecondary)
                 )
             }
         }
@@ -804,7 +804,7 @@ private fun CountdownCard(countdownSeconds: Long) {
             Text(
                 text = "Time Remaining",
                 style = MaterialTheme.typography.labelMedium.copy(
-                    color = themethemeTextSecondary,
+                    color = themeTextSecondary,
                     fontWeight = FontWeight.SemiBold
                 )
             )
@@ -864,7 +864,7 @@ private fun CountdownUnit(value: Long, label: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(
-                color = themethemeTextSecondary,
+                color = themeTextSecondary,
                 fontSize = 10.sp
             )
         )
@@ -880,7 +880,7 @@ private fun ProgressStatsCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -892,7 +892,7 @@ private fun ProgressStatsCard(
             Text(
                 text = "Your Progress",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = themethemeTextPrimary,
+                    color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -921,7 +921,7 @@ private fun ProgressStatsCard(
                     Text(
                         text = "Day Streak",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextSecondary,
+                            color = themeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -945,7 +945,7 @@ private fun ProgressStatsCard(
                     Text(
                         text = "Days Approved",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextSecondary,
+                            color = themeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -969,7 +969,7 @@ private fun ProgressStatsCard(
                     Text(
                         text = "of $totalDays Days",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextSecondary,
+                            color = themeTextSecondary,
                             fontSize = 11.sp
                         )
                     )
@@ -989,7 +989,7 @@ private fun ProgressStatsCard(
                     .fillMaxWidth()
                     .height(6.dp),
                 color = AccentPrimary,
-                trackColor = themethemeBgSurfaceVariant,
+                trackColor = themeBgSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -997,7 +997,7 @@ private fun ProgressStatsCard(
             Text(
                 text = "${(progress * 100).toInt()}% complete",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = themethemeTextSecondary,
+                    color = themeTextSecondary,
                     fontSize = 11.sp
                 ),
                 modifier = Modifier.fillMaxWidth(),
@@ -1011,7 +1011,7 @@ private fun ProgressStatsCard(
 private fun PrizeBreakdownCard(prizes: Map<String, String>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -1023,7 +1023,7 @@ private fun PrizeBreakdownCard(prizes: Map<String, String>) {
             Text(
                 text = "\uD83C\uDFC6 Prizes",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = themethemeTextPrimary,
+                    color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -1060,7 +1060,7 @@ private fun PrizeBreakdownCard(prizes: Map<String, String>) {
                     Text(
                         text = prize,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = themethemeTextSecondary
+                            color = themeTextSecondary
                         ),
                         modifier = Modifier.weight(1f)
                     )
@@ -1179,7 +1179,7 @@ private fun CompletionBadgeCard() {
                 )
                 Text(
                     text = "Congratulations on finishing this challenge!",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                    style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                 )
             }
         }

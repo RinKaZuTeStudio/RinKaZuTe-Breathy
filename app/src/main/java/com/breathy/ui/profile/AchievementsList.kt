@@ -125,14 +125,14 @@ fun AchievementsListScreen(
     }
 
     Scaffold(
-        containerColor = themethemeBgPrimary,
+        containerColor = themeBgPrimary,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "Achievements",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = themethemeTextPrimary,
+                            color = themeTextPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -142,12 +142,12 @@ fun AchievementsListScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgSurface,
+                    containerColor = themeBgSurface,
                     titleContentColor = themeTextPrimary
                 )
             )
@@ -198,7 +198,7 @@ fun AchievementsListScreen(
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AccentPrimary.copy(alpha = 0.2f),
                             selectedLabelColor = AccentPrimary,
-                            containerColor = themethemeBgSurfaceVariant,
+                            containerColor = themeBgSurfaceVariant,
                             labelColor = themeTextSecondary
                         ),
                         border = FilterChipDefaults.filterChipBorder(
@@ -240,7 +240,7 @@ fun AchievementsListScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Loading achievements...",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                         )
                     }
                 }
@@ -256,7 +256,7 @@ fun AchievementsListScreen(
                                 AchievementFilter.LOCKED -> "All achievements unlocked! 🎉"
                                 else -> "No achievements found"
                             },
-                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -267,7 +267,7 @@ fun AchievementsListScreen(
                                 else -> ""
                             },
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = themethemeTextDisabled,
+                                color = themeTextDisabled,
                                 fontSize = 12.sp
                             ),
                             textAlign = TextAlign.Center
@@ -315,7 +315,7 @@ private fun AchievementStatsBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+        colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -339,7 +339,7 @@ private fun AchievementStatsBar(
                     Text(
                         text = "Achievements Unlocked",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextSecondary,
+                            color = themeTextSecondary,
                             fontSize = 12.sp
                         )
                     )
@@ -355,7 +355,7 @@ private fun AchievementStatsBar(
                     Text(
                         text = "From Achievements",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextSecondary,
+                            color = themeTextSecondary,
                             fontSize = 12.sp
                         )
                     )
@@ -373,7 +373,7 @@ private fun AchievementStatsBar(
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
                 color = AccentPrimary,
-                trackColor = themethemeBgSurfaceVariant
+                trackColor = themeBgSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -381,7 +381,7 @@ private fun AchievementStatsBar(
             Text(
                 text = "${(progress * 100).toInt()}% complete",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = themethemeTextDisabled,
+                    color = themeTextDisabled,
                     fontSize = 11.sp
                 )
             )
@@ -528,13 +528,13 @@ private fun AchievementGridCard(
                                 .height(3.dp)
                                 .clip(RoundedCornerShape(1.5.dp)),
                             color = AccentPrimary.copy(alpha = 0.5f),
-                            trackColor = themethemeBgSurfaceVariant
+                            trackColor = themeBgSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${(progress * 100).toInt()}%",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = themethemeTextDisabled,
+                                color = themeTextDisabled,
                                 fontSize = 9.sp
                             )
                         )
@@ -617,7 +617,7 @@ private fun AchievementDetailDialog(
                 Text(
                     text = achievement.description,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = themethemeTextSecondary
+                        color = themeTextSecondary
                     ),
                     textAlign = TextAlign.Center
                 )
@@ -665,7 +665,7 @@ private fun AchievementDetailDialog(
                     Text(
                         text = "Reward:",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = themethemeTextSecondary
+                            color = themeTextSecondary
                         )
                     )
                     Text(
@@ -687,7 +687,7 @@ private fun AchievementDetailDialog(
                 )
             }
         },
-        containerColor = themethemeBgSurface,
+        containerColor = themeBgSurface,
         titleContentColor = themeTextPrimary,
         textContentColor = themeTextSecondary
     )

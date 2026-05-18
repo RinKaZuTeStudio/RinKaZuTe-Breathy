@@ -129,7 +129,7 @@ fun TapGame(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Cancel tap game",
-                        tint = themethemeTextSecondary,
+                        tint = themeTextSecondary,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -143,7 +143,7 @@ fun TapGame(
                         Text(
                             text = "Tap as fast as you can!",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                color = themethemeTextPrimary,
+                                color = themeTextPrimary,
                                 fontWeight = FontWeight.Bold
                             ),
                             textAlign = TextAlign.Center
@@ -164,7 +164,7 @@ fun TapGame(
                         Text(
                             text = "seconds left",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = themethemeTextSecondary
+                                color = themeTextSecondary
                             )
                         )
 
@@ -218,7 +218,7 @@ fun TapGame(
                             Text(
                                 text = "TAP!",
                                 style = MaterialTheme.typography.titleLarge.copy(
-                                    color = themethemeBgPrimary,
+                                    color = themeBgPrimary,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 28.sp
                                 )
@@ -241,7 +241,7 @@ fun TapGame(
                         Text(
                             text = "taps",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = themethemeTextSecondary
+                                color = themeTextSecondary
                             )
                         )
                     }
@@ -251,7 +251,7 @@ fun TapGame(
                         Text(
                             text = "Time's up! 🎯",
                             style = MaterialTheme.typography.titleLarge.copy(
-                                color = themethemeTextPrimary,
+                                color = themeTextPrimary,
                                 fontWeight = FontWeight.Bold
                             ),
                             textAlign = TextAlign.Center
@@ -262,7 +262,7 @@ fun TapGame(
                         // Result card
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = themethemeBgSurface
+                                containerColor = themeBgSurface
                             ),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.width(280.dp)
@@ -286,7 +286,7 @@ fun TapGame(
                                 Text(
                                     text = "taps in 30 seconds",
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = themethemeTextSecondary
+                                        color = themeTextSecondary
                                     )
                                 )
 
@@ -302,7 +302,7 @@ fun TapGame(
                                 Text(
                                     text = feedbackMessage,
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = themethemeTextPrimary,
+                                        color = themeTextPrimary,
                                         fontWeight = FontWeight.Medium
                                     ),
                                     textAlign = TextAlign.Center

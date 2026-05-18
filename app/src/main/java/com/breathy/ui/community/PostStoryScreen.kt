@@ -130,7 +130,7 @@ fun PostStoryScreen(
                     Text(
                         text = "Share Your Story",
                         fontWeight = FontWeight.Bold,
-                        color = themethemeTextPrimary
+                        color = themeTextPrimary
                     )
                 },
                 navigationIcon = {
@@ -144,17 +144,17 @@ fun PostStoryScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgPrimary,
+                    containerColor = themeBgPrimary,
                     titleContentColor = themeTextPrimary
                 )
             )
         },
-        containerColor = themethemeBgPrimary
+        containerColor = themeBgPrimary
     ) { innerPadding ->
         // ── Success overlay ───────────────────────────────────────────────
         AnimatedVisibility(
@@ -232,7 +232,7 @@ private fun ContentInput(
             text = "Your Story",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = themethemeTextPrimary
+            color = themeTextPrimary
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -250,7 +250,7 @@ private fun ContentInput(
             placeholder = {
                 Text(
                     text = "Share your quit-smoking journey, tips, or encouragement...",
-                    color = themethemeTextDisabled
+                    color = themeTextDisabled
                 )
             },
             shape = RoundedCornerShape(12.dp),
@@ -311,13 +311,13 @@ private fun LifeChangesInput(
             text = "Life Changes (optional)",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = themethemeTextPrimary
+            color = themeTextPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "What positive changes have you noticed?",
             style = MaterialTheme.typography.bodySmall,
-            color = themethemeTextDisabled
+            color = themeTextDisabled
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -380,7 +380,7 @@ private fun LifeChangesInput(
                     placeholder = {
                         Text(
                             text = "e.g., Better breathing",
-                            color = themethemeTextDisabled
+                            color = themeTextDisabled
                         )
                     },
                     singleLine = true,
@@ -420,14 +420,14 @@ private fun LifeChangesInput(
             Text(
                 text = "${lifeChanges.size}/5 changes",
                 style = MaterialTheme.typography.labelSmall,
-                color = themethemeTextDisabled,
+                color = themeTextDisabled,
                 modifier = Modifier.padding(top = 4.dp)
             )
         } else {
             Text(
                 text = "Maximum 5 life changes reached",
                 style = MaterialTheme.typography.labelSmall,
-                color = themethemeTextDisabled
+                color = themeTextDisabled
             )
         }
     }
@@ -443,13 +443,13 @@ private fun PreviewCard(
             text = "Preview",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = themethemeTextSecondary
+            color = themeTextSecondary
         )
         Spacer(modifier = Modifier.height(8.dp))
 
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = themethemeBgSurface,
+            color = themeBgSurface,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -460,14 +460,14 @@ private fun PreviewCard(
                     Surface(
                         modifier = Modifier.size(32.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = themethemeBgSurfaceVariant
+                        color = themeBgSurfaceVariant
                     ) {}
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "You",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = themethemeTextSecondary
+                        color = themeTextSecondary
                     )
                 }
 
@@ -476,7 +476,7 @@ private fun PreviewCard(
                 Text(
                     text = content,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = themethemeTextSecondary,
+                    color = themeTextSecondary,
                     maxLines = 4
                 )
 
@@ -488,7 +488,7 @@ private fun PreviewCard(
                         lifeChanges.forEach { change ->
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = themethemeBgSurfaceVariant
+                                color = themeBgSurfaceVariant
                             ) {
                                 Text(
                                     text = change,
@@ -532,7 +532,7 @@ private fun PostButton(
         if (isPosting) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = themethemeBgPrimary,
+                color = themeBgPrimary,
                 strokeWidth = 2.dp,
                 strokeCap = StrokeCap.Round
             )
@@ -575,13 +575,13 @@ private fun SuccessOverlay() {
                 text = "Story Shared!",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = themethemeTextPrimary
+                color = themeTextPrimary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Your story is now inspiring others",
                 style = MaterialTheme.typography.bodyMedium,
-                color = themethemeTextSecondary
+                color = themeTextSecondary
             )
         }
     }

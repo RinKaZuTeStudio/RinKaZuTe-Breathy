@@ -178,7 +178,7 @@ fun BreathingExercise(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Cancel breathing exercise",
-                        tint = themethemeTextSecondary,
+                        tint = themeTextSecondary,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -191,7 +191,7 @@ fun BreathingExercise(
                     Text(
                         text = "Cycle $currentCycle of $totalCycles",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = themethemeTextSecondary,
+                            color = themeTextSecondary,
                             fontWeight = FontWeight.Medium
                         )
                     )
@@ -287,7 +287,7 @@ fun BreathingExercise(
                                 Text(
                                     text = phaseSecondsLeft.toString(),
                                     style = MaterialTheme.typography.displayMedium.copy(
-                                        color = themethemeTextPrimary,
+                                        color = themeTextPrimary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 48.sp
                                     )
@@ -329,7 +329,7 @@ fun BreathingExercise(
                         Text(
                             text = "Great job! You completed the exercise 🎉",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = themethemeTextPrimary,
+                                color = themeTextPrimary,
                                 fontWeight = FontWeight.Medium
                             ),
                             textAlign = TextAlign.Center
@@ -388,7 +388,7 @@ fun BreathingExercise(
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.Transparent,
-                                contentColor = themethemeTextSecondary
+                                contentColor = themeTextSecondary
                             )
                         ) {
                             Text(text = "Cancel", fontWeight = FontWeight.Medium)

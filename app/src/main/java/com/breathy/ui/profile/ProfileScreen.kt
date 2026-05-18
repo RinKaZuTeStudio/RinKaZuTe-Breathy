@@ -1,5 +1,6 @@
 package com.breathy.ui.profile
 
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
@@ -254,9 +255,14 @@ fun ProfileScreen(
                     SettingsSection(
                         notificationsEnabled = uiState.notificationsEnabled,
                         darkModeEnabled = uiState.darkModeEnabled,
+                        themeMode = uiState.themeMode,
                         privacyEnabled = uiState.privacyEnabled,
                         onNotificationsToggle = { viewModel.toggleNotifications(it) },
                         onDarkModeToggle = { viewModel.toggleDarkMode(it) },
+                        onThemeModeChange = { mode ->
+                            viewModel.setThemeMode(mode)
+                            (LocalContext.current as? Activity)?.recreate()
+                        },
                         onPrivacyToggle = { viewModel.togglePrivacy(it) },
                         onNavigateToFriends = onNavigateToFriends
                     )
@@ -704,50 +710,41 @@ private fun ProfileHeader(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // XP progress bar
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            shape = RoundedCornerShape(12.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "XP: $xp",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = AccentPrimary,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                Text(
+                    text = "XP: $xp",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = AccentPrimary,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    Text(
-                        text = "Level $level",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = AccentPurple,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                )
+                Text(
+                    text = "Level $level",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = AccentPurple,
+                        fontWeight = FontWeight.SemiBold
                     )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = { levelProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = AccentPrimary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
+            Spacer(modifier = Modifier.height(4.dp))
+            LinearProgressIndicator(
+                progress = { levelProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = AccentPrimary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         }
     }
 }
@@ -1018,9 +1015,11 @@ private fun AchievementChip(achievement: Achievement) {
 private fun SettingsSection(
     notificationsEnabled: Boolean,
     darkModeEnabled: Boolean,
+    themeMode: String,
     privacyEnabled: Boolean,
     onNotificationsToggle: (Boolean) -> Unit,
     onDarkModeToggle: (Boolean) -> Unit,
+    onThemeModeChange: (String) -> Unit = {},
     onPrivacyToggle: (Boolean) -> Unit,
     onNavigateToFriends: () -> Unit = {}
 ) {
@@ -1107,9 +1106,10 @@ private fun SettingsSection(
                 Box {
                     TextButton(onClick = { expanded = true }) {
                         Text(
-                            text = when (darkModeEnabled) {
-                                true -> "Dark"
-                                false -> "Light"
+                            text = when (themeMode) {
+                                "DARK" -> "Dark"
+                                "LIGHT" -> "Light"
+                                else -> "System"
                             },
                             color = AccentPrimary,
                             style = MaterialTheme.typography.labelMedium
@@ -1129,14 +1129,21 @@ private fun SettingsSection(
                             text = { Text("Light") },
                             onClick = {
                                 expanded = false
-                                onDarkModeToggle(false)
+                                onThemeModeChange("LIGHT")
                             }
                         )
                         DropdownMenuItem(
                             text = { Text("Dark") },
                             onClick = {
                                 expanded = false
-                                onDarkModeToggle(true)
+                                onThemeModeChange("DARK")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("System") },
+                            onClick = {
+                                expanded = false
+                                onThemeModeChange("SYSTEM")
                             }
                         )
                     }
@@ -1446,6 +1453,7 @@ data class ProfileUiState(
     val levelProgress: Float = 0f,
     val notificationsEnabled: Boolean = true,
     val darkModeEnabled: Boolean = true,
+    val themeMode: String = "SYSTEM",
     val privacyEnabled: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
@@ -1466,6 +1474,22 @@ class ProfileViewModel(
         get() = auth.currentUser?.uid ?: throw IllegalStateException("Not authenticated")
 
     init {
+        // Read saved theme preference to initialize state correctly
+        try {
+            val context = com.breathy.BreathyApplication.instance
+            val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
+            val savedTheme = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+            val isSystemDarkMode = context.resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val darkEnabled = when (savedTheme) {
+                "DARK" -> true
+                "LIGHT" -> false
+                else -> isSystemDarkMode // SYSTEM
+            }
+            _uiState.update { it.copy(darkModeEnabled = darkEnabled, themeMode = savedTheme) }
+        } catch (_: Exception) { }
+
         loadProfile()
         loadAchievements()
         loadSubscription()
@@ -1609,16 +1633,38 @@ class ProfileViewModel(
     }
 
     fun toggleDarkMode(enabled: Boolean) {
-        _uiState.update { it.copy(darkModeEnabled = enabled) }
+        val mode = if (enabled) "DARK" else "LIGHT"
+        _uiState.update { it.copy(darkModeEnabled = enabled, themeMode = mode) }
         // Save to SharedPreferences so MainActivity can read it on recreation
         try {
             val context = com.breathy.BreathyApplication.instance
             val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
-            // "enabled" means dark mode ON, "not enabled" means light mode ON
-            // We save LIGHT or DARK directly (not SYSTEM) since this is an explicit toggle
-            prefs.edit().putString("theme_mode", if (enabled) "DARK" else "LIGHT").apply()
+            prefs.edit().putString("theme_mode", mode).apply()
         } catch (_: Exception) { }
-        Timber.i("Theme mode changed: %s", if (enabled) "DARK" else "LIGHT")
+        Timber.i("Theme mode changed: %s", mode)
+    }
+
+    fun setThemeMode(mode: String) {
+        val isSystemDarkMode = try {
+            val context = com.breathy.BreathyApplication.instance
+            context.resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        } catch (_: Exception) { false }
+
+        val darkEnabled = when (mode) {
+            "DARK" -> true
+            "LIGHT" -> false
+            else -> isSystemDarkMode // SYSTEM
+        }
+        _uiState.update { it.copy(darkModeEnabled = darkEnabled, themeMode = mode) }
+        // Save to SharedPreferences so MainActivity can read it on recreation
+        try {
+            val context = com.breathy.BreathyApplication.instance
+            val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putString("theme_mode", mode).apply()
+        } catch (_: Exception) { }
+        Timber.i("Theme mode changed: %s", mode)
     }
 
     fun togglePrivacy(enabled: Boolean) {

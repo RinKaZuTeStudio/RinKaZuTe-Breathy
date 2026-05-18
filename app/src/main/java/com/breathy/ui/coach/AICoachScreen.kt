@@ -138,7 +138,7 @@ fun AICoachScreen(
     }
 
     Scaffold(
-        containerColor = themethemeBgPrimary,
+        containerColor = themeBgPrimary,
         topBar = {
             TopAppBar(
                 title = {
@@ -160,14 +160,14 @@ fun AICoachScreen(
                             Text(
                                 text = "AI Coach",
                                 style = MaterialTheme.typography.titleSmall.copy(
-                                    color = themethemeTextPrimary,
+                                    color = themeTextPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                             )
                             Text(
                                 text = "Your quit-smoking companion",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = themethemeTextSecondary,
+                                    color = themeTextSecondary,
                                     fontSize = 10.sp
                                 )
                             )
@@ -179,7 +179,7 @@ fun AICoachScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = themethemeTextPrimary
+                            tint = themeTextPrimary
                         )
                     }
                 },
@@ -188,12 +188,12 @@ fun AICoachScreen(
                         Icon(
                             imageVector = Icons.Default.DeleteSweep,
                             contentDescription = "Clear chat history",
-                            tint = themethemeTextSecondary
+                            tint = themeTextSecondary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = themethemeBgSurface,
+                    containerColor = themeBgSurface,
                     titleContentColor = themeTextPrimary
                 )
             )
@@ -202,7 +202,7 @@ fun AICoachScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(themethemethemeBgSurface)
+                    .background(themeBgSurface)
                     .imePadding()
             ) {
                 // ── Rate Limit Indicator ──────────────────────────────────
@@ -215,7 +215,7 @@ fun AICoachScreen(
                             .fillMaxWidth()
                             .height(2.dp),
                         color = SemanticWarning,
-                        trackColor = themethemeBgSurfaceVariant
+                        trackColor = themeBgSurfaceVariant
                     )
                     Text(
                         text = "Rate limit: wait ${uiState.rateLimitSecondsRemaining}s",
@@ -275,7 +275,7 @@ fun AICoachScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Loading conversation...",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = themethemethemeTextSecondary)
+                            style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                         )
                     }
                 }
@@ -294,7 +294,7 @@ fun AICoachScreen(
                         Text(
                             text = uiState.errorMessage!!,
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = themethemeTextSecondary,
+                                color = themeTextSecondary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         )
@@ -307,7 +307,7 @@ fun AICoachScreen(
                             Text(
                                 text = "Retry",
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                                color = themethemeBgPrimary,
+                                color = themeBgPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -330,7 +330,7 @@ fun AICoachScreen(
                         Text(
                             text = "Hi! I'm your AI Coach",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                color = themethemeTextPrimary,
+                                color = themeTextPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         )
@@ -338,7 +338,7 @@ fun AICoachScreen(
                         Text(
                             text = "Ask me anything about quitting smoking,\nmanaging cravings, or staying motivated.",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = themethemeTextSecondary,
+                                color = themeTextSecondary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         )
@@ -381,14 +381,14 @@ fun AICoachScreen(
             title = {
                 Text(
                     text = "Clear Chat History?",
-                    color = themethemeTextPrimary,
+                    color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
                     text = "This will permanently delete all your conversation history with the AI Coach. This cannot be undone.",
-                    color = themethemeTextSecondary
+                    color = themeTextSecondary
                 )
             },
             confirmButton = {
@@ -407,10 +407,10 @@ fun AICoachScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text(text = "Cancel", color = themethemethemeTextSecondary)
+                    Text(text = "Cancel", color = themeTextSecondary)
                 }
             },
-            containerColor = themethemeBgSurface
+            containerColor = themeBgSurface
         )
     }
 }
@@ -518,7 +518,7 @@ private fun MessageBubble(
                 Text(
                     text = timeText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = themethemeTextDisabled,
+                        color = themeTextDisabled,
                         fontSize = 10.sp
                     ),
                     modifier = Modifier.padding(horizontal = 4.dp)
@@ -609,7 +609,7 @@ private fun TypingIndicatorBubble() {
         Spacer(modifier = Modifier.width(6.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = themethemethemeBgSurface),
+            colors = CardDefaults.cardColors(containerColor = themeBgSurface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
@@ -722,7 +722,7 @@ private fun MessageInputBar(
             placeholder = {
                 Text(
                     text = if (isRateLimited) "Wait a moment..." else "Ask your coach...",
-                    color = themethemeTextDisabled
+                    color = themeTextDisabled
                 )
             },
             maxLines = 4,
@@ -756,7 +756,7 @@ private fun MessageInputBar(
             if (isSending) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = themethemeBgPrimary,
+                    color = themeBgPrimary,
                     strokeWidth = 2.dp
                 )
             } else {
