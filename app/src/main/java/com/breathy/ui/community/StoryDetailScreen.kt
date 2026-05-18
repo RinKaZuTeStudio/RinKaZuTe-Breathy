@@ -209,9 +209,18 @@ fun StoryDetailScreen(
                         onClick = {
                             showDeleteDialog = false
                             viewModel.deleteStory()
-                        }
+                        },
+                        enabled = !uiState.isDeletingStory
                     ) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        if (uiState.isDeletingStory) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.error,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 },
                 dismissButton = {
@@ -730,6 +739,7 @@ data class StoryDetailUiState(
     val replyText: String = "",
     val replyingTo: Reply? = null,
     val isSendingReply: Boolean = false,
+    val isDeletingStory: Boolean = false,
     val error: String? = null,
     val hasMoreReplies: Boolean = true,
     val isDeleted: Boolean = false
@@ -953,14 +963,17 @@ class StoryDetailViewModel(
 
     fun deleteStory() {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isDeletingStory = true)
+
             storyRepository.deleteStory(storyId)
                 .onSuccess {
-                    _uiState.value = _uiState.value.copy(isDeleted = true)
+                    _uiState.value = _uiState.value.copy(isDeleted = true, isDeletingStory = false)
                     Timber.d("Story deleted successfully: %s", storyId)
                 }
                 .onFailure { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "Failed to delete story: %s", storyId)
+                        _uiState.value = _uiState.value.copy(isDeletingStory = false)
                     }
                 }
         }

@@ -487,6 +487,15 @@ private fun DetailsTab(
             EventInfoCard(event = event)
         }
 
+        // ── Countdown to start if event hasn't started yet ──────────────
+        val startMillis = event.startDate.toDate().time
+        val nowMillis = System.currentTimeMillis()
+        if (nowMillis < startMillis) {
+            item {
+                EventStartCountdownCard(startMillis = startMillis)
+            }
+        }
+
         // ── Countdown to End ────────────────────────────────────────────
         if (countdownSeconds > 0 && event.isCurrentlyActive()) {
             item {
@@ -531,8 +540,8 @@ private fun DetailsTab(
             }
         }
 
-        // ── Join Button (if not joined) ─────────────────────────────────
-        if (!uiState.isJoined && event.isCurrentlyActive()) {
+        // ── Join Button (if not joined and event is active or upcoming) ──
+        if (!uiState.isJoined && (event.isCurrentlyActive() || (event.active && nowMillis < startMillis))) {
             item {
                 JoinEventButton(onClick = onJoin)
             }
@@ -724,6 +733,55 @@ private fun EventLeaderboardRow(
 // ═══════════════════════════════════════════════════════════════════════════════
 //  Sub-Components
 // ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun EventStartCountdownCard(startMillis: Long) {
+    val nowMillis = System.currentTimeMillis()
+    var startCountdownSeconds by remember { mutableStateOf(((startMillis - nowMillis) / 1000).coerceAtLeast(0)) }
+    LaunchedEffect(startCountdownSeconds) {
+        if (startCountdownSeconds > 0) {
+            delay(1000)
+            startCountdownSeconds = (startCountdownSeconds - 1).coerceAtLeast(0)
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = AccentSecondary.copy(alpha = 0.08f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, AccentSecondary.copy(alpha = 0.2f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Event Starts In",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = themeTextSecondary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val days = startCountdownSeconds / 86400
+            val hours = (startCountdownSeconds % 86400) / 3600
+            val minutes = (startCountdownSeconds % 3600) / 60
+            val seconds = startCountdownSeconds % 60
+            Text(
+                text = "${days}d ${hours}h ${minutes}m ${seconds}s",
+                style = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentSecondary
+                )
+            )
+        }
+    }
+}
 
 @Composable
 private fun EventInfoCard(event: Event) {
@@ -1042,6 +1100,10 @@ private fun ProgressStatsCard(
 
 @Composable
 private fun PrizeBreakdownCard(prizes: Map<String, String>) {
+    // Group prizes by value (prize amount) to show tiers
+    val prizeGroups = prizes.entries.groupBy { it.value }
+    val sortedPrizeValues = prizeGroups.keys.sortedByDescending { it.removePrefix("$").toIntOrNull() ?: 0 }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = themeBgSurface),
@@ -1063,40 +1125,78 @@ private fun PrizeBreakdownCard(prizes: Map<String, String>) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            prizes.entries.sortedBy { it.key }.forEach { (rank, prize) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Show grouped prize tiers
+            sortedPrizeValues.forEachIndexed { tierIndex, prizeValue ->
+                val ranks = prizeGroups[prizeValue] ?: emptyList()
+                val sortedRanks = ranks.sortedBy { it.key }
+
+                val tierColor = when (tierIndex) {
+                    0 -> AccentPrimary
+                    1 -> AccentSecondary
+                    else -> AccentPurple
+                }
+                val tierIcon = when (tierIndex) {
+                    0 -> "\uD83E\uDD47" // Gold
+                    1 -> "\uD83E\uDD48" // Silver
+                    else -> "\uD83E\uDD49" // Bronze
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = tierColor.copy(alpha = 0.06f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, tierColor.copy(alpha = 0.15f))
                 ) {
-                    val medalEmoji = when (rank.lowercase()) {
-                        "1st" -> "\uD83E\uDD47"
-                        "2nd" -> "\uD83E\uDD48"
-                        "3rd" -> "\uD83E\uDD49"
-                        else -> "\uD83C\uDFC5"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = tierIcon,
+                            fontSize = 22.sp,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = sortedRanks.joinToString(", ") { it.key },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = themeTextPrimary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Text(
+                                text = "${sortedRanks.size} winner${if (sortedRanks.size > 1) "s" else ""}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = themeTextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = tierColor.copy(alpha = 0.15f)),
+                            shape = RoundedCornerShape(8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Text(
+                                text = prizeValue,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = TextStyle(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = tierColor
+                                )
+                            )
+                        }
                     }
-                    Text(
-                        text = medalEmoji,
-                        fontSize = 20.sp,
-                        modifier = Modifier.width(32.dp)
-                    )
-                    Text(
-                        text = rank,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = AccentPrimary,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier.width(48.dp)
-                    )
-                    Text(
-                        text = prize,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = themeTextSecondary
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
+                }
+
+                if (tierIndex < sortedPrizeValues.lastIndex) {
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }

@@ -158,9 +158,9 @@ fun NetworkImage(
  */
 fun invalidateImageCache(url: String) {
     // Remove all cache entries for this URL regardless of cacheBust value
-    // Since we can't iterate LruCache keys efficiently, we remove the common ones
-    imageCache.remove("url:$url:0")
-    imageCache.remove("url:$url")
+    // Since LruCache doesn't support pattern-based removal, evict all as a safe fallback
+    // This is acceptable because profile photo changes are infrequent
+    imageCache.evictAll()
 }
 
 /**

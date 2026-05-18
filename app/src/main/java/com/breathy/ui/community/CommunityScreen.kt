@@ -330,64 +330,90 @@ private fun StoryList(
         }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Loading skeletons
-        if (uiState.isLoading && uiState.stories.isEmpty()) {
-            items(5) {
-                StoryCardSkeleton()
-            }
-        } else {
-            // Story cards
-            items(
-                items = uiState.stories,
-                key = { it.id }
-            ) { story ->
-                StoryCard(
-                    story = story,
-                    isLiked = uiState.likedStoryIds.contains(story.id),
-                    isOwner = currentUserId != null && story.userId == currentUserId,
-                    onLikeClick = { onLikeClick(story.id) },
-                    onClick = { onStoryClick(story.id) },
-                    onAvatarClick = { onAvatarClick(story.userId) },
-                    onDeleteClick = { onDeleteStory(story.id) }
-                )
-            }
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Loading skeletons
+            if (uiState.isLoading && uiState.stories.isEmpty()) {
+                items(5) {
+                    StoryCardSkeleton()
+                }
+            } else {
+                // Story cards
+                items(
+                    items = uiState.stories,
+                    key = { it.id }
+                ) { story ->
+                    StoryCard(
+                        story = story,
+                        isLiked = uiState.likedStoryIds.contains(story.id),
+                        isOwner = currentUserId != null && story.userId == currentUserId,
+                        onLikeClick = { onLikeClick(story.id) },
+                        onClick = { onStoryClick(story.id) },
+                        onAvatarClick = { onAvatarClick(story.userId) },
+                        onDeleteClick = { onDeleteStory(story.id) }
+                    )
+                }
 
-            // Loading more indicator
-            if (uiState.isLoadingMore) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = AccentPrimary,
-                            strokeWidth = 2.dp,
-                            strokeCap = StrokeCap.Round
+                // Loading more indicator
+                if (uiState.isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = AccentPrimary,
+                                strokeWidth = 2.dp,
+                                strokeCap = StrokeCap.Round
+                            )
+                        }
+                    }
+                }
+
+                // End of list indicator
+                if (!uiState.hasMore && uiState.stories.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "You've reached the end",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
+                            style = MaterialTheme.typography.labelMedium,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             }
+        }
 
-            // End of list indicator
-            if (!uiState.hasMore && uiState.stories.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "You've reached the end",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
-                        style = MaterialTheme.typography.labelMedium,
-                        textAlign = TextAlign.Center
+        // Delete-in-progress overlay
+        if (uiState.isDeletingStory) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .semantics {
+                        contentDescription = "Deleting story"
+                    },
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.6f)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = AccentPrimary,
+                        strokeWidth = 3.dp,
+                        strokeCap = StrokeCap.Round
                     )
                 }
             }

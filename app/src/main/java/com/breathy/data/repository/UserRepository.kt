@@ -18,6 +18,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.util.Calendar
@@ -168,21 +170,29 @@ class UserRepository(
 
     /** Upload a new avatar photo and update both user and publicProfile documents. */
     suspend fun updatePhoto(userId: String, photoUri: Uri): Result<String> = runCatching {
+        // Compress the image before uploading
+        val compressedUri = try {
+            compressImage(com.breathy.BreathyApplication.instance, photoUri)
+        } catch (e: Exception) {
+            Timber.w(e, "Image compression failed, using original URI")
+            photoUri
+        }
+
         // Try Cloudinary first, fall back to Firebase Storage if it fails
         val urlString = try {
             val uploadResult = cloudinaryUploader.uploadProfileImageFromUri(
-                imageUri = photoUri,
+                imageUri = compressedUri,
                 userId = userId
             )
             if (uploadResult != null) {
                 uploadResult.secureUrl
             } else {
                 Timber.w("Cloudinary upload failed, falling back to Firebase Storage")
-                uploadToFirebaseStorage(userId, photoUri)
+                uploadToFirebaseStorage(userId, compressedUri)
             }
         } catch (e: Exception) {
             Timber.w(e, "Cloudinary upload failed, falling back to Firebase Storage")
-            uploadToFirebaseStorage(userId, photoUri)
+            uploadToFirebaseStorage(userId, compressedUri)
         }
 
         // Update both user and publicProfile documents using set-with-merge
@@ -211,6 +221,69 @@ class UserRepository(
         urlString
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to update photo for user: %s", userId)
+    }
+
+    /**
+     * Compress an image URI to a smaller size before uploading.
+     * Decodes the image, downsamples it if necessary, and writes a compressed JPEG
+     * to a temporary file. Returns the original URI if compression fails.
+     *
+     * @param context Android context for content resolution and cache directory.
+     * @param uri The source image URI.
+     * @param maxWidth Maximum width in pixels (default 800).
+     * @param maxHeight Maximum height in pixels (default 800).
+     * @param quality JPEG quality 0–100 (default 80).
+     * @return A URI pointing to the compressed image, or the original URI on failure.
+     */
+    private suspend fun compressImage(context: android.content.Context, uri: Uri, maxWidth: Int = 800, maxHeight: Int = 800, quality: Int = 80): Uri {
+        return withContext(Dispatchers.IO) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext uri
+                val options = android.graphics.BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
+                inputStream.close()
+
+                var sampleSize = 1
+                while (options.outWidth / sampleSize > maxWidth || options.outHeight / sampleSize > maxHeight) {
+                    sampleSize *= 2
+                }
+
+                val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize
+                }
+
+                val compressedInputStream = context.contentResolver.openInputStream(uri) ?: return@withContext uri
+                val bitmap = android.graphics.BitmapFactory.decodeStream(compressedInputStream, null, decodeOptions)
+                compressedInputStream.close()
+
+                if (bitmap == null) return@withContext uri
+
+                // Scale to exact dimensions if still too large
+                val scaled = if (bitmap.width > maxWidth || bitmap.height > maxHeight) {
+                    val scale = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height)
+                    val w = (bitmap.width * scale).toInt()
+                    val h = (bitmap.height * scale).toInt()
+                    val result = android.graphics.Bitmap.createScaledBitmap(bitmap, w, h, true)
+                    if (result !== bitmap) bitmap.recycle()
+                    result
+                } else bitmap
+
+                // Save compressed bitmap to a temp file
+                val tempFile = java.io.File.createTempFile("compressed_profile", ".jpg", context.cacheDir)
+                val outputStream = java.io.FileOutputStream(tempFile)
+                scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, outputStream)
+                outputStream.flush()
+                outputStream.close()
+                if (scaled !== bitmap && !scaled.isRecycled) scaled.recycle()
+
+                android.net.Uri.fromFile(tempFile)
+            } catch (e: Exception) {
+                Timber.w(e, "Image compression failed, using original")
+                uri
+            }
+        }
     }
 
     /**
@@ -269,6 +342,22 @@ class UserRepository(
                 }
 
                 // Firestore batches support max 500 operations
+                if (operationCount >= 450) {
+                    batch.commit().await()
+                    operationCount = 0
+                }
+            }
+
+            // Update event participants for this user
+            val eventParticipantsSnapshot = firestore.collection("eventParticipants")
+                .whereEqualTo("userId", userId)
+                .limit(50)
+                .get()
+                .await()
+
+            for (participantDoc in eventParticipantsSnapshot.documents) {
+                batch.update(participantDoc.reference, "photoURL", photoURL)
+                operationCount++
                 if (operationCount >= 450) {
                     batch.commit().await()
                     operationCount = 0

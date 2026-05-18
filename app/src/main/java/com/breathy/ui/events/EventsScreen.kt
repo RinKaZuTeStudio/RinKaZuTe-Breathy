@@ -542,6 +542,55 @@ private fun EventCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // ── Countdown to start if event hasn't started yet ───────────
+            val startMillis = event.startDate.toDate().time
+            val nowMillis = System.currentTimeMillis()
+            if (nowMillis < startMillis) {
+                var countdownSeconds by remember { mutableStateOf((startMillis - nowMillis) / 1000) }
+                LaunchedEffect(countdownSeconds) {
+                    if (countdownSeconds > 0) {
+                        delay(1000)
+                        countdownSeconds = (countdownSeconds - 1).coerceAtLeast(0)
+                    }
+                }
+
+                val days = countdownSeconds / 86400
+                val hours = (countdownSeconds % 86400) / 3600
+                val minutes = (countdownSeconds % 3600) / 60
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.08f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Timer,
+                            contentDescription = null,
+                            tint = AccentPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Starts in ${days}d ${hours}h ${minutes}m",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = AccentPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             // ── Meta Row: dates, participants ────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -648,7 +697,7 @@ private fun EventCard(
                             )
                         )
                     }
-                } else if (isCurrentlyActive) {
+                } else if (isCurrentlyActive || (event.active && System.currentTimeMillis() < event.startDate.toDate().time)) {
                     Button(
                         onClick = onJoin,
                         enabled = !isJoining,
@@ -678,12 +727,43 @@ private fun EventCard(
                         )
                     }
                 } else {
-                    Text(
-                        text = "Coming Soon",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = themeTextDisabled
+                    // Event not yet started — show countdown
+                    val startMillis = event.startDate.toDate().time
+                    val nowMillis = System.currentTimeMillis()
+                    if (nowMillis < startMillis) {
+                        var cardCountdownSeconds by remember { mutableStateOf((startMillis - nowMillis) / 1000) }
+                        LaunchedEffect(cardCountdownSeconds) {
+                            if (cardCountdownSeconds > 0) {
+                                delay(1000)
+                                cardCountdownSeconds = (cardCountdownSeconds - 1).coerceAtLeast(0)
+                            }
+                        }
+                        val days = cardCountdownSeconds / 86400
+                        val hours = (cardCountdownSeconds % 86400) / 3600
+                        val minutes = (cardCountdownSeconds % 3600) / 60
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.1f)),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Text(
+                                text = "${days}d ${hours}h ${minutes}m",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = AccentPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "Coming Soon",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = themeTextDisabled
+                            )
                         )
-                    )
+                    }
                 }
             }
         }

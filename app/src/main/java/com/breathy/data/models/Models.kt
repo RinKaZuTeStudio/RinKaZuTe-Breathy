@@ -575,7 +575,7 @@ data class Event(
                 active = map["active"] as? Boolean ?: false,
                 prizes = prizesMap,
                 dailyRequired = (map["dailyRequired"] as? Long)?.toInt() ?: 0,
-                eventType = map["eventType"] as? String ?: "default",
+                eventType = map["eventType"] as? String ?: map["type"] as? String ?: "default",
                 targetPushups = (map["targetPushups"] as? Long)?.toInt() ?: 0
             )
         }
@@ -591,7 +591,7 @@ data class Event(
     }
 
     /** Check if event is a pushup challenge. */
-    fun isPushupChallenge(): Boolean = eventType == "pushup"
+    fun isPushupChallenge(): Boolean = eventType == "pushup" || eventType == "pushup_challenge"
 
     /** Calculate total days in the event. */
     fun totalDays(): Int {

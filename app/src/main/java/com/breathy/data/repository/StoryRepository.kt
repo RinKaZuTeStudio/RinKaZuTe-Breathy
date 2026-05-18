@@ -212,34 +212,48 @@ class StoryRepository(
                 throw SecurityException("You can only delete your own stories")
             }
 
-            // Delete images from Firebase Storage if photoURL is present
+            // Delete images from Firebase Storage if the URL is a Firebase Storage URL
             val photoURL = storyDoc.getString("photoURL")
-            if (!photoURL.isNullOrBlank() && firebaseStorage != null) {
+            if (!photoURL.isNullOrBlank() && firebaseStorage != null && photoURL.contains("firebasestorage.googleapis.com")) {
                 try {
-                    // Extract storage path from the download URL
-                    // Firebase Storage URLs contain the path after /o/
                     val storageRef = firebaseStorage.getReferenceFromUrl(photoURL)
                     storageRef.delete().await()
-                    Timber.d("Deleted story image from storage: %s", photoURL)
+                    Timber.d("Deleted story image from Firebase Storage: %s", photoURL)
                 } catch (e: Exception) {
                     // Image deletion is best-effort — don't fail the whole operation
                     Timber.w(e, "Failed to delete story image from storage: %s", photoURL)
                 }
             }
+            // Note: Cloudinary images are not deleted from Cloudinary on story delete
+            // because Cloudinary's destroy API requires server-side auth.
+            // They will be orphaned but this is acceptable.
 
-            // Delete the story document and all replies subcollection
-            val batch = firestore.batch()
-            batch.delete(firestore.collection(STORIES_COLLECTION).document(storyId))
+            // Delete the story document
+            firestore.collection(STORIES_COLLECTION).document(storyId).delete().await()
 
+            // Delete all replies in batches (Firestore limit: 500 ops per batch)
             val replies = firestore.collection(STORIES_COLLECTION).document(storyId)
                 .collection(REPLIES_SUBCOLLECTION)
                 .get()
                 .await()
-                Unit
-            for (reply in replies.documents) {
-                batch.delete(reply.reference)
+
+            if (!replies.isEmpty) {
+                val replyDocs = replies.documents
+                var batch = firestore.batch()
+                var opCount = 0
+                for (replyDoc in replyDocs) {
+                    batch.delete(replyDoc.reference)
+                    opCount++
+                    if (opCount >= 499) {
+                        batch.commit().await()
+                        batch = firestore.batch()
+                        opCount = 0
+                    }
+                }
+                if (opCount > 0) {
+                    batch.commit().await()
+                }
             }
-            batch.commit().await(); Unit
         } ?: throw IllegalStateException("Delete story timed out after 30 seconds")
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to delete story: %s", storyId)

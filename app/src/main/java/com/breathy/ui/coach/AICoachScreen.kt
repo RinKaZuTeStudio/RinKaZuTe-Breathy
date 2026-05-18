@@ -837,7 +837,20 @@ class AICoachViewModel(
         viewModelScope.launch {
             try {
                 coachRepository.observeConversation(limit = 100).collect { messages ->
-                    _uiState.update { it.copy(messages = messages, isLoading = false) }
+                    _uiState.update { current ->
+                        val wasSending = current.isSending
+                        val newAssistantMessages = messages.count { !it.isFromUser() }
+                        val oldAssistantMessages = current.messages.count { !it.isFromUser() }
+
+                        // If we were sending and a new assistant message appeared, we're done sending
+                        val shouldStopSending = wasSending && newAssistantMessages > oldAssistantMessages
+
+                        current.copy(
+                            messages = messages.distinctBy { it.id },
+                            isLoading = false,
+                            isSending = if (shouldStopSending) false else wasSending
+                        )
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -911,9 +924,13 @@ class AICoachViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSending = true, errorMessage = null) }
+
             val result = coachRepository.sendMessage(content)
-            result.onSuccess {
-                _uiState.update { it.copy(isSending = false) }
+            result.onSuccess { coachMessage ->
+                // Don't set isSending = false here!
+                // Wait for the snapshot listener to deliver the assistant message.
+                // The snapshot listener in loadConversation() will detect when the
+                // new assistant message appears and then set isSending = false.
             }.onFailure { e ->
                 Timber.e(e, "Failed to send message")
                 val errorMsg = if (e is IllegalStateException && e.message?.contains("Rate limit") == true) {
