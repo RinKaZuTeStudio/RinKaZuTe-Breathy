@@ -3,6 +3,7 @@ package com.breathy.ui.components
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.collection.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +28,11 @@ import java.io.InputStream
  * - **String** (URL): Loaded from network via OkHttp (already a project dependency).
  * - **Uri** (local content): Loaded via ContentResolver (for camera/gallery picks).
  *
+ * Features:
+ * - **LRU memory cache** (8 MB) — prevents re-fetching on recomposition.
+ * - **Downsampling** — large images are scaled down to prevent OOM.
+ * - **Placeholder support** — renders nothing while loading; caller provides fallback.
+ *
  * No external image-loading library required.
  */
 @Composable
@@ -43,12 +49,45 @@ fun NetworkImage(
         model ?: return@LaunchedEffect
         withContext(Dispatchers.IO) {
             try {
+                // Check cache first
+                val cacheKey = when (model) {
+                    is String -> "url:$model"
+                    is Uri -> "uri:$model"
+                    else -> null
+                }
+                if (cacheKey != null) {
+                    val cached = imageCache[cacheKey]
+                    if (cached != null && !cached.isRecycled) {
+                        bitmap = cached
+                        return@withContext
+                    }
+                }
+
                 val loaded: Bitmap? = when (model) {
                     is String -> loadFromUrl(model)
                     is Uri -> loadFromUri(context.contentResolver.openInputStream(model))
                     else -> null
                 }
-                bitmap = loaded
+
+                // Downsample if the bitmap is very large (prevent OOM)
+                val downsampled = loaded?.let { bmp ->
+                    val maxDim = 1024
+                    if (bmp.width > maxDim || bmp.height > maxDim) {
+                        val scale = maxDim.toFloat() / maxOf(bmp.width, bmp.height)
+                        val w = (bmp.width * scale).toInt()
+                        val h = (bmp.height * scale).toInt()
+                        val scaled = Bitmap.createScaledBitmap(bmp, w, h, true)
+                        if (scaled !== bmp) bmp.recycle()
+                        scaled
+                    } else bmp
+                }
+
+                // Store in cache
+                if (cacheKey != null && downsampled != null) {
+                    imageCache.put(cacheKey, downsampled)
+                }
+
+                bitmap = downsampled
             } catch (_: Exception) {
                 bitmap = null
             }
@@ -70,6 +109,16 @@ fun NetworkImage(
 // ── Internal helpers ────────────────────────────────────────────────────────
 
 private val okHttpClient by lazy { OkHttpClient() }
+
+/** LRU memory cache — 8 MB approx (1/8 of available memory on a 64MB heap). */
+private val imageCache: LruCache<String, Bitmap> by lazy {
+    val maxSize = 8 * 1024 * 1024 // 8 MB
+    object : LruCache<String, Bitmap>(maxSize) {
+        override fun sizeOf(key: String, value: Bitmap): Int {
+            return value.allocationByteCount
+        }
+    }
+}
 
 private fun loadFromUrl(url: String): Bitmap? {
     val request = Request.Builder().url(url).build()

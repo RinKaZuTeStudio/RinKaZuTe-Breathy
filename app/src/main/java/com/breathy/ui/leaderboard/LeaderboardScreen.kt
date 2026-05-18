@@ -202,7 +202,7 @@ class LeaderboardViewModel(
 
                     // Fetch current user's own rank if not found in entries
                     if (currentUserEntry == null) {
-                        fetchCurrentUserRank(uid, profilePairs.map { it.second })
+                        fetchCurrentUserRank(uid, profilePairs)
                     }
                 }
             } catch (e: CancellationException) {
@@ -216,17 +216,18 @@ class LeaderboardViewModel(
         }
     }
 
-    private suspend fun fetchCurrentUserRank(uid: String, profiles: List<PublicProfile>) {
+    private suspend fun fetchCurrentUserRank(uid: String, profilePairs: List<Pair<String, PublicProfile>>) {
         try {
             val userProfile = userRepository.getPublicProfile(uid).getOrNull() ?: return
-            val rank = profiles.indexOfFirst { it.nickname == userProfile.nickname } + 1
+            // Match by document ID (= userId) instead of nickname to avoid duplicate-nickname issues
+            val rank = profilePairs.indexOfFirst { it.first == uid } + 1
             val entry = LeaderboardEntry(
                 userId = uid,
                 nickname = userProfile.nickname,
                 photoURL = userProfile.photoURL,
                 xp = userProfile.xp,
                 daysSmokeFree = userProfile.daysSmokeFree,
-                rank = if (rank > 0) rank else profiles.size + 1
+                rank = if (rank > 0) rank else profilePairs.size + 1
             )
             _uiState.update {
                 it.copy(currentUserEntry = entry, currentUserRank = entry.rank)

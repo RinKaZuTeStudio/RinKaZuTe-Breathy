@@ -208,3 +208,20 @@ val themeOutlineColor: Color
 /** Theme-aware outline variant color. Replaces hardcoded OutlineVariantColor. */
 val themeOutlineVariantColor: Color
     @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outlineVariant
+
+/** Theme-aware primary accent color. Replaces hardcoded AccentPrimary.
+ *  Uses darker green (#00C853) in light mode for better contrast on white. */
+val themeAccentPrimary: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
+
+/** Theme-aware primary accent color at 10% opacity for backgrounds. */
+val themeAccentPrimaryMuted: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primaryContainer
+
+/** Theme-aware purple accent. Replaces hardcoded AccentPurple. */
+val themeAccentPurple: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.tertiary
+
+/** Theme-aware error color. Replaces hardcoded SemanticError. */
+val themeErrorColor: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.error

@@ -102,6 +102,9 @@ import com.breathy.data.repository.UserRepository
 import com.breathy.ui.theme.AccentPrimary
 import com.breathy.ui.theme.AccentPurple
 import com.breathy.ui.theme.AccentWarning
+import com.breathy.ui.theme.themeAccentPrimary
+import com.breathy.ui.theme.themeAccentPrimaryMuted
+import com.breathy.ui.theme.themeAccentPurple
 
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -296,7 +299,7 @@ fun ProfileScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = AccentPrimary)
+                    CircularProgressIndicator(color = themeAccentPrimary)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Loading profile...",
@@ -378,10 +381,10 @@ fun ProfileScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedBorderColor = AccentPrimary,
+                        focusedBorderColor = themeAccentPrimary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
-                        cursorColor = AccentPrimary,
-                        focusedLabelColor = AccentPrimary,
+                        cursorColor = themeAccentPrimary,
+                        focusedLabelColor = themeAccentPrimary,
                         unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
@@ -397,7 +400,7 @@ fun ProfileScreen(
                     },
                     enabled = nicknameText.isNotBlank()
                 ) {
-                    Text(text = "Save", color = AccentPrimary, fontWeight = FontWeight.Bold)
+                    Text(text = "Save", color = themeAccentPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -445,10 +448,10 @@ fun ProfileScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedBorderColor = AccentPrimary,
+                        focusedBorderColor = themeAccentPrimary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
-                        cursorColor = AccentPrimary,
-                        focusedLabelColor = AccentPrimary,
+                        cursorColor = themeAccentPrimary,
+                        focusedLabelColor = themeAccentPrimary,
                         unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
@@ -463,7 +466,7 @@ fun ProfileScreen(
                     },
                     enabled = ageError == null
                 ) {
-                    Text(text = "Save", color = AccentPrimary, fontWeight = FontWeight.Bold)
+                    Text(text = "Save", color = themeAccentPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -739,7 +742,7 @@ private fun ProfileHeader(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
-                color = AccentPrimary,
+                color = themeAccentPrimary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
@@ -765,21 +768,21 @@ private fun ProfileStatsSection(
             label = "Smoke Free",
             value = if (daysSmokeFree == 0) "Day 1" else "${daysSmokeFree}d",
             icon = "🌬️",
-            accentColor = AccentPrimary,
+            accentColor = themeAccentPrimary,
             modifier = Modifier.weight(1f)
         )
         StatMiniCard(
             label = "Saved",
             value = formatMoney(moneySaved),
             icon = "💰",
-            accentColor = AccentPrimary,
+            accentColor = themeAccentPrimary,
             modifier = Modifier.weight(1f)
         )
         StatMiniCard(
             label = "Level",
             value = "$level",
             icon = "⭐",
-            accentColor = AccentPurple,
+            accentColor = themeAccentPurple,
             modifier = Modifier.weight(1f)
         )
     }
@@ -790,7 +793,7 @@ private fun StatMiniCard(
     label: String,
     value: String,
     icon: String,
-    accentColor: Color = AccentPrimary,
+    accentColor: Color = themeAccentPrimary,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -887,13 +890,13 @@ private fun QuitDateSection(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Change quit date",
-                        tint = AccentPrimary,
+                        tint = themeAccentPrimary,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "Change",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = AccentPrimary,
+                            color = themeAccentPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.sp
                         )
@@ -931,7 +934,7 @@ private fun AchievementsPreviewSection(
             )
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.1f)),
+                colors = CardDefaults.cardColors(containerColor = themeAccentPrimaryMuted),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 onClick = onViewAll
             ) {
@@ -939,7 +942,7 @@ private fun AchievementsPreviewSection(
                     text = "View All ($lockedCount locked)",
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = AccentPrimary,
+                        color = themeAccentPrimary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 11.sp
                     )
@@ -981,7 +984,7 @@ private fun AchievementsPreviewSection(
 @Composable
 private fun AchievementChip(achievement: Achievement) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.1f)),
+        colors = CardDefaults.cardColors(containerColor = themeAccentPrimaryMuted),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -994,7 +997,7 @@ private fun AchievementChip(achievement: Achievement) {
             Text(
                 text = achievement.title,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = AccentPrimary,
+                    color = themeAccentPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 10.sp
                 ),
@@ -1109,13 +1112,13 @@ private fun SettingsSection(
                                 "LIGHT" -> "Light"
                                 else -> "System"
                             },
-                            color = AccentPrimary,
+                            color = themeAccentPrimary,
                             style = MaterialTheme.typography.labelMedium
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = "Select theme",
-                            tint = AccentPrimary,
+                            tint = themeAccentPrimary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -1200,7 +1203,7 @@ private fun SettingsSection(
 
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.1f)),
+                    colors = CardDefaults.cardColors(containerColor = themeAccentPrimaryMuted),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     onClick = onNavigateToFriends
                 ) {
@@ -1208,7 +1211,7 @@ private fun SettingsSection(
                         text = "View",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = AccentPrimary,
+                            color = themeAccentPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.sp
                         )
@@ -1267,7 +1270,7 @@ private fun SettingsToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedTrackColor = AccentPrimary,
+                checkedTrackColor = themeAccentPrimary,
                 checkedThumbColor = MaterialTheme.colorScheme.background,
                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                 uncheckedThumbColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
@@ -1290,7 +1293,7 @@ private fun SubscriptionStatusSection(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (subscription?.isActive() == true) {
-                AccentPrimary.copy(alpha = 0.1f)
+                themeAccentPrimaryMuted
             } else {
                 MaterialTheme.colorScheme.surface
             }
@@ -1313,7 +1316,7 @@ private fun SubscriptionStatusSection(
                 Icon(
                     imageVector = Icons.Default.CardGiftcard,
                     contentDescription = "Subscription",
-                    tint = if (subscription?.isActive() == true) AccentPrimary else AccentPurple,
+                    tint = if (subscription?.isActive() == true) themeAccentPrimary else themeAccentPurple,
                     modifier = Modifier.size(24.dp)
                 )
                 Column {
@@ -1337,7 +1340,7 @@ private fun SubscriptionStatusSection(
             Icon(
                 imageVector = Icons.Default.Payments,
                 contentDescription = "View subscription",
-                tint = AccentPrimary,
+                tint = themeAccentPrimary,
                 modifier = Modifier.size(20.dp)
             )
         }
