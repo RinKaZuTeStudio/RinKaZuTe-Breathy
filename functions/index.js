@@ -33,10 +33,13 @@ const messaging = getMessaging();
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BATCH_SIZE = 500;
-const OPENROUTER_MODEL = "google/gemma-2-9b-it:free";
+// Primary: Llama 4 Scout (free, higher rate limits than Gemma). Fallback: DeepSeek Chat.
+const OPENROUTER_MODEL = "meta-llama/llama-4-scout:free";
 const OPENROUTER_FALLBACK_MODEL = "deepseek/deepseek-chat";
 
-// OpenRouter API key parameter (set with: firebase functions:secrets:set OPENROUTER_API_KEY)
+// OpenRouter API key parameter.
+// Set with: firebase functions:secrets:set OPENROUTER_API_KEY
+// Get a key at: https://openrouter.ai/keys
 const openrouterApiKeyParam = defineString("OPENROUTER_API_KEY", {
   description: "OpenRouter API key for AI Coach chatbot",
   default: ""
