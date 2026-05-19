@@ -5,6 +5,7 @@ import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
@@ -153,9 +154,9 @@ fun ProfileScreen(
     var showEditQuitDateDialog by remember { mutableStateOf(false) }
     var showEditAgeDialog by remember { mutableStateOf(false) }
 
-    // Photo picker
+    // Photo picker — uses Android Photo Picker (no permissions required)
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         uri?.let { viewModel.updatePhoto(it) }
     }
@@ -209,7 +210,11 @@ fun ProfileScreen(
                         levelProgress = uiState.levelProgress,
                         isPhotoUploading = uiState.isPhotoUploading,
                         photoCacheBust = uiState.photoCacheBust,
-                        onAvatarClick = { photoPickerLauncher.launch("image/*") },
+                        onAvatarClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
                         onEditNickname = { showEditNicknameDialog = true },
                         onEditAge = { showEditAgeDialog = true }
                     )

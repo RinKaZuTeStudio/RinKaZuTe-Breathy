@@ -3,6 +3,7 @@ package breathy.com.ui.auth
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -1322,9 +1323,9 @@ private fun ProfileStep(
         label = "profileGlow"
     )
 
-    // Image picker launcher
+    // Image picker launcher — uses Android Photo Picker (no permissions required)
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         onPhotoUriChanged(uri)
     }
@@ -1342,7 +1343,11 @@ private fun ProfileStep(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(120.dp)
-                .clickable { photoPickerLauncher.launch("image/*") }
+                .clickable {
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
         ) {
             // Glow
             Box(
@@ -1487,7 +1492,11 @@ private fun ProfileStep(
 
         // Photo change button
         OutlinedButton(
-            onClick = { photoPickerLauncher.launch("image/*") },
+            onClick = {
+                photoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(
