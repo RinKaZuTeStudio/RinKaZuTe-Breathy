@@ -10,15 +10,58 @@ Downloadable artifacts are attached to each GitHub Release.
 
 ---
 
-## v1.0.1 (versionCode 2) — 2026-09-02
+## v1.0.1 (versionCode 2) — 2026-09-02 (feature implementation build)
 
 **Downloads:** https://github.com/RinKaZuTeStudio/RinKaZuTe-Breathy/releases/tag/v1.0.1
 
 | Artifact | File | Size | SHA-256 |
 |----------|------|------|---------|
-| Release APK | `Breathy-v1.0.1-release.apk` | 97.9 MB | `bea1288c46a58c8f21aef873d9ea20da1389657603d13b6e35684e6cf16b1fe6` |
-| Debug APK | `Breathy-v1.0.1-debug.apk` | 106.0 MB | `89691970f32dfa6da1ade15a3883622c236b97eb54ec99c9deabcbb95594ab03` |
-| Release AAB (Play Store) | `Breathy-v1.0.1-release.aab` | 51.2 MB | `cd24f13f8c3f0a3efbc9a6c29f9d6f33341b40a236a199273048d1faa683fe1d` |
+| Release APK | `Breathy-release-v1.0.1-signed.apk` | 98.0 MB | see release page |
+| Debug APK | `Breathy-debug-v1.0.1.apk` | 106.1 MB | see release page |
+| Release AAB (Play Store) | `Breathy-release-v1.0.1.aab` | 51.3 MB | see release page |
+
+### What's in this build
+
+- **Profile picture persistence — fixed.** Firebase Storage fallback now
+  uploads to a unique path per upload (no more same-URL cache poisoning),
+  the ViewModel consumes the returned URL, and cache invalidation is
+  deterministic. Avatar + frame propagate to users/{uid}, publicProfiles/{uid},
+  stories, replies and eventParticipants.
+- **Avatar frame system** — new Sage Nature frame set (Classic, Nature, Leaf,
+  Bronze L3, Silver L5, Gold L8, Achievement, Event, Premium, Rank) with real
+  unlock conditions (level/achievements/verified premium). Persisted on both
+  user + public profile and rendered everywhere via `BreathyAvatar`.
+- **Rank identity** — nature tiers (Seed → Sprout → Leaf → Plant → Tree →
+  Forest → Evergreen) mapped from the existing XP/level system (presentation
+  only, no math changed) with `RankBadge` on profile and leaderboard.
+- **Age collection** — required onboarding step (5-step onboarding now), saved
+  to `users.age`; existing accounts without age get a ONE-TIME completion
+  screen (`ageCompletion` route) — never an infinite loop.
+- **Leaderboard initial reset (safe, one-time)** — entries are filtered by
+  `updatedAt >= 2026-09-01 UTC` cutoff baked into this release. Zero fake or
+  stale test users until real users join and use the app. Nothing is ever
+  deleted; post-reset activity re-includes profiles automatically.
+- **Events** — demo auto-created pushup challenge removed. Polished
+  "Exclusive events are coming soon" empty state. Event model now supports
+  `status` (upcoming/active/completed) and `access` (free/premium) with
+  premium-only gating on join (verified entitlement, server rules still
+  admin-only for event writes).
+- **Breathy Premium — REAL Google Play subscription** — product
+  `breathy_premium_monthly`, base plan `monthly-premium`, `launch-offer`
+  applied when available. Localized Play price, purchase/pending/cancel/
+  restore/expiry handling, acknowledgment, signature verification with the
+  Play licensing public key, entitlement re-checked at every app start and
+  mirrored to Firestore. Replaces the old one-time "supporter" purchase.
+- **Ads — fixed and activated** — MobileAds init, app-open + interstitial
+  (production ad units in release, Google official test units in debug),
+  load-retry with backoff, frequency capping, and a hard premium exemption:
+  verified premium → ads are never loaded or shown; expiry → free behavior
+  resumes automatically.
+- **Sage Nature UI redesign** — full palette swap to white/warm white (60–70%),
+  light sage (20–25%), deep forest + natural accents (5–10%); light-first
+  theme; botanical components, gradients, borders and empty states across all
+  screens; "Breathe Through a Craving" prominent CTA on Home.
+- **Billing library 6.0.1 → 7.1.1.**
 
 **Build info**
 - Package: `breathy.com` · Firebase project: `breathy-healthy`
@@ -28,13 +71,5 @@ Downloadable artifacts are attached to each GitHub Release.
 
 **Notes**
 - Debug builds are signed with the repo debug keystore (SHA-1 `7B:70:FA:EB:44:33:41:E1:7B:4B:06:4B:83:3B:63:FE:82:C8:4F:87`).
-  Register that SHA-1 in the Firebase console if you need Google Sign-In to work in debug builds.
-- Keystore backups and full signing details live in the master keys file (kept private).
-
-## Releasing a new version
-
-1. Bump `versionCode` / `versionName` in `app/build.gradle.kts`.
-2. Add a new row to the table above and a new section below.
-3. Build: `./gradlew assembleRelease assembleDebug bundleRelease`
-4. Create a GitHub Release with tag `v<version>` and attach the three artifacts
-   (APK files exceed GitHub's 100 MB git limit — always publish them as **release assets**, not in git).
+- Signing material lives in `Breathy-Backup/builds/v5` and the local master
+  file — never commit `keystore.properties` or `release.keystore` here.

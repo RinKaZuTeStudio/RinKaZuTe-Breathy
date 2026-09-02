@@ -36,7 +36,7 @@ camerax = "1.4.1"
 imageCropper = "4.6.0"
 
 # Billing
-billing = "6.0.1"
+billing = "7.1.1"
 
 # Ads
 admob = "23.6.0"

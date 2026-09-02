@@ -252,9 +252,9 @@ fun AchievementsListScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = when (selectedFilter) {
-                                AchievementFilter.UNLOCKED -> "No achievements unlocked yet"
+                                AchievementFilter.UNLOCKED -> "Your journey has just begun — unlock achievements as you progress"
                                 AchievementFilter.LOCKED -> "All achievements unlocked! 🎉"
-                                else -> "No achievements found"
+                                else -> "Your journey has just begun"
                             },
                             style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                             textAlign = TextAlign.Center

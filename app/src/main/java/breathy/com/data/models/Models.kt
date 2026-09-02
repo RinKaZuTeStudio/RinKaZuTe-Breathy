@@ -153,7 +153,9 @@ data class User(
     @PropertyName("photoURL")
     val photoURL: String? = null,
     @PropertyName("location")
-    val location: String? = null
+    val location: String? = null,
+    @PropertyName("avatarFrame")
+    val avatarFrame: String? = null
 ){
 
     companion object {
@@ -179,7 +181,8 @@ data class User(
             givenLikes = (map["givenLikes"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             fcmToken = map["fcmToken"] as? String,
             photoURL = map["photoURL"] as? String,
-            location = map["location"] as? String
+            location = map["location"] as? String,
+            avatarFrame = map["avatarFrame"] as? String
         )
 
         /** Compute level from XP using the PRD-specified threshold table. */
@@ -248,7 +251,8 @@ data class User(
         "givenLikes" to givenLikes,
         "fcmToken" to fcmToken,
         "photoURL" to photoURL,
-        "location" to location
+        "location" to location,
+        "avatarFrame" to avatarFrame
     )
 }
 
@@ -271,7 +275,17 @@ data class PublicProfile(
     val location: String? = null,
     @PropertyName("quitDate")
     @Serializable(with = TimestampSerializer::class)
-        val quitDate: Timestamp? = null
+        val quitDate: Timestamp? = null,
+    /** Avatar frame id — see [AvatarFrame]. Null for legacy profiles. */
+    @PropertyName("avatarFrame")
+    val avatarFrame: String? = null,
+    /** Whether this user has a verified active Premium subscription. */
+    @PropertyName("premium")
+    val premium: Boolean = false,
+    /** Last-activity timestamp — used by the initial leaderboard reset filter. */
+    @PropertyName("updatedAt")
+    @Serializable(with = TimestampSerializer::class)
+        val updatedAt: Timestamp? = null
 ){
     companion object {
         fun fromFirestoreMap(id: String, map: Map<String, Any?>): PublicProfile = PublicProfile(
@@ -281,7 +295,10 @@ data class PublicProfile(
             daysSmokeFree = (map["daysSmokeFree"] as? Long)?.toInt() ?: 0,
             xp = (map["xp"] as? Long)?.toInt() ?: 0,
             location = map["location"] as? String,
-            quitDate = map["quitDate"] as? Timestamp
+            quitDate = map["quitDate"] as? Timestamp,
+            avatarFrame = map["avatarFrame"] as? String,
+            premium = map["premium"] as? Boolean ?: false,
+            updatedAt = map["updatedAt"] as? Timestamp
         )
     }
 }
@@ -556,7 +573,13 @@ data class Event(
     @PropertyName("eventType")
     val eventType: String = "default",
     @PropertyName("targetPushups")
-    val targetPushups: Int = 0
+    val targetPushups: Int = 0,
+    /** Lifecycle status: "upcoming" | "active" | "completed". Null/blank for legacy events. */
+    @PropertyName("status")
+    val status: String? = null,
+    /** Access level: "free" | "premium". Null for legacy events (treated as free). */
+    @PropertyName("access")
+    val access: String? = null
 ){
     companion object {
         fun fromFirestoreMap(id: String, map: Map<String, Any?>): Event {
@@ -576,7 +599,9 @@ data class Event(
                 prizes = prizesMap,
                 dailyRequired = (map["dailyRequired"] as? Long)?.toInt() ?: 0,
                 eventType = map["eventType"] as? String ?: map["type"] as? String ?: "default",
-                targetPushups = (map["targetPushups"] as? Long)?.toInt() ?: 0
+                targetPushups = (map["targetPushups"] as? Long)?.toInt() ?: 0,
+                status = map["status"] as? String,
+                access = map["access"] as? String
             )
         }
     }
@@ -592,6 +617,21 @@ data class Event(
 
     /** Check if event is a pushup challenge. */
     fun isPushupChallenge(): Boolean = eventType == "pushup" || eventType == "pushup_challenge"
+
+    /** True when only verified Premium members may enter this event. */
+    val isPremiumOnly: Boolean
+        get() = access == "premium"
+
+    /**
+     * Display lifecycle status with legacy fallback: if no explicit [status]
+     * was stored, derive it from [active] and the date range.
+     */
+    fun displayStatus(): String {
+        if (!status.isNullOrBlank()) return status
+        return if (isCurrentlyActive()) "active"
+        else if (endDate.toDate().time < System.currentTimeMillis()) "completed"
+        else "upcoming"
+    }
 
     /** Calculate total days in the event. */
     fun totalDays(): Int {

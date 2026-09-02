@@ -38,6 +38,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -140,6 +142,7 @@ data class OnboardingUiState(
     val cigarettesPerPack: Int = 20,
     val nickname: String = "",
     val photoUri: Uri? = null,
+    val age: Int? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isComplete: Boolean = false,
@@ -153,11 +156,12 @@ data class OnboardingUiState(
             0 -> true // quitDate always has a default
             1 -> true // quitType always has a default
             2 -> cigarettesPerDay > 0 && pricePerPack > 0.0 && cigarettesPerPack > 0
-            3 -> nickname.isNotBlank() && nickname.length >= 2
+            3 -> age != null && age in 10..120 // age is REQUIRED
+            4 -> nickname.isNotBlank() && nickname.length >= 2
             else -> false
         }
 
-    val totalSteps: Int get() = 4
+    val totalSteps: Int get() = 5
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -239,6 +243,10 @@ class OnboardingViewModel(
 
     fun onPhotoUriChanged(uri: Uri?) {
         _uiState.update { it.copy(photoUri = uri, errorMessage = null) }
+    }
+
+    fun onAgeChanged(age: Int?) {
+        _uiState.update { it.copy(age = age, errorMessage = null) }
     }
 
     fun onNextStep() {
@@ -367,6 +375,7 @@ class OnboardingViewModel(
                 val userProfile = User(
                     email = currentUser.email ?: "",
                     nickname = state.nickname.trim(),
+                    age = state.age,
                     quitDate = quitTimestamp,
                     quitType = state.quitType,
                     cigarettesPerDay = state.cigarettesPerDay,
@@ -453,7 +462,13 @@ class OnboardingViewModel(
                 "photoURL" to publicProfile.photoURL,
                 "daysSmokeFree" to publicProfile.daysSmokeFree,
                 "xp" to publicProfile.xp,
-                "quitDate" to publicProfile.quitDate
+                "quitDate" to publicProfile.quitDate,
+                "avatarFrame" to breathy.com.data.models.AvatarFrame.NATURE.id,
+                "premium" to false,
+                // Stamp activity time at creation: profiles created after the
+                // initial-reset cutoff count as real leaderboard users.
+                "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
             val batch = firestore.batch()
             batch.set(firestore.collection(USERS_COLLECTION).document(userId), userMap)
@@ -709,7 +724,11 @@ fun OnboardingScreen(
                         onPricePerPackChanged = viewModel::onPricePerPackChanged,
                         onCigarettesPerPackChanged = viewModel::onCigarettesPerPackChanged
                     )
-                    3 -> ProfileStep(
+                    3 -> AgeStep(
+                        age = uiState.age,
+                        onAgeChanged = viewModel::onAgeChanged
+                    )
+                    4 -> ProfileStep(
                         nickname = uiState.nickname,
                         nicknameError = uiState.nicknameError,
                         photoUri = uiState.photoUri,
@@ -1301,6 +1320,120 @@ private fun SavingsItem(label: String, value: String) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  Step 4: Profile — Nickname + Optional Photo
 // ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Age collection step — REQUIRED. The value is persisted to the user profile
+ * and used wherever age-related eligibility applies. Asked exactly once
+ * during onboarding; never re-asked afterwards.
+ */
+@Composable
+private fun AgeStep(
+    age: Int?,
+    onAgeChanged: (Int?) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(40.dp))
+
+        Text(
+            text = "\uD83C\uDF31",
+            style = MaterialTheme.typography.displayMedium
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "How old are you?",
+            style = MaterialTheme.typography.headlineLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "This helps us personalize your journey. " +
+                "You'll only be asked this once.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Age stepper — large touch targets, accessible controls
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            OutlinedButton(
+                onClick = { onAgeChanged(((age ?: 30) - 1).coerceIn(10, 120)) },
+                modifier = Modifier.size(64.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("−", style = MaterialTheme.typography.headlineMedium)
+            }
+
+            // Age value card
+            Card(
+                modifier = Modifier.width(140.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = age?.toString() ?: "—",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = if (age != null) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "years",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            OutlinedButton(
+                onClick = { onAgeChanged(((age ?: 30) + 1).coerceIn(10, 120)) },
+                modifier = Modifier.size(64.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("+", style = MaterialTheme.typography.headlineMedium)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = if (age == null) "Please select your age to continue"
+            else "Tap + / − to adjust",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (age == null) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
 
 @Composable
 private fun ProfileStep(

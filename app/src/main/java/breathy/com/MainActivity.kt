@@ -88,6 +88,17 @@ class MainActivity : ComponentActivity() {
         // Initialize AdMob SDK via AdManager (avoids double initialization)
         appModule.adManager.initialize()
 
+        // ── Premium entitlement re-check ─────────────────────────────────────
+        // Connect to Google Play Billing and re-verify the subscription on
+        // EVERY app start: active purchase → premium (ads off, premium events
+        // unlocked); expired/cancelled → free behavior resumes. This is the
+        // single startup point that keeps entitlement verified, not cached.
+        try {
+            appModule.premiumRepository.connectAndRefresh()
+        } catch (e: Exception) {
+            Timber.e(e, "Premium entitlement check failed at startup")
+        }
+
         // Request notification permission on Android 13+
         requestNotificationPermissionIfNeeded()
 

@@ -47,6 +47,7 @@ import androidx.navigation.navArgument
 import android.app.Activity
 import androidx.compose.ui.platform.LocalContext
 import breathy.com.BreathyApplication
+import breathy.com.ui.auth.AgeCompletionScreen
 import breathy.com.ui.auth.AuthScreen
 import breathy.com.ui.auth.OnboardingScreen
 import breathy.com.ui.coach.AICoachScreen
@@ -80,6 +81,7 @@ object BreathyRoutes {
     // ── Auth & Onboarding ───────────────────────────────────────────────────
     const val AUTH = "auth"
     const val ONBOARDING = "onboarding"
+    const val AGE_COMPLETION = "ageCompletion"
 
     // ── Main Screens (bottom bar destinations) ──────────────────────────────
     const val HOME = "home"
@@ -298,9 +300,23 @@ fun BreathyNavHost(
                         }
                     },
                     onNavigateToOnboarding = { navigateTo(BreathyRoutes.ONBOARDING) },
+                    onNavigateToAgeCompletion = { navigateTo(BreathyRoutes.AGE_COMPLETION) },
                     onGoogleSignInRequest = onGoogleSignInRequest,
                     googleIdToken = googleIdToken,
                     onGoogleTokenConsumed = onGoogleTokenConsumed
+                )
+            }
+
+            // ── Age completion (one-time for pre-age accounts) ──────
+            composable(BreathyRoutes.AGE_COMPLETION) {
+                AgeCompletionScreen(
+                    userRepository = app.appModule.userRepository,
+                    onNavigateToHome = {
+                        navController.navigate(BreathyRoutes.HOME) {
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
 

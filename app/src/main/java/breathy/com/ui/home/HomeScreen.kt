@@ -980,10 +980,18 @@ private fun CravingFAB(
                 hoveredElevation = 0.dp
             )
         ) {
-            Text(
-                text = "🔥",
-                fontSize = 24.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+            ) {
+                Text(text = "🔥", fontSize = 20.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Breathe Through a Craving",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

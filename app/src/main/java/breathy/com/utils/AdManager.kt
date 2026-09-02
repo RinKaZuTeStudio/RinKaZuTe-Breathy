@@ -2,6 +2,7 @@ package breathy.com.utils
 
 import android.app.Activity
 import android.content.Context
+import breathy.com.data.repository.PremiumRepository
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -10,6 +11,14 @@ import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.appopen.AppOpenAd
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Date
 import java.util.concurrent.atomic.AtomicBoolean
@@ -36,14 +45,27 @@ class AdManager(
 
     companion object {
         // ── AdMob IDs ──────────────────────────────────────────────────────
-        /** AdMob App ID (configured in AndroidManifest). */
+        /** AdMob App ID (configured in AndroidManifest) — production account. */
         private const val ADMOB_APP_ID = "ca-app-pub-9434446627275871~3054699475"
 
-        /** Ad unit ID for app-open ads. */
-        private const val APP_OPEN_AD_UNIT_ID = "ca-app-pub-9434446627275871/9005175949"
+        /** Production app-open ad unit ID. */
+        private const val APP_OPEN_AD_UNIT_ID_PROD = "ca-app-pub-9434446627275871/9005175949"
 
-        /** Ad unit ID for interstitial ads. */
-        private const val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-9434446627275871/7446506098"
+        /** Production interstitial ad unit ID. */
+        private const val INTERSTITIAL_AD_UNIT_ID_PROD = "ca-app-pub-9434446627275871/7446506098"
+
+        // Google's official TEST ad units — guaranteed fill. Used ONLY in debug
+        // builds so development/testing always renders real ads without
+        // generating invalid traffic on the production account. Release builds
+        // always use the production units above.
+        private const val APP_OPEN_AD_UNIT_ID_TEST = "ca-app-pub-3940256099942544/9257395921"
+        private const val INTERSTITIAL_AD_UNIT_ID_TEST = "ca-app-pub-3940256099942544/1033173712"
+
+        /** The ad unit actually used — depends on build type. */
+        private val APP_OPEN_AD_UNIT_ID: String =
+            if (breathy.com.BuildConfig.DEBUG) APP_OPEN_AD_UNIT_ID_TEST else APP_OPEN_AD_UNIT_ID_PROD
+        private val INTERSTITIAL_AD_UNIT_ID: String =
+            if (breathy.com.BuildConfig.DEBUG) INTERSTITIAL_AD_UNIT_ID_TEST else INTERSTITIAL_AD_UNIT_ID_PROD
 
         // ── Timing ─────────────────────────────────────────────────────────
         /** Maximum age of a cached app-open ad before it's considered stale (4 hours). */
@@ -51,6 +73,12 @@ class AdManager(
 
         /** Minimum interval between interstitial ad shows (3 minutes). */
         private const val INTERSTITIAL_FREQUENCY_CAP_MS = 3L * 60L * 1000L
+
+        /** Delay before the first ad-load retry after a load failure (15s). */
+        private const val AD_RETRY_INITIAL_MS = 15_000L
+
+        /** Maximum delay between ad-load retries (2 minutes). */
+        private const val AD_RETRY_MAX_MS = 120_000L
 
         // ── Loading States ─────────────────────────────────────────────────
         /** Maximum time to wait for an ad to load before giving up (5 seconds). */
@@ -125,8 +153,48 @@ class AdManager(
 
     // ── Premium Flag ───────────────────────────────────────────────────────────
 
-    /** When `true`, no ads are loaded or shown. */
+    /** When `true`, no ads are loaded or shown (verified Premium entitlement). */
+    @Volatile
     var isPremiumUser: Boolean = false
+        private set
+
+    // ── Premium Entitlement Observation ────────────────────────────────────
+
+    private val premiumScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var retryJobs: MutableList<Job> = mutableListOf()
+
+    /**
+     * Keep ad behavior in sync with the verified Premium entitlement.
+     * Observes the app-wide [PremiumRepository.PremiumState]:
+     * - premium → immediately release cached ads and stop loading (zero ads)
+     * - premium lost (expired/cancelled) → resume the free-user ad strategy
+     */
+    fun attachPremiumState(state: kotlinx.coroutines.flow.StateFlow<PremiumRepository.PremiumState>) {
+        premiumScope.launch {
+            state.collect { premium ->
+                val wasPremium = isPremiumUser
+                isPremiumUser = premium.isPremium
+                if (premium.isPremium && !wasPremium) {
+                    Timber.d("AdManager: verified Premium active — releasing all ads (ad-free mode)")
+                    release()
+                } else if (!premium.isPremium && wasPremium) {
+                    Timber.d("AdManager: Premium no longer active — resuming free-user ad strategy")
+                    loadAppOpenAd()
+                    loadInterstitialAd()
+                }
+            }
+        }
+    }
+
+    /** Schedule a load retry with backoff (ad load failures are usually transient). */
+    private fun scheduleLoadRetry(retry: () -> Unit) {
+        val job = premiumScope.launch {
+            delay(AD_RETRY_INITIAL_MS)
+            retry()
+        }
+        retryJobs.add(job)
+        retryJobs.removeAll { !it.isActive }
+    }
 
     // ── Event Listener ─────────────────────────────────────────────────────────
 
@@ -217,8 +285,9 @@ class AdManager(
                         appOpenAd = null
                         isAppOpenAdLoading.set(false)
                         appOpenLoadingState = AdLoadingState.IDLE
-                        Timber.w("App-open ad failed to load: code=%d, message=%s", error.code, error.message)
+                        Timber.w("App-open ad failed to load: code=%d, message=%s — will retry", error.code, error.message)
                         eventListener?.onAdLoadFailed(AdType.APP_OPEN, "Code ${error.code}: ${error.message}")
+                        scheduleLoadRetry { loadAppOpenAd() }
                     }
                 }
             )
@@ -362,13 +431,14 @@ class AdManager(
                         isInterstitialLoading.set(false)
                         interstitialLoadingState = AdLoadingState.IDLE
                         Timber.w(
-                            "Interstitial ad failed to load: code=%d, message=%s",
+                            "Interstitial ad failed to load: code=%d, message=%s — will retry",
                             error.code, error.message
                         )
                         eventListener?.onAdLoadFailed(
                             AdType.INTERSTITIAL,
                             "Code ${error.code}: ${error.message}"
                         )
+                        scheduleLoadRetry { loadInterstitialAd() }
                     }
                 }
             )
@@ -513,6 +583,8 @@ class AdManager(
         interstitialLoadingState = AdLoadingState.IDLE
         isAppOpenAdLoading.set(false)
         isInterstitialLoading.set(false)
-        Timber.d("AdManager released — all ad references cleared")
+        retryJobs.forEach { it.cancel() }
+        retryJobs.clear()
+        Timber.d("AdManager released — all ad references cleared (ad-free mode)")
     }
 }

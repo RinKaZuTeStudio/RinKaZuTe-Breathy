@@ -5,174 +5,181 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SAGE NATURE + BOTANICAL WELLNESS + PREMIUM MINIMALISM palette
+//
+//  Visual balance targets (across every screen):
+//    60–70% white / warm white
+//    20–25% light sage / green
+//     5–10% deep green + natural accents
+//
+//  Symbol names are intentionally UNCHANGED from the previous design system so
+//  every existing screen keeps compiling — the values carry the new identity.
+//  The app is intentionally light-first: a calm, clean, fresh, premium
+//  wellness product. (Dark mode renders the same light botanical scheme.)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Core Sage Naturue Values ────────────────────────────────────────────────
+
+val PureWhite = Color(0xFFFFFFFF)
+val WarmWhite = Color(0xFFF8FAF6)
+val VeryLightSage = Color(0xFFEAF3E5)
+val SoftSage = Color(0xFFD5E6CC)
+val MediumSage = Color(0xFFAFC8A3)
+val NaturalGreen = Color(0xFF6F9B5E)
+val DeepForest = Color(0xFF285C3A)
+val DarkBotanical = Color(0xFF183D28)
+val SoftSand = Color(0xFFE8DFC9)
+val WarmEarth = Color(0xFFA9825B)
+val SoftSky = Color(0xFFDCECF0)
+val NaturalYellow = Color(0xFFF1D98A)
+
 // ── Background Colors ────────────────────────────────────────────────────────
-// Three-tier depth system: deepest → surface → elevated
-// Creates perceptible depth through luminance stepping rather than shadows.
+// Light botanical depth system: warm white canvas → pure white surfaces →
+// very light sage tinted variants.
 
-/** Full-screen background, behind all surfaces. */
-val BgPrimary = Color(0xFF0D1117)
+/** Full-screen background, behind all surfaces — warm white. */
+val BgPrimary = WarmWhite
 
-/** Card backgrounds, bottom sheets, dialog surfaces. */
-val BgSurface = Color(0xFF161B22)
+/** Card backgrounds, bottom sheets, dialog surfaces — pure white. */
+val BgSurface = PureWhite
 
-/** Elevated sub-surfaces: input fields, nested cards, dividers. */
-val BgSurfaceVariant = Color(0xFF1C2128)
+/** Tinted variant — very light sage. */
+val BgSurfaceVariant = VeryLightSage
 
-/** Highest elevation surface — modal overlays, dropdown menus. */
-val BgSurfaceElevated = Color(0xFF21262D)
+/** Elevated surface — pure white with stronger elevation shadows. */
+val BgSurfaceElevated = PureWhite
 
-// Backward-compat aliases (previous Color.kt used different hex values)
 val SurfaceColor = BgSurface
 val SurfaceVariant = BgSurfaceVariant
 
-// ── Neon Accent Colors ───────────────────────────────────────────────────────
-// Each neon accent is assigned a specific semantic role:
-//   Green → progress/success   Red → warnings/cravings   Blue → info/links
-//   Yellow → caution           Purple → premium/XP        Orange → cravings/urgency
-//   Pink → social/likes
+// ── Accent Colors ───────────────────────────────────────────────────────────
 
-/** Primary Neon Green — progress bars, success states, CTA buttons. */
-val AccentPrimary = Color(0xFF00E676)
+/** Primary accent — natural green (CTAs, actions, progress). */
+val AccentPrimary = NaturalGreen
 
-/** Primary pressed state — 10% lighter. */
-val AccentPrimaryPressed = Color(0xFF33EB91)
+/** Pressed state — slightly deeper natural green. */
+val AccentPrimaryPressed = Color(0xFF5D874E)
 
-/** Secondary Neon Red — warnings, cravings, urgency indicators. */
-val AccentSecondary = Color(0xFFFF6B6B)
+/** Secondary accent — warm earth for supportive highlights. */
+val AccentSecondary = WarmEarth
 
-/** Info Blue — links, secondary actions, informational badges. */
-val AccentInfo = Color(0xFF4FC3F7)
+/** Informational accent — muted sky blue-green. */
+val AccentInfo = Color(0xFF6FA6B5)
 
-/** Warning Yellow — caution banners, rate-limit notices. */
-val AccentWarning = Color(0xFFFFD54F)
+/** Warning accent — natural yellow. */
+val AccentWarning = NaturalYellow
 
-/** Purple — premium features, achievement badges, XP. */
-val AccentPurple = Color(0xFFAB47BC)
+/** "Purple" slot is remapped to DEEP FOREST GREEN — the premium identity. */
+val AccentPurple = DeepForest
 
-/** Orange — cravings, urgency, warnings. */
-val AccentOrange = Color(0xFFFF9100)
+/** Orange slot — warm earth (used sparingly for streaks/energy). */
+val AccentOrange = WarmEarth
 
-/** Pink — likes, hearts, social affirmation. */
-val AccentPink = Color(0xFFFF4081)
+/** Pink slot — muted terracotta for likes/hearts. */
+val AccentPink = Color(0xFFC97F6D)
 
-// Legacy aliases from previous Color.kt
+// Legacy aliases (kept so existing references compile)
 val NeonGreen = AccentPrimary
 val NeonBlue = AccentInfo
 val NeonPurple = AccentPurple
 val NeonOrange = AccentOrange
 val NeonPink = AccentPink
 
-// ── Text Colors ──────────────────────────────────────────────────────────────
-// Three-level emphasis model matching Material Design opacity approach
-// but using fixed hex values for consistency across surfaces.
+// ── Text Colors ─────────────────────────────────────────────────────────────
 
-/** Headlines, body text, high-emphasis labels. */
-val TextPrimary = Color(0xFFE6EDF3)
+/** Primary text — dark botanical (high contrast on warm white). */
+val TextPrimary = DarkBotanical
 
-/** Subtitles, helper text, metadata, timestamps. */
-val TextSecondary = Color(0xFF8B949E)
+/** Secondary text — sage gray-green. */
+val TextSecondary = Color(0xFF5C6B5E)
 
-/** Disabled states, placeholder text, inactive tabs. */
-val TextDisabled = Color(0xFF484F58)
+/** Disabled text. */
+val TextDisabled = Color(0xFF9AA79B)
 
-/** Inverse text — for use on light/accent backgrounds. */
-val TextInverse = Color(0xFF0D1117)
+/** Text on colored (green) surfaces — pure white. */
+val TextInverse = PureWhite
 
-// ── Semantic Colors ──────────────────────────────────────────────────────────
+// ── Semantic Colors ─────────────────────────────────────────────────────────
 
-/** Error states, form validation failures, destructive actions. */
-val SemanticError = Color(0xFFFF5252)
+/** Error — muted natural red (calm, non-alarming). */
+val SemanticError = Color(0xFFC0574F)
 
-/** Success toasts, completed milestones (same as AccentPrimary). */
 val SemanticSuccess = AccentPrimary
 
-/** Warning banners, rate-limit notices, cautionary prompts. */
 val SemanticWarning = AccentWarning
 
-// ── Achievement Colors ───────────────────────────────────────────────────────
+// ── Achievement Metals ──────────────────────────────────────────────────────
 
-/** Gold — top rank, premium achievements. */
-val AchievementGold = Color(0xFFFFD700)
+val AchievementGold = Color(0xFFD9B45B)
+val AchievementSilver = Color(0xFFAEB6B2)
+val AchievementBronze = Color(0xFFB98A5E)
 
-/** Silver — second rank. */
-val AchievementSilver = Color(0xFFC0C0C0)
+// ── Outlines & Overlays ─────────────────────────────────────────────────────
 
-/** Bronze — third rank. */
-val AchievementBronze = Color(0xFFCD7F32)
+/** Hairline borders on white cards. */
+val OutlineColor = SoftSage
 
-// ── Outline & Divider Colors ─────────────────────────────────────────────────
+val OutlineVariantColor = VeryLightSage
 
-/** Card outlines, border strokes. */
-val OutlineColor = Color(0xFF21262D)
+/** Subtle accent outline (formerly neon). */
+val OutlineNeon = AccentPrimary.copy(alpha = 0.25f)
 
-/** Subtle dividers, hairlines. */
-val OutlineVariantColor = Color(0xFF1C2128)
+val ScrimColor = Color(0x66183D28)
 
-/** Neon border — thin accent-primary stroke for cards (30% opacity). */
-val OutlineNeon = Color(0x4D00E676)
+val OverlayDark = Color(0xCC183D28)
 
-// ── Scrim & Overlay ──────────────────────────────────────────────────────────
-
-/** Modal scrim — 60% opacity primary background. */
-val ScrimColor = Color(0x990D1117)
-
-/** Dark overlay for image readability (80% opacity). */
-val OverlayDark = Color(0xCC0D1117)
-
-// ── Utility ──────────────────────────────────────────────────────────────────
-
-/** Transparent color for no-fill cases. */
 val Transparent = Color(0x00000000)
 
-// ── Light Mode Colors ──────────────────────────────────────────────────────────
+// ── Light-Scheme Tokens (mirror the same sage identity) ─────────────────────
 
-/** Full-screen background, behind all surfaces (light mode). */
-val LightBgPrimary = Color(0xFFFFFFFF)
+val LightBgPrimary = WarmWhite
+val LightBgSurface = PureWhite
+val LightBgSurfaceVariant = VeryLightSage
+val LightBgSurfaceElevated = PureWhite
+val LightTextPrimary = DarkBotanical
+val LightTextSecondary = Color(0xFF5C6B5E)
+val LightTextDisabled = Color(0xFF9AA79B)
+val LightTextInverse = PureWhite
+val LightAccentPrimary = NaturalGreen
+val LightAccentPrimaryContainer = VeryLightSage
+val LightOnPrimaryContainer = DarkBotanical
+val LightOutlineColor = SoftSage
+val LightOutlineVariantColor = VeryLightSage
+val LightScrimColor = ScrimColor
 
-/** Card backgrounds, bottom sheets, dialog surfaces (light mode). */
-val LightBgSurface = Color(0xFFF5F5F5)
+// ═══════════════════════════════════════════════════════════════════════════════
+//  BreathyPalette — named design tokens for new/updated components
+// ═══════════════════════════════════════════════════════════════════════════════
 
-/** Elevated sub-surfaces (light mode). */
-val LightBgSurfaceVariant = Color(0xFFEEEEEE)
+object BreathyPalette {
+    val pureWhite = PureWhite
+    val warmWhite = WarmWhite
+    val veryLightSage = VeryLightSage
+    val softSage = SoftSage
+    val mediumSage = MediumSage
+    val naturalGreen = NaturalGreen
+    val deepForest = DeepForest
+    val darkBotanical = DarkBotanical
+    val softSand = SoftSand
+    val warmEarth = WarmEarth
+    val softSky = SoftSky
+    val naturalYellow = NaturalYellow
+    val textPrimary = TextPrimary
+    val textSecondary = TextSecondary
+    val textDisabled = TextDisabled
+    val textInverse = TextInverse
+    val error = SemanticError
 
-/** Highest elevation surface (light mode). */
-val LightBgSurfaceElevated = Color(0xFFE0E0E0)
-
-/** Headlines, body text (light mode). */
-val LightTextPrimary = Color(0xFF1A1A1A)
-
-/** Subtitles, helper text (light mode). */
-val LightTextSecondary = Color(0xFF666666)
-
-/** Disabled states (light mode). */
-val LightTextDisabled = Color(0xFF9E9E9E)
-
-/** Inverse text — for use on dark/accent backgrounds (light mode). */
-val LightTextInverse = Color(0xFFFFFFFF)
-
-/** Primary accent for light mode — slightly darker green for contrast. */
-val LightAccentPrimary = Color(0xFF00C853)
-
-/** Primary container for light mode — light green surface for primary-themed containers. */
-val LightAccentPrimaryContainer = Color(0xFFC8E6C9)
-
-/** On primary container for light mode — dark green text on primary container surfaces. */
-val LightOnPrimaryContainer = Color(0xFF1B5E20)
-
-/** Card outlines (light mode). */
-val LightOutlineColor = Color(0xFFE0E0E0)
-
-/** Subtle dividers (light mode). */
-val LightOutlineVariantColor = Color(0xFFEEEEEE)
-
-/** Modal scrim (light mode). */
-val LightScrimColor = Color(0x99FFFFFF)
+    /** Soft radial gradient behind default avatars. */
+    val defaultAvatarGradient = listOf(SoftSage.copy(alpha = 0.55f), VeryLightSage)
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  Theme-aware Color Accessors
 //  These read from MaterialTheme.colorScheme so they automatically switch
 //  between dark and light mode. Screens should prefer these over the
-//  hardcoded dark-mode constants above.
+//  hardcoded constants above.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Theme-aware background color. Replaces hardcoded BgPrimary. */
@@ -215,16 +222,15 @@ val themeOutlineColor: Color
 val themeOutlineVariantColor: Color
     @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outlineVariant
 
-/** Theme-aware primary accent color. Replaces hardcoded AccentPrimary.
- *  Uses darker green (#00C853) in light mode for better contrast on white. */
+/** Theme-aware primary accent color. Replaces hardcoded AccentPrimary. */
 val themeAccentPrimary: Color
     @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
 
-/** Theme-aware primary accent color at 10% opacity for backgrounds. */
+/** Theme-aware primary accent color at container opacity for backgrounds. */
 val themeAccentPrimaryMuted: Color
     @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primaryContainer
 
-/** Theme-aware purple accent. Replaces hardcoded AccentPurple. */
+/** Theme-aware premium accent (deep forest green). Replaces hardcoded AccentPurple. */
 val themeAccentPurple: Color
     @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.tertiary
 

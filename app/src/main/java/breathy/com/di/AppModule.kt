@@ -6,6 +6,7 @@ import breathy.com.data.repository.ChatRepository
 import breathy.com.data.repository.CoachRepository
 import breathy.com.data.repository.EventRepository
 import breathy.com.data.repository.FriendRepository
+import breathy.com.data.repository.PremiumRepository
 import breathy.com.data.repository.RewardRepository
 import breathy.com.data.repository.StoryRepository
 import breathy.com.data.repository.UserRepository
@@ -203,11 +204,29 @@ class AppModule(
 
     /**
      * AdMob manager — handles app-open and interstitial ad loading/display.
-     * Premium subscribers are automatically exempt.
+     * Automatically exempt users with a verified Premium subscription.
      */
     val adManager: AdManager by lazy {
         Timber.d("Initializing AdManager")
-        AdManager(applicationContext)
+        AdManager(applicationContext).also { adManager ->
+            // Keep ad behavior in lock-step with the verified premium entitlement:
+            // verified premium → zero ads (not loaded, not shown).
+            adManager.attachPremiumState(premiumRepository.state)
+        }
+    }
+
+    /**
+     * Premium entitlement manager — REAL Google Play subscription
+     * (breathy_premium_monthly / monthly-premium / launch-offer).
+     * Single source of truth for ads, events, and UI.
+     */
+    val premiumRepository: PremiumRepository by lazy {
+        Timber.d("Initializing PremiumRepository")
+        PremiumRepository(
+            context = applicationContext,
+            auth = firebaseAuth,
+            firestore = firestore
+        )
     }
 
     /**

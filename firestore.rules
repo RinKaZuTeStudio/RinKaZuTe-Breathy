@@ -342,3 +342,16 @@ service cloud.firestore {
 
   }
 }
+
+    // ── App config (one-time initialization flags) ──────────────────────
+    // Readable by any signed-in user. Writes: none — except the ONE-TIME
+    // initial-reset marker which can be CREATED exactly once by any user
+    // (updates/deletes are denied forever, making the reset immutable).
+    match /appConfig/{docId} {
+      allow read: if isAuthenticated();
+    }
+    match /appConfig/initialReset_v1 {
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['resetAt', 'reason']);
+      allow update, delete: if false;
+    }

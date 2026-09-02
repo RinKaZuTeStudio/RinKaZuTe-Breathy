@@ -78,6 +78,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -136,13 +143,17 @@ fun ProfileScreen(
     onNavigateToAICoach: () -> Unit = {},
     onNavigateToFriends: () -> Unit = {},
     onSignOut: () -> Unit = {},
-    viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(
-        userRepository = (LocalContext.current.applicationContext as BreathyApplication).appModule.userRepository,
-        rewardRepository = (LocalContext.current.applicationContext as BreathyApplication).appModule.rewardRepository,
-        authRepository = (LocalContext.current.applicationContext as BreathyApplication).appModule.authRepository,
-        auth = (LocalContext.current.applicationContext as BreathyApplication).appModule.firebaseAuth,
-        firestore = (LocalContext.current.applicationContext as BreathyApplication).appModule.firestore
-    ))
+    viewModel: ProfileViewModel = run {
+        val app = LocalContext.current.applicationContext as BreathyApplication
+        viewModel(factory = ProfileViewModelFactory(
+            userRepository = app.appModule.userRepository,
+            rewardRepository = app.appModule.rewardRepository,
+            authRepository = app.appModule.authRepository,
+            auth = app.appModule.firebaseAuth,
+            firestore = app.appModule.firestore,
+            premiumRepository = app.appModule.premiumRepository
+        ))
+    }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -153,6 +164,7 @@ fun ProfileScreen(
     var showEditNicknameDialog by remember { mutableStateOf(false) }
     var showEditQuitDateDialog by remember { mutableStateOf(false) }
     var showEditAgeDialog by remember { mutableStateOf(false) }
+    var showFramePicker by remember { mutableStateOf(false) }
 
     // Photo picker — uses Android Photo Picker (no permissions required)
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -210,11 +222,14 @@ fun ProfileScreen(
                         levelProgress = uiState.levelProgress,
                         isPhotoUploading = uiState.isPhotoUploading,
                         photoCacheBust = uiState.photoCacheBust,
+                        avatarFrame = breathy.com.data.models.AvatarFrame.fromId(uiState.user?.avatarFrame),
+                        isPremium = uiState.isPremium,
                         onAvatarClick = {
                             photoPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
                         },
+                        onChangeFrame = { showFramePicker = true },
                         onEditNickname = { showEditNicknameDialog = true },
                         onEditAge = { showEditAgeDialog = true }
                     )
@@ -522,6 +537,22 @@ fun ProfileScreen(
         }.show()
         showEditQuitDateDialog = false
     }
+
+    // ── Avatar Frame Picker ──────────────────────────────────
+    if (showFramePicker) {
+        AvatarFramePickerSheet(
+            currentFrame = breathy.com.data.models.AvatarFrame.fromId(uiState.user?.avatarFrame),
+            isPremium = uiState.isPremium,
+            level = uiState.user?.level ?: 1,
+            hasAchievements = uiState.achievements.any { it.unlocked },
+            hasEventWin = uiState.user?.achievements?.contains("event_champion") == true,
+            onSelect = { frame ->
+                viewModel.updateAvatarFrame(frame)
+                showFramePicker = false
+            },
+            onDismiss = { showFramePicker = false }
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -539,7 +570,10 @@ private fun ProfileHeader(
     levelProgress: Float,
     isPhotoUploading: Boolean = false,
     photoCacheBust: Long = 0L,
+    avatarFrame: breathy.com.data.models.AvatarFrame = breathy.com.data.models.AvatarFrame.NONE,
+    isPremium: Boolean = false,
     onAvatarClick: () -> Unit,
+    onChangeFrame: () -> Unit,
     onEditNickname: () -> Unit,
     onEditAge: () -> Unit
 ) {
@@ -580,50 +614,30 @@ private fun ProfileHeader(
                 )
             }
 
-            // Avatar
-            Card(
+            // Avatar with persisted frame (BreathyAvatar renders the same
+            // avatar + frame everywhere: profile, leaderboard, community…)
+            Box(
                 modifier = Modifier
-                    .size(100.dp)
+                    .size(104.dp)
                     .align(Alignment.Center),
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                onClick = if (isPhotoUploading) { {} } else onAvatarClick
+                contentAlignment = Alignment.Center
             ) {
                 if (isPhotoUploading) {
-                    // Show loading spinner while uploading
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            color = AccentPrimary,
-                            strokeWidth = 3.dp
-                        )
-                    }
-                } else if (!photoURL.isNullOrBlank()) {
-                    NetworkImage(
-                        model = photoURL,
-                        contentDescription = "Your avatar",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                        cacheBust = photoCacheBust
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(40.dp),
+                        color = AccentPrimary,
+                        strokeWidth = 3.dp
                     )
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Default avatar",
-                            tint = AccentPrimary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
+                    breathy.com.ui.components.BreathyAvatar(
+                        photoURL = photoURL,
+                        frame = avatarFrame,
+                        rankTier = breathy.com.data.models.RankTier.forLevel(level),
+                        size = 104.dp,
+                        contentDescription = "Your avatar",
+                        cacheBust = photoCacheBust,
+                        modifier = Modifier.clickable(onClick = onAvatarClick)
+                    )
                 }
             }
 
@@ -694,6 +708,37 @@ private fun ProfileHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ── Identity row: rank badge + premium badge + change frame ────
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            breathy.com.ui.components.RankBadge(
+                rankTier = breathy.com.data.models.RankTier.forLevel(level),
+                level = level
+            )
+            if (isPremium) {
+                breathy.com.ui.components.PremiumBadge()
+            }
+            Card(
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                onClick = onChangeFrame
+            ) {
+                Text(
+                    text = "Change frame",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            }
+        }
 
         // Age (optional)
         if (age != null) {
@@ -1349,20 +1394,20 @@ private fun SubscriptionStatusSection(
             ) {
                 Icon(
                     imageVector = Icons.Default.CardGiftcard,
-                    contentDescription = "Subscription",
+                    contentDescription = "Premium",
                     tint = if (subscription?.isActive() == true) themeAccentPrimary else themeAccentPurple,
                     modifier = Modifier.size(24.dp)
                 )
                 Column {
                     Text(
-                        text = if (subscription?.isActive() == true) "Supporter ✨" else "Support Breathy",
+                        text = if (subscription?.isActive() == true) "Breathy Premium ✦" else "Breathy Premium",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
-                        text = if (subscription?.isActive() == true) "Thank you for your support!" else "Ad-free + supporter badge",
+                        text = if (subscription?.isActive() == true) "Ad-free + exclusive events — active" else "Ad-free experience + exclusive events",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
@@ -1493,7 +1538,9 @@ data class ProfileUiState(
     val isLoading: Boolean = true,
     val isPhotoUploading: Boolean = false,
     val photoCacheBust: Long = 0L,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** Verified premium entitlement for premium-gated UI. */
+    val isPremium: Boolean = false
 )
 
 class ProfileViewModel(
@@ -1501,7 +1548,8 @@ class ProfileViewModel(
     private val rewardRepository: RewardRepository,
     private val authRepository: AuthRepository,
     private val auth: FirebaseAuth,
-    private val firestore: com.google.firebase.firestore.FirebaseFirestore
+    private val firestore: com.google.firebase.firestore.FirebaseFirestore,
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -1539,6 +1587,43 @@ class ProfileViewModel(
         loadProfile()
         loadAchievements()
         loadSubscription()
+        observePremium()
+    }
+
+    /** Mirror the verified premium entitlement into profile UI state. */
+    private fun observePremium() {
+        premiumRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.state.collect { premium ->
+                    _uiState.update { it.copy(isPremium = premium.isPremium) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Persist the selected avatar frame (users + publicProfiles) so the same
+     * frame renders everywhere. Validated against real unlock conditions.
+     */
+    fun updateAvatarFrame(frame: breathy.com.data.models.AvatarFrame) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            try {
+                userRepository.updateAvatarFrame(
+                    userId = userId,
+                    frame = frame,
+                    isPremium = premiumRepository?.isPremium() ?: false
+                )
+                _uiState.update { it.copy(errorMessage = null) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to update avatar frame")
+                _uiState.update {
+                    it.copy(errorMessage = "This frame isn't unlocked yet")
+                }
+            }
+        }
     }
 
     private fun loadProfile() {
@@ -1662,31 +1747,18 @@ class ProfileViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isPhotoUploading = true) }
             try {
-                userRepository.updatePhoto(userId, uri)
-                // Also update the public profile photoURL so other screens
-                // (community, leaderboard, chat, events) see the new image
-                val updatedUser = _uiState.value.user
-                val newPhotoUrl = updatedUser?.photoURL
+                // updatePhoto returns the NEW remote URL (and already updates
+                // both users/{uid} and publicProfiles/{uid} documents) — we use
+                // that returned URL instead of re-reading potentially stale
+                // state, so the avatar persists correctly everywhere.
+                val newPhotoUrl = userRepository.updatePhoto(userId, uri).getOrNull()
                 if (newPhotoUrl != null) {
-                    try {
-                        userRepository.updatePublicProfileFields(userId, mapOf("photoURL" to newPhotoUrl))
-                    } catch (e: Exception) {
-                        Timber.w(e, "Failed to update public profile photoURL")
-                    }
+                    _uiState.update { it.copy(photoCacheBust = System.currentTimeMillis()) }
+                    invalidateImageCache(newPhotoUrl)
                 }
-                // Increment cacheBust to force NetworkImage to reload
-                _uiState.update { it.copy(
-                    isPhotoUploading = false,
-                    photoCacheBust = System.currentTimeMillis()
-                ) }
-                // Also invalidate the in-memory cache for the old URL
-                val currentUrl = _uiState.value.user?.photoURL
-                if (currentUrl != null) {
-                    invalidateImageCache(currentUrl)
-                }
-                // Also clear the entire image cache as a safety net
+                _uiState.update { it.copy(isPhotoUploading = false) }
                 clearImageCache()
-                Timber.i("Photo updated")
+                Timber.i("Photo updated (url=%s)", newPhotoUrl != null)
             } catch (e: CancellationException) {
                 _uiState.update { it.copy(isPhotoUploading = false) }
                 throw e
@@ -1775,10 +1847,165 @@ class ProfileViewModelFactory(
     private val rewardRepository: RewardRepository,
     private val authRepository: AuthRepository,
     private val auth: FirebaseAuth,
-    private val firestore: com.google.firebase.firestore.FirebaseFirestore
+    private val firestore: com.google.firebase.firestore.FirebaseFirestore,
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return ProfileViewModel(userRepository, rewardRepository, authRepository, auth, firestore) as T
+        return ProfileViewModel(userRepository, rewardRepository, authRepository, auth, firestore, premiumRepository) as T
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Avatar Frame Picker — bottom sheet with all frames, real unlock states
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AvatarFramePickerSheet(
+    currentFrame: breathy.com.data.models.AvatarFrame,
+    isPremium: Boolean,
+    level: Int,
+    hasAchievements: Boolean,
+    hasEventWin: Boolean,
+    onSelect: (breathy.com.data.models.AvatarFrame) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val frames = breathy.com.data.models.AvatarFrame.entries
+    val modalBottomSheetState = rememberModalBottomSheetState()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = modalBottomSheetState,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Avatar frame",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Frames show your real progression. Unlock more as you grow.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Lazy grid of frames, 3 per row
+            val rows = frames.chunked(3)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                for (row in rows) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        for (frame in row) {
+                            val unlocked = frame.isUnlockedFor(
+                                level = level,
+                                hasAchievement = hasAchievements,
+                                hasEventWin = hasEventWin,
+                                isPremium = isPremium
+                            )
+                            val isSelected = frame == currentFrame
+                            FrameCard(
+                                frame = frame,
+                                unlocked = unlocked,
+                                isSelected = isSelected,
+                                level = level,
+                                hasAchievements = hasAchievements,
+                                hasEventWin = hasEventWin,
+                                isPremium = isPremium,
+                                modifier = Modifier.weight(1f),
+                                onClick = { if (unlocked) onSelect(frame) }
+                            )
+                        }
+                        // pad the last row
+                        repeat(3 - row.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FrameCard(
+    frame: breathy.com.data.models.AvatarFrame,
+    unlocked: Boolean,
+    isSelected: Boolean,
+    level: Int,
+    hasAchievements: Boolean,
+    hasEventWin: Boolean,
+    isPremium: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                when {
+                    isSelected -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                }
+            )
+            .then(
+                if (isSelected) Modifier.border(
+                    2.dp,
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(16.dp)
+                ) else Modifier
+            )
+            .clickable(enabled = unlocked, onClick = onClick)
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Mini avatar preview with the frame ring
+        breathy.com.ui.components.BreathyAvatar(
+            photoURL = null,
+            frame = frame,
+            rankTier = breathy.com.data.models.RankTier.forLevel(level),
+            size = 52.dp,
+            contentDescription = frame.label
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = frame.label,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = when {
+                unlocked -> if (isSelected) "Selected" else "Unlocked"
+                frame == breathy.com.data.models.AvatarFrame.BRONZE -> "Level 3"
+                frame == breathy.com.data.models.AvatarFrame.SILVER -> "Level 5"
+                frame == breathy.com.data.models.AvatarFrame.GOLD -> "Level 8"
+                frame == breathy.com.data.models.AvatarFrame.PREMIUM -> "Premium"
+                frame == breathy.com.data.models.AvatarFrame.EVENT -> "Win an event"
+                frame == breathy.com.data.models.AvatarFrame.ACHIEVEMENT -> "Any achievement"
+                else -> "Locked"
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (unlocked) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

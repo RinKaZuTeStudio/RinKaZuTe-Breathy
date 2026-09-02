@@ -127,6 +127,8 @@ data class AuthUiState(
 sealed class AuthNavigationEvent {
     data object NavigateToHome : AuthNavigationEvent()
     data object NavigateToOnboarding : AuthNavigationEvent()
+    /** One-time age completion for accounts created before age was required. */
+    data object NavigateToAgeCompletion : AuthNavigationEvent()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -359,7 +361,18 @@ class AuthViewModel(
                     && document.contains("nickname")
                     && (document.getString("nickname")?.isNotBlank() == true)
                 ) {
-                    // User has completed onboarding (has quitDate + quitType + nickname)
+                    // Profile complete except AGE? Existing accounts created before
+                    // the age requirement get a ONE-TIME completion step (never an
+                    // infinite loop — once saved, the check passes).
+                    val hasAge = (document.getLong("age") ?: 0L) > 0
+                    if (!hasAge) {
+                        Timber.i("$TAG: User uid=%s missing age — navigating to age completion", userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToAgeCompletion)
+                        }
+                        return@launch
+                    }
+                    // User has completed onboarding (has quitDate + quitType + nickname + age)
                     Timber.i("$TAG: User uid=%s has completed onboarding — navigating to Home", userId)
                     _uiState.update {
                         it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
@@ -473,6 +486,7 @@ class AuthViewModelFactory(
 fun AuthScreen(
     onNavigateToHome: () -> Unit,
     onNavigateToOnboarding: () -> Unit,
+    onNavigateToAgeCompletion: () -> Unit = {},
     onGoogleSignInRequest: () -> Unit = {},
     googleIdToken: String? = null,
     onGoogleTokenConsumed: () -> Unit = {},
@@ -505,6 +519,10 @@ fun AuthScreen(
             }
             is AuthNavigationEvent.NavigateToOnboarding -> {
                 onNavigateToOnboarding()
+                viewModel.onNavigationHandled()
+            }
+            is AuthNavigationEvent.NavigateToAgeCompletion -> {
+                onNavigateToAgeCompletion()
                 viewModel.onNavigationHandled()
             }
             null -> { /* No navigation */ }

@@ -131,7 +131,10 @@ data class LeaderboardEntry(
     val photoURL: String? = null,
     val xp: Int = 0,
     val daysSmokeFree: Int = 0,
-    val rank: Int = 0
+    val rank: Int = 0,
+    val avatarFrame: breathy.com.data.models.AvatarFrame = breathy.com.data.models.AvatarFrame.NONE,
+    val isPremium: Boolean = false,
+    val level: Int = 1
 )
 
 enum class LeaderboardPeriod(val label: String) {
@@ -152,6 +155,27 @@ class LeaderboardViewModel(
     companion object {
         private const val TAG = "LeaderboardViewModel"
         private const val LEADERBOARD_LIMIT = 50
+
+        /**
+         * SAFE INITIAL (PRE-LAUNCH) LEADERBOARD RESET — one-time, development-stage.
+         *
+         * The launch build ships with this fixed cutoff timestamp. Any public
+         * profile whose last activity (`updatedAt`) predates the cutoff is
+         * treated as test/demo data and is NOT shown on the leaderboard — so
+         * the board starts with ZERO users until real users join and use the
+         * app. This is NOT a recurring deletion mechanism:
+         * - nothing is ever deleted (user data integrity is preserved);
+         * - the filter is a fixed constant baked into this release;
+         * - any user whose profile is updated after the cutoff (XP change,
+         *   avatar change, etc.) appears on the leaderboard normally;
+         * - no account deletion, no "wipe all users" logic, ever.
+         */
+        private val LEADERBOARD_RESET_CUTOFF: Long = java.util.Calendar.getInstance(
+            java.util.TimeZone.getTimeZone("UTC")
+        ).apply {
+            clear()
+            set(2026, java.util.Calendar.SEPTEMBER, 1, 0, 0, 0)
+        }.timeInMillis
     }
 
     private val currentUserId: String?
@@ -177,7 +201,13 @@ class LeaderboardViewModel(
                 val flow = userRepository.observePublicProfilesOrderedByXp(LEADERBOARD_LIMIT)
 
                 flow.collect { profilePairs ->
-                    val entries = profilePairs.mapIndexed { index, pair ->
+                    // Apply the one-time initial reset filter: only profiles
+                    // active after the cutoff count as real leaderboard users.
+                    val realProfiles = profilePairs.filter { (_, profile) ->
+                        val lastActivity = profile.updatedAt?.toDate()?.time ?: 0L
+                        lastActivity >= LEADERBOARD_RESET_CUTOFF
+                    }
+                    val entries = realProfiles.mapIndexed { index, pair ->
                         val (userId, profile) = pair
                         LeaderboardEntry(
                             userId = userId,
@@ -185,7 +215,10 @@ class LeaderboardViewModel(
                             photoURL = profile.photoURL,
                             xp = profile.xp,
                             daysSmokeFree = profile.daysSmokeFree,
-                            rank = index + 1
+                            rank = index + 1,
+                            avatarFrame = breathy.com.data.models.AvatarFrame.fromId(profile.avatarFrame),
+                            isPremium = profile.premium,
+                            level = breathy.com.data.models.User.computeLevel(profile.xp)
                         )
                     }
 
@@ -202,7 +235,7 @@ class LeaderboardViewModel(
 
                     // Fetch current user's own rank if not found in entries
                     if (currentUserEntry == null) {
-                        fetchCurrentUserRank(uid, profilePairs)
+                        fetchCurrentUserRank(uid, realProfiles)
                     }
                 }
             } catch (e: CancellationException) {
@@ -219,6 +252,9 @@ class LeaderboardViewModel(
     private suspend fun fetchCurrentUserRank(uid: String, profilePairs: List<Pair<String, PublicProfile>>) {
         try {
             val userProfile = userRepository.getPublicProfile(uid).getOrNull() ?: return
+            // The user's own entry follows the same initial-reset rule.
+            val lastActivity = userProfile.updatedAt?.toDate()?.time ?: 0L
+            if (lastActivity < LEADERBOARD_RESET_CUTOFF) return
             // Match by document ID (= userId) instead of nickname to avoid duplicate-nickname issues
             val rank = profilePairs.indexOfFirst { it.first == uid } + 1
             val entry = LeaderboardEntry(
@@ -227,7 +263,10 @@ class LeaderboardViewModel(
                 photoURL = userProfile.photoURL,
                 xp = userProfile.xp,
                 daysSmokeFree = userProfile.daysSmokeFree,
-                rank = if (rank > 0) rank else profilePairs.size + 1
+                rank = if (rank > 0) rank else profilePairs.size + 1,
+                avatarFrame = breathy.com.data.models.AvatarFrame.fromId(userProfile.avatarFrame),
+                isPremium = userProfile.premium,
+                level = breathy.com.data.models.User.computeLevel(userProfile.xp)
             )
             _uiState.update {
                 it.copy(currentUserEntry = entry, currentUserRank = entry.rank)
@@ -360,6 +399,15 @@ fun LeaderboardScreen(
                     ErrorState(
                         message = uiState.errorMessage!!,
                         onRetry = { viewModel.loadLeaderboard() }
+                    )
+                }
+                uiState.entries.isEmpty() && !uiState.isLoading -> {
+                    // Polished empty state — real users only, never fake entries.
+                    breathy.com.ui.components.BreathyEmptyState(
+                        title = "Your community is just getting started",
+                        subtitle = "Be one of the first to make your mark. " +
+                            "Earn XP to appear on the board.",
+                        icon = "\uD83C\uDF3F"
                     )
                 }
                 else -> {
@@ -651,37 +699,14 @@ private fun PodiumCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Avatar
-                Card(
-                    modifier = Modifier.size(40.dp),
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = medalColor.copy(alpha = 0.2f)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    if (entry.photoURL != null) {
-                        NetworkImage(
-                            model = entry.photoURL,
-                            contentDescription = "${entry.nickname}'s avatar",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = entry.nickname.take(1).uppercase(),
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    color = medalColor,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                }
+                // Avatar with persisted frame
+                breathy.com.ui.components.BreathyAvatar(
+                    photoURL = entry.photoURL,
+                    frame = entry.avatarFrame,
+                    rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
+                    size = 52.dp,
+                    contentDescription = "${entry.nickname}'s avatar"
+                )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -761,51 +786,41 @@ private fun LeaderboardRow(
                 textAlign = TextAlign.Center
             )
 
-            // Avatar
-            Card(
-                modifier = Modifier.size(36.dp),
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = AccentPrimary.copy(alpha = 0.15f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                if (entry.photoURL != null) {
-                    NetworkImage(
-                        model = entry.photoURL,
-                        contentDescription = "${entry.nickname}'s avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = entry.nickname.take(1).uppercase(),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = AccentPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-            }
+            // Avatar with persisted frame
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = entry.photoURL,
+                frame = entry.avatarFrame,
+                rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
+                size = 44.dp,
+                contentDescription = "${entry.nickname}'s avatar"
+            )
 
             // Nickname and days
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = entry.nickname,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = if (isCurrentUser) AccentPrimary else themeTextPrimary,
-                        fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.SemiBold
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(
+                        text = entry.nickname,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = if (isCurrentUser) AccentPrimary else themeTextPrimary,
+                            fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (entry.isPremium) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "✦",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = breathy.com.ui.theme.DeepForest,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
                 Text(
                     text = "${entry.daysSmokeFree} days smoke-free",
                     style = MaterialTheme.typography.labelSmall.copy(
@@ -870,36 +885,13 @@ private fun CurrentUserBottomBar(
                     textAlign = TextAlign.Center
                 )
 
-                Card(
-                    modifier = Modifier.size(36.dp),
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = AccentPrimary.copy(alpha = 0.2f)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    if (entry.photoURL != null) {
-                        NetworkImage(
-                            model = entry.photoURL,
-                            contentDescription = "Your avatar",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = entry.nickname.take(1).uppercase(),
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = AccentPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                }
+                breathy.com.ui.components.BreathyAvatar(
+                    photoURL = entry.photoURL,
+                    frame = entry.avatarFrame,
+                    rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
+                    size = 44.dp,
+                    contentDescription = "Your avatar"
+                )
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(

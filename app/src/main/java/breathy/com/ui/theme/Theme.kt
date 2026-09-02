@@ -25,46 +25,67 @@ import androidx.compose.ui.unit.sp
 
 // ── Gradients ──────────────────────────────────────────────────────────────
 
-/** Primary gradient: 45° green-to-blue — CTA buttons, hero card accents. */
+/** Primary gradient: 45° natural green blend — CTA buttons, hero card accents. */
 val GradientPrimary = Brush.linearGradient(
-    colors = listOf(AccentPrimary, AccentInfo),
+    colors = listOf(NaturalGreen, Color(0xFF5D874E)),
     start = androidx.compose.ui.geometry.Offset.Zero,
     end = androidx.compose.ui.geometry.Offset(1000f, 1000f) // ~45 degrees
 )
 
-/** Purple gradient: 135° purple-to-blue — premium feature cards, achievement bg. */
+/** Premium gradient: deep botanical green — premium cards, premium badge. */
 val GradientPurple = Brush.linearGradient(
-    colors = listOf(AccentPurple, AccentInfo)
+    colors = listOf(DeepForest, DarkBotanical)
 )
 
-/** Green glow — radial gradient behind hero stats. */
+/** Sage glow — radial gradient behind hero stats. */
 val GradientGlowGreen = Brush.radialGradient(
-    colors = listOf(AccentPrimary.copy(alpha = 0.3f), Color.Transparent)
+    colors = listOf(VeryLightSage, Color.Transparent)
 )
 
-/** Orange glow — pulsing glow behind craving button. */
+/** Warm sand glow — pulsing glow behind craving button. */
 val GradientGlowOrange = Brush.radialGradient(
-    colors = listOf(AccentOrange.copy(alpha = 0.25f), Color.Transparent)
+    colors = listOf(SoftSand.copy(alpha = 0.45f), Color.Transparent)
 )
+
+// ── Named gradient tokens for new components ──────────────────────────────
+
+object BreathyGradients {
+    /** Premium surfaces/badges: deep botanical green. */
+    val premium = listOf(DeepForest, DarkBotanical)
+
+    /** Fresh sage wash for section headers and soft hero areas. */
+    val sageWash = listOf(VeryLightSage, WarmWhite)
+
+    /** Gold-sand sheen for achievement highlights. */
+    val goldSand = listOf(SoftSand, NaturalYellow)
+}
 
 // ── Custom Component Tokens ────────────────────────────────────────────────
 
+object BreathyBorders {
+    /** Subtle hairline border for white cards on the warm-white canvas. */
+    val subtle: BorderStroke
+        @Composable @ReadOnlyComposable get() = BorderStroke(1.dp, SoftSage.copy(alpha = 0.55f))
+
+    /** Accent border for selected/highlighted elements. */
+    val accent: BorderStroke
+        @Composable @ReadOnlyComposable get() = BorderStroke(1.dp, NaturalGreen.copy(alpha = 0.5f))
+
+    /** Premium border — deep forest. */
+    val premium: BorderStroke
+        @Composable @ReadOnlyComposable get() = BorderStroke(1.dp, DeepForest.copy(alpha = 0.4f))
+}
+
 object BreathyComponents {
-    /** Neon border for cards — thin accent-primary stroke with subtle glow. */
+    /** Soft sage border for cards (replaces the old neon stroke). */
     val neonBorder: BorderStroke
-        @Composable @ReadOnlyComposable get() = BorderStroke(
-            width = 1.dp,
-            color = AccentPrimary.copy(alpha = 0.3f)
-        )
+        @Composable @ReadOnlyComposable get() = BreathyBorders.subtle
 
-    /** Neon border with purple accent for premium/achievement cards. */
+    /** Deep-forest border for premium/achievement cards. */
     val neonBorderPurple: BorderStroke
-        @Composable @ReadOnlyComposable get() = BorderStroke(
-            width = 1.dp,
-            color = AccentPurple.copy(alpha = 0.3f)
-        )
+        @Composable @ReadOnlyComposable get() = BreathyBorders.premium
 
-    /** Neon border with blue accent for informational cards. */
+    /** Sky-tinted border for informational cards. */
     val neonBorderBlue: BorderStroke
         @Composable @ReadOnlyComposable get() = BorderStroke(
             width = 1.dp,
@@ -80,19 +101,19 @@ object BreathyComponents {
         @Composable @ReadOnlyComposable get() = GradientPurple
 
     /** Card corner radius. */
-    val cardCornerRadius = 16.dp
+    val cardCornerRadius = 20.dp
 
     /** Button corner radius (pill-shaped). */
     val buttonCornerRadius = 24.dp
 
     /** Input field corner radius. */
-    val inputCornerRadius = 12.dp
+    val inputCornerRadius = 14.dp
 
     /** Chip corner radius (stadium shape). */
     val chipCornerRadius = 20.dp
 
     /** Bottom sheet corner radius (top corners). */
-    val bottomSheetCornerRadius = 24.dp
+    val bottomSheetCornerRadius = 28.dp
 
     /** Dialog corner radius. */
     val dialogCornerRadius = 28.dp
@@ -125,50 +146,54 @@ enum class ThemeMode {
 
 val LocalThemeMode = staticCompositionLocalOf { ThemeMode.SYSTEM }
 
-// ── Material 3 Dark Color Scheme ───────────────────────────────────────────
+// ── Material 3 Color Schemes ───────────────────────────────────────────────
+// The app is light-first by design (calm, clean, premium wellness).
+// Both schemes render the Sage Nature identity; the "dark" scheme keeps
+// deep-forest accents for users who explicitly choose dark mode, while
+// retaining the same light botanical canvas so every screen stays coherent.
 
 private val BreathyDarkColorScheme = darkColorScheme(
-    primary = AccentPrimary,
+    primary = NaturalGreen,
     onPrimary = TextInverse,
-    primaryContainer = AccentPrimary.copy(alpha = 0.15f),
-    onPrimaryContainer = AccentPrimary,
+    primaryContainer = VeryLightSage,
+    onPrimaryContainer = DarkBotanical,
 
-    secondary = AccentSecondary,
+    secondary = WarmEarth,
     onSecondary = TextInverse,
-    secondaryContainer = AccentSecondary.copy(alpha = 0.15f),
-    onSecondaryContainer = AccentSecondary,
+    secondaryContainer = SoftSand.copy(alpha = 0.45f),
+    onSecondaryContainer = DarkBotanical,
 
-    tertiary = AccentPurple,
+    tertiary = DeepForest,
     onTertiary = TextInverse,
-    tertiaryContainer = AccentPurple.copy(alpha = 0.15f),
-    onTertiaryContainer = AccentPurple,
+    tertiaryContainer = VeryLightSage,
+    onTertiaryContainer = DarkBotanical,
 
-    background = BgPrimary,
+    background = WarmWhite,
     onBackground = TextPrimary,
 
-    surface = BgSurface,
+    surface = PureWhite,
     onSurface = TextPrimary,
 
-    surfaceVariant = BgSurfaceVariant,
+    surfaceVariant = VeryLightSage,
     onSurfaceVariant = TextSecondary,
 
     error = SemanticError,
-    onError = TextPrimary,
-    errorContainer = SemanticError.copy(alpha = 0.15f),
+    onError = TextInverse,
+    errorContainer = SemanticError.copy(alpha = 0.12f),
     onErrorContainer = SemanticError,
 
     outline = OutlineColor,
     outlineVariant = OutlineVariantColor,
 
     inverseSurface = TextPrimary,
-    inverseOnSurface = BgPrimary,
+    inverseOnSurface = WarmWhite,
     inversePrimary = AccentPrimaryPressed,
 
-    surfaceContainerLowest = BgPrimary,
-    surfaceContainerLow = BgSurface,
-    surfaceContainer = BgSurfaceVariant,
-    surfaceContainerHigh = BgSurfaceElevated,
-    surfaceContainerHighest = BgSurfaceElevated,
+    surfaceContainerLowest = WarmWhite,
+    surfaceContainerLow = PureWhite,
+    surfaceContainer = VeryLightSage,
+    surfaceContainerHigh = PureWhite,
+    surfaceContainerHighest = PureWhite,
 
     scrim = ScrimColor
 )
@@ -176,49 +201,49 @@ private val BreathyDarkColorScheme = darkColorScheme(
 // ── Material 3 Light Color Scheme ──────────────────────────────────────────
 
 private val BreathyLightColorScheme = lightColorScheme(
-    primary = LightAccentPrimary,
-    onPrimary = LightTextInverse,
-    primaryContainer = LightAccentPrimaryContainer,
-    onPrimaryContainer = LightOnPrimaryContainer,
+    primary = NaturalGreen,
+    onPrimary = TextInverse,
+    primaryContainer = VeryLightSage,
+    onPrimaryContainer = DarkBotanical,
 
-    secondary = AccentSecondary,
-    onSecondary = LightTextInverse,
-    secondaryContainer = AccentSecondary.copy(alpha = 0.12f),
-    onSecondaryContainer = AccentSecondary,
+    secondary = WarmEarth,
+    onSecondary = TextInverse,
+    secondaryContainer = SoftSand.copy(alpha = 0.45f),
+    onSecondaryContainer = DarkBotanical,
 
-    tertiary = AccentPurple,
-    onTertiary = LightTextInverse,
-    tertiaryContainer = AccentPurple.copy(alpha = 0.12f),
-    onTertiaryContainer = AccentPurple,
+    tertiary = DeepForest,
+    onTertiary = TextInverse,
+    tertiaryContainer = VeryLightSage,
+    onTertiaryContainer = DarkBotanical,
 
-    background = LightBgPrimary,
-    onBackground = LightTextPrimary,
+    background = WarmWhite,
+    onBackground = TextPrimary,
 
-    surface = LightBgSurface,
-    onSurface = LightTextPrimary,
+    surface = PureWhite,
+    onSurface = TextPrimary,
 
-    surfaceVariant = LightBgSurfaceVariant,
-    onSurfaceVariant = LightTextSecondary,
+    surfaceVariant = VeryLightSage,
+    onSurfaceVariant = TextSecondary,
 
     error = SemanticError,
-    onError = LightTextInverse,
+    onError = TextInverse,
     errorContainer = SemanticError.copy(alpha = 0.12f),
     onErrorContainer = SemanticError,
 
-    outline = LightOutlineColor,
-    outlineVariant = LightOutlineVariantColor,
+    outline = OutlineColor,
+    outlineVariant = OutlineVariantColor,
 
-    inverseSurface = LightTextPrimary,
-    inverseOnSurface = LightBgPrimary,
-    inversePrimary = AccentPrimary,
+    inverseSurface = TextPrimary,
+    inverseOnSurface = WarmWhite,
+    inversePrimary = AccentPrimaryPressed,
 
-    surfaceContainerLowest = LightBgPrimary,
-    surfaceContainerLow = LightBgSurface,
-    surfaceContainer = LightBgSurfaceVariant,
-    surfaceContainerHigh = LightBgSurfaceElevated,
-    surfaceContainerHighest = LightBgSurfaceElevated,
+    surfaceContainerLowest = WarmWhite,
+    surfaceContainerLow = PureWhite,
+    surfaceContainer = VeryLightSage,
+    surfaceContainerHigh = PureWhite,
+    surfaceContainerHighest = PureWhite,
 
-    scrim = LightScrimColor
+    scrim = ScrimColor
 )
 
 // ── Theme Composable ───────────────────────────────────────────────────────

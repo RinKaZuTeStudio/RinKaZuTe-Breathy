@@ -1,6 +1,7 @@
 package breathy.com.data.repository
 
 import android.net.Uri
+import breathy.com.data.models.AvatarFrame
 import breathy.com.data.models.CopingMethod
 import breathy.com.data.models.HealthMilestone
 import breathy.com.data.models.PublicProfile
@@ -297,7 +298,7 @@ class UserRepository(
         val storage = firebaseStorage
             ?: throw IllegalStateException("Firebase Storage not configured")
 
-        val storageRef = storage.reference.child("profileImages/$userId.jpg")
+        val storageRef = storage.reference.child("profileImages/${userId}_${System.currentTimeMillis()}.jpg")
         storageRef.putFile(photoUri).await()
         val downloadUrl = storageRef.downloadUrl.await()
         Timber.i("Uploaded profile image to Firebase Storage: %s", downloadUrl)
@@ -410,18 +411,78 @@ class UserRepository(
             if (e !is CancellationException) Timber.e(e, "Failed to update user fields: %s", userId)
         }
 
-    /** Update specific fields on the public profile document. */
+    /** Update specific fields on the public profile document (stamps updatedAt for the leaderboard reset filter). */
     suspend fun updatePublicProfileFields(
         userId: String,
         updates: Map<String, Any>
     ): Result<Unit> = runCatching {
+        val stamped = LinkedHashMap<String, Any>(updates)
+        stamped["updatedAt"] = FieldValue.serverTimestamp()
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
-                .update(updates).await()
+                .set(stamped, SetOptions.merge()).await()
             Unit
         } ?: throw IllegalStateException("Update public profile timed out after 30 seconds")
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to update public profile fields: %s", userId)
+    }
+
+    /**
+     * Persist the selected avatar frame to BOTH the user document and the
+     * public profile so every surface (profile, leaderboard, community,
+     * events, friends) renders the same frame.
+     *
+     * Frame eligibility is validated against real progression data:
+     * level (from XP), achievements, and premium entitlement.
+     */
+    suspend fun updateAvatarFrame(
+        userId: String,
+        frame: AvatarFrame,
+        isPremium: Boolean
+    ): Result<Unit> = runCatching {
+        val user = getUser(userId).getOrThrow()
+        if (!frame.isUnlockedFor(
+                level = user.level,
+                hasAchievement = user.achievements.isNotEmpty(),
+                hasEventWin = user.achievements.contains("event_champion"),
+                isPremium = isPremium
+            )
+        ) {
+            throw IllegalStateException("Frame '${frame.id}' is not unlocked for this user")
+        }
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val batch = firestore.batch()
+            batch.set(
+                firestore.collection(USERS_COLLECTION).document(userId),
+                mapOf("avatarFrame" to frame.id),
+                SetOptions.merge()
+            )
+            batch.set(
+                firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId),
+                mapOf("avatarFrame" to frame.id, "updatedAt" to FieldValue.serverTimestamp()),
+                SetOptions.merge()
+            )
+            batch.commit().await()
+            Unit
+        } ?: throw IllegalStateException("Update avatar frame timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to update avatar frame for user: %s", userId)
+    }
+
+    /**
+     * Persist the user's age (collected during onboarding or the one-time
+     * profile-completion step). Idempotent — repeated calls with the same
+     * value are harmless, and the app never asks again once saved.
+     */
+    suspend fun updateAge(userId: String, age: Int): Result<Unit> = runCatching {
+        require(age in 10..120) { "Age must be between 10 and 120" }
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            firestore.collection(USERS_COLLECTION).document(userId)
+                .update("age", age).await()
+            Unit
+        } ?: throw IllegalStateException("Update age timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to update age for user: %s", userId)
     }
 
     /** Update the FCM token for push notifications. */
@@ -455,14 +516,17 @@ class UserRepository(
         val user = getUser(userId).getOrThrow()
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
-                .update(
+                .set(
                     mapOf(
                         "daysSmokeFree" to user.daysSmokeFree,
                         "xp" to user.xp,
                         "nickname" to user.nickname,
                         "photoURL" to (user.photoURL ?: FieldValue.delete()),
-                        "location" to (user.location ?: FieldValue.delete())
-                    )
+                        "location" to (user.location ?: FieldValue.delete()),
+                        "avatarFrame" to user.avatarFrame,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    ),
+                    SetOptions.merge()
                 ).await()
             Unit
         } ?: throw IllegalStateException("Update daysSmokeFree timed out after 30 seconds")

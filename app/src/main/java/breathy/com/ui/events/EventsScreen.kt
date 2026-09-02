@@ -123,14 +123,17 @@ data class EventsUiState(
     val events: List<EventWithStatus> = emptyList(),
     val errorMessage: String? = null,
     val joiningEventId: String? = null,
-    val pushupEventCreated: Boolean = false
+    /** Verified premium entitlement — gates premium-only events. */
+    val isPremium: Boolean = false
 )
 
 data class EventWithStatus(
     val event: Event,
     val isJoined: Boolean = false,
     val participantCount: Int = 0,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    /** True when the event is premium-only and the user is NOT premium. */
+    val isLockedByPremium: Boolean = false
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -139,7 +142,8 @@ data class EventWithStatus(
 
 class EventsViewModel(
     private val eventRepository: EventRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -154,6 +158,18 @@ class EventsViewModel(
 
     init {
         loadEvents()
+        observePremium()
+    }
+
+    /** Mirror the app-wide verified premium entitlement into UI state. */
+    private fun observePremium() {
+        premiumRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.state.collect { premium ->
+                    _uiState.update { it.copy(isPremium = premium.isPremium) }
+                }
+            }
+        }
     }
 
     fun loadEvents() {
@@ -177,7 +193,9 @@ class EventsViewModel(
                             event = event,
                             isJoined = isJoined,
                             participantCount = 0, // Would need a count query
-                            isCompleted = isCompleted
+                            isCompleted = isCompleted,
+                            isLockedByPremium = event.isPremiumOnly &&
+                                !(premiumRepository?.isPremium() ?: false)
                         )
                     }
                     _uiState.update {
@@ -205,6 +223,15 @@ class EventsViewModel(
 
     fun joinEvent(eventId: String) {
         val uid = currentUserId ?: return
+
+        // Premium gate: non-premium users cannot enter premium-only events.
+        val target = _uiState.value.events.firstOrNull { it.event.id == eventId }
+        if (target?.isLockedByPremium == true) {
+            _uiState.update {
+                it.copy(errorMessage = "This is an exclusive Premium event. Upgrade to Breathy Premium to join.")
+            }
+            return
+        }
 
         _uiState.update { it.copy(joiningEventId = eventId) }
 
@@ -241,39 +268,17 @@ class EventsViewModel(
             _uiState.update { it.copy(isRefreshing = false) }
         }
     }
-
-    fun ensurePushupChallengeExists() {
-        viewModelScope.launch {
-            // Check if pushup challenge already exists in the events list
-            val hasPushupEvent = _uiState.value.events.any {
-                it.event.isPushupChallenge()
-            }
-            if (!hasPushupEvent) {
-                eventRepository.createPushupChallengeEvent().fold(
-                    onSuccess = {
-                        _uiState.update { it.copy(pushupEventCreated = true) }
-                        // Reload events to include the new one
-                        loadEvents()
-                    },
-                    onFailure = { e ->
-                        if (e !is CancellationException) {
-                            Timber.e(e, "Failed to create pushup challenge event")
-                        }
-                    }
-                )
-            }
-        }
-    }
 }
 
 class EventsViewModelFactory(
     private val eventRepository: EventRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(EventsViewModel::class.java)) {
-            return EventsViewModel(eventRepository, auth) as T
+            return EventsViewModel(eventRepository, auth, premiumRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
@@ -295,7 +300,8 @@ fun EventsScreen(
             androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current!!,
             EventsViewModelFactory(
                 eventRepository = app.appModule.eventRepository,
-                auth = app.appModule.firebaseAuth
+                auth = app.appModule.firebaseAuth,
+                premiumRepository = app.appModule.premiumRepository
             )
         )[EventsViewModel::class.java]
     }
@@ -310,12 +316,9 @@ fun EventsScreen(
         contentVisible = true
     }
 
-    // Ensure pushup challenge event exists
-    LaunchedEffect(uiState.events) {
-        if (!uiState.isLoading && uiState.events.isNotEmpty()) {
-            viewModel.ensurePushupChallengeExists()
-        }
-    }
+    // NOTE: demo event auto-creation was REMOVED. Events are admin-managed
+    // (Firestore rules: write only for admins). With no active events the
+    // screen shows the polished Coming Soon state.
 
     DisposableEffect(Unit) {
         Timber.d("EventsScreen: composed")
@@ -408,15 +411,6 @@ fun EventsScreen(
                                     onClick = { onNavigateToEventDetail(eventWithStatus.event.id) }
                                 )
                             }
-
-                            // Pushup challenge creation card if not found
-                            if (!uiState.events.any { it.event.isPushupChallenge() } && !uiState.isLoading) {
-                                item {
-                                    CreatePushupChallengeCard(
-                                        onCreate = { viewModel.ensurePushupChallengeExists() }
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -506,6 +500,27 @@ private fun EventCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+
+                // Premium-exclusive badge
+                if (event.isPremiumOnly && !eventWithStatus.isCompleted) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = breathy.com.ui.theme.DeepForest
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Text(
+                            text = "✦ Premium",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = breathy.com.ui.theme.SoftSand,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
                 }
 
                 // Completed badge
@@ -801,29 +816,12 @@ private fun EventsEmptyState() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Text(
-                text = "\uD83C\uDFC5",
-                fontSize = 48.sp
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No Active Events",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = themeTextPrimary
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Check back soon for new challenges and events!",
-                style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
-                textAlign = TextAlign.Center
-            )
-        }
+        breathy.com.ui.components.BreathyEmptyState(
+            title = "Exclusive events are coming soon",
+            subtitle = "Compete, complete challenges, and earn rewards. " +
+                "Premium members get first access to every event.",
+            icon = "\uD83C\uDF3F"
+        )
     }
 }
 
@@ -868,71 +866,6 @@ private fun EventsErrorState(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                     color = themeBgPrimary,
                     fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  Create Pushup Challenge Card
-// ═══════════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun CreatePushupChallengeCard(
-    onCreate: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics {
-                contentDescription = "Create 100 Pushup Challenge event"
-                role = Role.Button
-            },
-        colors = CardDefaults.cardColors(
-            containerColor = AccentPrimary.copy(alpha = 0.06f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, AccentPrimary.copy(alpha = 0.3f)),
-        onClick = onCreate
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "💪", fontSize = 36.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "100 Pushup Challenge",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    color = themeTextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "3-month challenge with AI pushup counting",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = themeTextSecondary
-                ),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Card(
-                colors = CardDefaults.cardColors(containerColor = AccentPrimary),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Text(
-                    text = "Create Event",
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = themeBgPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
                 )
             }
         }
