@@ -240,15 +240,64 @@ fun SubscriptionScreen(
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "You're a Premium member",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "BREATHY PREMIUM",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = BreathyPalette.deepForest,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "ACTIVE",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.ExtraBold
+                            ),
                             color = BreathyPalette.darkBotanical,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(Modifier.height(4.dp))
+                        // Honest lifecycle state: cancelled auto-renewal keeps
+                        // premium until the paid period actually ends.
+                        if (premiumState.status ==
+                            breathy.com.data.repository.SubscriptionStatus.CANCELED_BUT_STILL_ENTITLED
+                        ) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Auto-renewal is cancelled — Premium stays active " +
+                                        "until the end of your current billing period.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BreathyPalette.textSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        val benefits = listOf(
+                            "Ad-free experience",
+                            "Exclusive events",
+                            "Premium avatar frame"
+                        )
+                        benefits.forEach { benefit ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "✓",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = BreathyPalette.naturalGreen,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = benefit,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = BreathyPalette.darkBotanical
+                                )
+                            }
+                            Spacer(Modifier.height(2.dp))
+                        }
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "Ads are off and exclusive events are unlocked. " +
-                                "Thank you for supporting Breathy.",
+                            text = "Thank you for supporting Breathy.",
                             style = MaterialTheme.typography.bodySmall,
                             color = BreathyPalette.textSecondary,
                             textAlign = TextAlign.Center

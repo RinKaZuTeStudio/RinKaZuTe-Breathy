@@ -201,6 +201,19 @@ fun BreathyNavHost(
     var showPremiumPopup by remember { mutableStateOf(false) }
     var adShowCount by remember { mutableIntStateOf(0) }
 
+    // ── Premium entitlement follows the authenticated account ───────────────
+    // On every auth change (login / logout / account switch) the premium
+    // state is re-resolved for the CURRENT account only:
+    // - logout  → previous user's premium is cleared from app memory at once
+    // - login   → fresh Google Play + Firestore re-check for THIS account
+    // Account A's premium can therefore never leak into Account B.
+    val premiumRepository = app.appModule.premiumRepository
+    LaunchedEffect(Unit) {
+        app.appModule.authRepository.currentUser.collect { user ->
+            premiumRepository.onAuthStateChanged(user?.uid)
+        }
+    }
+
     // ── Deep link routing ───────────────────────────────────────────────────
     LaunchedEffect(deepLinkRoute) {
         if (deepLinkRoute != null) {
@@ -246,8 +259,9 @@ fun BreathyNavHost(
             app.appModule.adManager.showInterstitialAd(activity) {
                 navigateTo(route)
                 adShowCount++
-                // Show premium popup every 3rd ad (not every time)
-                if (adShowCount % 3 == 0) {
+                // Show premium popup every 3rd ad — NEVER to verified premium
+                // members (they must not see any subscription upsell).
+                if (adShowCount % 3 == 0 && !premiumRepository.isPremium()) {
                     showPremiumPopup = true
                 }
             }
@@ -261,6 +275,9 @@ fun BreathyNavHost(
     }
 
     fun signOutAndNavigateToAuth() {
+        // Clear the previous user's premium state from app memory BEFORE the
+        // auth state flips, so no stale entitlement survives the logout.
+        premiumRepository.onAuthStateChanged(null)
         FirebaseAuth.getInstance().signOut()
         navController.navigate(BreathyRoutes.AUTH) {
             popUpTo(0) { inclusive = true }
@@ -413,6 +430,9 @@ fun BreathyNavHost(
                     onNavigateBack = { navigateBack() },
                     onNavigateToChat = { chatId ->
                         navigateToWithAd(BreathyRoutes.chat(chatId))
+                    },
+                    onNavigateToProfile = { userId ->
+                        navigateTo(BreathyRoutes.publicProfile(userId))
                     }
                 )
             }

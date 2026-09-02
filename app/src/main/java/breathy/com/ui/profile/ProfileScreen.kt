@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -80,6 +81,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -116,11 +119,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import breathy.com.ui.theme.AccentPrimary
+import breathy.com.ui.theme.AccentInfo
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentWarning
 import breathy.com.ui.theme.GoldDeep
 import breathy.com.ui.theme.PureWhite
 import breathy.com.ui.theme.GoldSoft
+import breathy.com.ui.theme.NaturalGreen
+import breathy.com.ui.theme.NaturalYellow
+import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.DarkBotanical
+import breathy.com.ui.theme.TextSecondary
 import breathy.com.ui.theme.themeAccentPrimary
 import breathy.com.ui.theme.themeAccentPrimaryMuted
 import breathy.com.ui.theme.themeAccentPurple
@@ -2099,8 +2108,30 @@ private fun FrameCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    // Staggered reveal — frames appear one after another (unlock/preview feel)
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(frame.ordinal * 45L)
+        revealed = true
+    }
+    val revealAlpha by animateFloatAsState(
+        targetValue = if (revealed) 1f else 0f,
+        animationSpec = tween(320),
+        label = "frame_reveal_${frame.id}"
+    )
+    val revealScale by animateFloatAsState(
+        targetValue = if (revealed) 1f else 0.92f,
+        animationSpec = tween(320),
+        label = "frame_scale_${frame.id}"
+    )
+
+    val isHighTier = frame.rarity == breathy.com.data.models.FrameRarity.LEGENDARY ||
+            frame.rarity == breathy.com.data.models.FrameRarity.PREMIUM
+
     Column(
         modifier = modifier
+            .alpha(revealAlpha)
+            .scale(revealScale)
             .clip(RoundedCornerShape(16.dp))
             .background(
                 when {
@@ -2119,14 +2150,32 @@ private fun FrameCard(
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Mini avatar preview with the frame ring
-        breathy.com.ui.components.BreathyAvatar(
-            photoURL = null,
-            frame = frame,
-            rankTier = breathy.com.data.models.RankTier.forLevel(level),
-            size = 52.dp,
-            contentDescription = frame.label
-        )
+        // Mini avatar preview with the full designed frame artwork.
+        // High tiers get a soft botanical aura behind the preview.
+        Box(contentAlignment = Alignment.Center) {
+            if (isHighTier && unlocked) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    NaturalYellow.copy(alpha = 0.35f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+            }
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = null,
+                frame = frame,
+                rankTier = breathy.com.data.models.RankTier.forLevel(level),
+                size = 52.dp,
+                contentDescription = frame.label
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -2136,6 +2185,25 @@ private fun FrameCard(
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+
+        // Rarity badge
+        val rarityColor = when (frame.rarity) {
+            breathy.com.data.models.FrameRarity.COMMON -> TextSecondary
+            breathy.com.data.models.FrameRarity.UNCOMMON -> NaturalGreen
+            breathy.com.data.models.FrameRarity.RARE -> AccentInfo
+            breathy.com.data.models.FrameRarity.EPIC -> DeepForest
+            breathy.com.data.models.FrameRarity.LEGENDARY -> GoldDeep
+            breathy.com.data.models.FrameRarity.PREMIUM -> DarkBotanical
+        }
+        Text(
+            text = frame.rarity.label.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 8.sp,
+                letterSpacing = 1.sp,
+                fontWeight = FontWeight.Black
+            ),
+            color = rarityColor
         )
 
         Text(

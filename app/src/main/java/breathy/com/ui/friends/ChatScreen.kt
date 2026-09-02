@@ -547,37 +547,18 @@ private fun ChatTopBar(
                 )
             }
 
-            // Avatar
-            Card(
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                colors = androidx.compose.material3.CardDefaults.cardColors(
-                    containerColor = AccentPrimary.copy(alpha = 0.15f)
-                ),
-                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                if (otherUserProfile?.photoURL != null) {
-                    NetworkImage(
-                        model = otherUserProfile.photoURL,
-                        contentDescription = "${otherUserProfile.nickname}'s avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+            // Avatar with the friend's REAL equipped frame (updates live)
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = otherUserProfile?.photoURL,
+                frame = breathy.com.data.models.AvatarFrame.fromId(otherUserProfile?.avatarFrame),
+                rankTier = otherUserProfile?.let {
+                    breathy.com.data.models.RankTier.forLevel(
+                        breathy.com.data.models.User.computeLevel(it.xp)
                     )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = (otherUserProfile?.nickname ?: "?").take(1).uppercase(),
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = AccentPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-            }
+                },
+                size = 40.dp,
+                contentDescription = "${otherUserProfile?.nickname ?: "Chat"}'s avatar"
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 

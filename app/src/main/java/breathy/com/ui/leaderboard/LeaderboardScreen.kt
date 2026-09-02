@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +76,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.DarkBotanical
+import breathy.com.ui.theme.SoftSage
+import breathy.com.ui.theme.VeryLightSage
+import breathy.com.ui.theme.SoftSand
+import breathy.com.ui.theme.PureWhite
+import breathy.com.ui.theme.NaturalYellow
+import breathy.com.ui.theme.GoldDeep
+import breathy.com.ui.theme.AchievementGold
+import breathy.com.ui.theme.AchievementSilver
+import breathy.com.ui.theme.AchievementBronze
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -122,7 +137,9 @@ data class LeaderboardUiState(
     val currentUserEntry: LeaderboardEntry? = null,
     val currentUserRank: Int = 0,
     val selectedPeriod: LeaderboardPeriod = LeaderboardPeriod.ALL_TIME,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** REAL member count — server-side aggregate of actual created accounts. */
+    val memberCount: Int = 0
 )
 
 data class LeaderboardEntry(
@@ -229,8 +246,19 @@ class LeaderboardViewModel(
                             isLoading = false,
                             entries = entries,
                             currentUserEntry = currentUserEntry,
-                            errorMessage = null
+                            errorMessage = null,
+                            currentUserRank = currentUserEntry?.rank ?: state.currentUserRank
                         )
+                    }
+
+                    // REAL member count — aggregate COUNT over actual accounts
+                    // with the same one-time reset filter. Never invented.
+                    try {
+                        val count = userRepository.countLeaderboardMembers(LEADERBOARD_RESET_CUTOFF)
+                            .getOrDefault(0)
+                        _uiState.update { it.copy(memberCount = count) }
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to count leaderboard members")
                     }
 
                     // Fetch current user's own rank if not found in entries
@@ -308,6 +336,14 @@ class LeaderboardViewModelFactory(
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  LeaderboardScreen — Global XP leaderboard
+//
+//  Professional, visual leaderboard experience:
+//  ─ Botanical header with the REAL member count (server-side aggregate)
+//  ─ YOUR POSITION / YOUR SCORE hero panel (always visible)
+//  ─ Drawn top-3 podium with medal artwork and pedestal blocks
+//  ─ Strong-hierarchy ranked cards for positions 4+
+//  ─ Current user highlighted everywhere (sage glow + YOU chip)
+//  Data is calculated from REAL accounts only — zero fake entries.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -332,12 +368,15 @@ fun LeaderboardScreen(
     var isRefreshing by remember { mutableStateOf(false) }
 
     // Staggered entrance
+    var headerVisible by remember { mutableStateOf(false) }
     var podiumVisible by remember { mutableStateOf(false) }
     var listVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(100)
+        delay(80)
+        headerVisible = true
+        delay(180)
         podiumVisible = true
-        delay(300)
+        delay(220)
         listVisible = true
     }
 
@@ -362,11 +401,25 @@ fun LeaderboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Leaderboard",
-                        fontWeight = FontWeight.Bold,
-                        color = themeTextPrimary
-                    )
+                    Column {
+                        Text(
+                            text = "Leaderboard",
+                            fontWeight = FontWeight.Bold,
+                            color = themeTextPrimary
+                        )
+                        // REAL member count — calculated from actual accounts.
+                        if (uiState.memberCount > 0) {
+                            Text(
+                                text = "%,d member%s".format(
+                                    uiState.memberCount,
+                                    if (uiState.memberCount == 1) "" else "s"
+                                ),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = themeTextSecondary
+                                )
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -411,98 +464,105 @@ fun LeaderboardScreen(
                     )
                 }
                 else -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize()
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 4.dp,
+                            bottom = if (uiState.currentUserEntry != null &&
+                                uiState.entries.none { it.userId == uiState.currentUserEntry?.userId }
+                            ) 108.dp else 20.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // ── Period Filter Chips ─────────────────────────────
-                        PeriodFilterChips(
-                            selectedPeriod = uiState.selectedPeriod,
-                            onPeriodSelected = { viewModel.selectPeriod(it) }
-                        )
-
-                        // ── Top 3 Podium ───────────────────────────────────
-                        if (uiState.entries.size >= 3) {
+                        // ── YOUR POSITION / YOUR SCORE hero panel ──────────
+                        item(key = "your_position") {
                             AnimatedVisibility(
-                                visible = podiumVisible,
-                                enter = fadeIn(tween(500)) + slideInVertically(
-                                    initialOffsetY = { it / 3 },
-                                    animationSpec = tween(500)
+                                visible = headerVisible,
+                                enter = fadeIn(tween(400)) + slideInVertically(
+                                    initialOffsetY = { it / 6 },
+                                    animationSpec = tween(400)
                                 )
                             ) {
-                                PodiumSection(
-                                    entries = uiState.entries,
-                                    onProfileClick = onNavigateToProfile
+                                YourPositionPanel(
+                                    entry = uiState.currentUserEntry,
+                                    fallbackRank = if (uiState.currentUserRank > 0)
+                                        uiState.currentUserRank else uiState.memberCount,
+                                    period = uiState.selectedPeriod,
+                                    onPeriodSelected = { viewModel.selectPeriod(it) }
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // ── Scrollable List ────────────────────────────────
-                        AnimatedVisibility(
-                            visible = listVisible,
-                            enter = fadeIn(tween(400))
-                        ) {
-                            val topEntries = if (uiState.entries.size > 3) {
-                                uiState.entries.subList(3, uiState.entries.size)
-                            } else {
-                                emptyList()
+                        // ── Top 3 Podium ───────────────────────────────────
+                        if (uiState.entries.isNotEmpty()) {
+                            item(key = "podium") {
+                                AnimatedVisibility(
+                                    visible = podiumVisible,
+                                    enter = fadeIn(tween(500)) + slideInVertically(
+                                        initialOffsetY = { it / 4 },
+                                        animationSpec = tween(500)
+                                    )
+                                ) {
+                                    PodiumSection(
+                                        entries = uiState.entries.take(3),
+                                        onProfileClick = onNavigateToProfile
+                                    )
+                                }
                             }
+                        }
 
-                            val currentInTopList = uiState.currentUserEntry?.let { currentUser ->
-                                topEntries.any { it.userId == currentUser.userId }
-                            } == true
-
-                            LazyColumn(
-                                contentPadding = PaddingValues(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = 4.dp,
-                                    bottom = if (uiState.currentUserEntry != null && !currentInTopList) 80.dp else 16.dp
-                                ),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                itemsIndexed(
-                                    items = topEntries,
-                                    key = { _, entry -> entry.rank }
-                                ) { index, entry ->
+                        // ── Positions 4+ ───────────────────────────────────
+                        if (uiState.entries.size > 3) {
+                            item(key = "others_header") {
+                                Text(
+                                    text = "ALL RANKINGS",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = themeTextSecondary,
+                                        letterSpacing = 2.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+                                )
+                            }
+                            itemsIndexed(
+                                items = uiState.entries.subList(3, uiState.entries.size),
+                                key = { _, entry -> entry.rank }
+                            ) { _, entry ->
+                                AnimatedVisibility(
+                                    visible = listVisible,
+                                    enter = fadeIn(tween(300))
+                                ) {
                                     LeaderboardRow(
                                         entry = entry,
                                         isCurrentUser = entry.userId == uiState.currentUserEntry?.userId,
                                         onProfileClick = onNavigateToProfile
                                     )
                                 }
-
-                                if (topEntries.isEmpty() && uiState.entries.size <= 3) {
-                                    item {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 32.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "Top 3 are on the podium above!",
-                                                style = MaterialTheme.typography.bodyMedium.copy(
-                                                    color = themeTextSecondary
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
+                            }
+                        } else if (uiState.entries.size in 1..3) {
+                            item(key = "podium_hint") {
+                                Text(
+                                    text = "More ranks join as the community grows",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = themeTextSecondary
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
                     }
 
                     // ── Current User Fixed Bottom Bar ──────────────────────
-                    val currentUserInTop3 = uiState.currentUserEntry?.let { cur ->
-                        uiState.entries.take(3).any { it.userId == cur.userId }
-                    } == true
-                    val currentUserInList = uiState.currentUserEntry?.let { cur ->
+                    val currentUserInVisibleList = uiState.currentUserEntry?.let { cur ->
                         uiState.entries.any { it.userId == cur.userId }
                     } == true
 
-                    if (uiState.currentUserEntry != null && !currentUserInTop3 && uiState.entries.size > 3) {
+                    if (uiState.currentUserEntry != null && !currentUserInVisibleList) {
                         CurrentUserBottomBar(
                             entry = uiState.currentUserEntry!!,
                             visible = listVisible
@@ -523,53 +583,157 @@ fun LeaderboardScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Period Filter Chips
+//  YOUR POSITION / YOUR SCORE hero panel
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PeriodFilterChips(
-    selectedPeriod: LeaderboardPeriod,
+private fun YourPositionPanel(
+    entry: LeaderboardEntry?,
+    fallbackRank: Int,
+    period: LeaderboardPeriod,
     onPeriodSelected: (LeaderboardPeriod) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        LeaderboardPeriod.entries.forEach { period ->
-            FilterChip(
-                selected = selectedPeriod == period,
-                onClick = { onPeriodSelected(period) },
-                label = {
-                    Text(
-                        text = period.label,
-                        fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
+    Column {
+        // Period filter chips
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            LeaderboardPeriod.entries.forEach { p ->
+                FilterChip(
+                    selected = period == p,
+                    onClick = { onPeriodSelected(p) },
+                    label = {
+                        Text(
+                            text = p.label,
+                            fontWeight = if (period == p) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = AccentPrimary.copy(alpha = 0.18f),
+                        selectedLabelColor = DeepForest,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = themeTextSecondary
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        borderColor = SoftSage,
+                        selectedBorderColor = AccentPrimary.copy(alpha = 0.5f),
+                        enabled = true,
+                        selected = period == p
                     )
+                )
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    contentDescription = entry?.let {
+                        "Your position ${it.rank}, score ${it.xp} XP"
+                    } ?: "You are not ranked yet"
                 },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = AccentPrimary.copy(alpha = 0.2f),
-                    selectedLabelColor = AccentPrimary,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    labelColor = themeTextSecondary
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    borderColor = MaterialTheme.colorScheme.surfaceVariant,
-                    selectedBorderColor = AccentPrimary.copy(alpha = 0.5f),
-                    enabled = true,
-                    selected = selectedPeriod == period
-                ),
-                modifier = Modifier.semantics {
-                    contentDescription = "Filter by ${period.label}"
-                    role = androidx.compose.ui.semantics.Role.Button
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.linearGradient(
+                            listOf(DeepForest, DarkBotanical)
+                        ),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
+            ) {
+                if (entry != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "YOUR POSITION",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = SoftSand,
+                                    letterSpacing = 2.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = "#${entry.rank}",
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = PureWhite
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                breathy.com.ui.components.RankBadge(
+                                    rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
+                                    level = entry.level
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(PureWhite.copy(alpha = 0.12f))
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "YOUR SCORE",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = SoftSand,
+                                        letterSpacing = 1.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                Text(
+                                    text = "${entry.xp}",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = NaturalYellow
+                                    )
+                                )
+                                Text(
+                                    text = "XP",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = VeryLightSage
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "YOU'RE NOT RANKED YET",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = SoftSand,
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Earn XP by staying smoke-free and completing achievements to join the board.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = VeryLightSage)
+                        )
+                    }
                 }
-            )
+            }
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Podium Section — Top 3 with gold/silver/bronze
+//  Podium Section — drawn pedestals + medal artwork for the top 3
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -577,160 +741,184 @@ private fun PodiumSection(
     entries: List<LeaderboardEntry>,
     onProfileClick: (String) -> Unit
 ) {
-    if (entries.size < 3) return
+    if (entries.isEmpty()) return
 
-    // Reorder: 2nd (left), 1st (center), 3rd (right)
-    val first = entries[0]
-    val second = entries[1]
-    val third = entries[2]
+    val first = entries.getOrNull(0)
+    val second = entries.getOrNull(1)
+    val third = entries.getOrNull(2)
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = VeryLightSage),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom
+                .background(
+                    Brush.verticalGradient(
+                        listOf(VeryLightSage, SoftSage.copy(alpha = 0.45f))
+                    )
+                )
+                .padding(horizontal = 10.dp, vertical = 14.dp)
         ) {
-            // Silver — 2nd place
-            PodiumCard(
-                entry = second,
-                medalColor = Color(0xFFC0C0C0),
-                medalEmoji = "\uD83E\uDD48",
-                height = 140.dp,
-                onProfileClick = onProfileClick
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                // Silver — 2nd place (left)
+                PodiumColumn(
+                    entry = second,
+                    place = 2,
+                    avatarSize = 54.dp,
+                    pedestalHeight = 64.dp,
+                    onProfileClick = onProfileClick,
+                    modifier = Modifier.weight(1f)
+                )
 
-            // Gold — 1st place
-            PodiumCard(
-                entry = first,
-                medalColor = Color(0xFFFFD700),
-                medalEmoji = "\uD83E\uDD47",
-                height = 180.dp,
-                onProfileClick = onProfileClick
-            )
+                Spacer(modifier = Modifier.width(6.dp))
 
-            // Bronze — 3rd place
-            PodiumCard(
-                entry = third,
-                medalColor = Color(0xFFCD7F32),
-                medalEmoji = "\uD83E\uDD49",
-                height = 120.dp,
-                onProfileClick = onProfileClick
-            )
+                // Gold — 1st place (center)
+                PodiumColumn(
+                    entry = first,
+                    place = 1,
+                    avatarSize = 72.dp,
+                    pedestalHeight = 92.dp,
+                    onProfileClick = onProfileClick,
+                    modifier = Modifier.weight(1.15f)
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                // Bronze — 3rd place (right)
+                PodiumColumn(
+                    entry = third,
+                    place = 3,
+                    avatarSize = 50.dp,
+                    pedestalHeight = 48.dp,
+                    onProfileClick = onProfileClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PodiumCard(
-    entry: LeaderboardEntry,
-    medalColor: Color,
-    medalEmoji: String,
-    height: androidx.compose.ui.unit.Dp,
-    onProfileClick: (String) -> Unit
+private fun PodiumColumn(
+    entry: LeaderboardEntry?,
+    place: Int,
+    avatarSize: Dp,
+    pedestalHeight: Dp,
+    onProfileClick: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "podium_glow_${entry.rank}")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.1f,
-        targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_${entry.rank}"
-    )
+    val medalColor = when (place) {
+        1 -> AchievementGold
+        2 -> AchievementSilver
+        else -> AchievementBronze
+    }
+    val medalEmoji = when (place) {
+        1 -> "\uD83E\uDD47"
+        2 -> "\uD83E\uDD48"
+        else -> "\uD83E\uDD49"
+    }
+    val pedestalBrush = when (place) {
+        1 -> Brush.verticalGradient(listOf(Color(0xFFE9CB6F), Color(0xFFC9A44A)))
+        2 -> Brush.verticalGradient(listOf(Color(0xFFC7CFCA), Color(0xFF9FAAA4)))
+        else -> Brush.verticalGradient(listOf(Color(0xFFD3A379), Color(0xFFA97747)))
+    }
 
-    Card(
-        modifier = Modifier
-            .width(100.dp)
-            .height(height)
-            .semantics {
-                contentDescription = "Rank ${entry.rank}: ${entry.nickname}, ${entry.xp} XP"
-                role = androidx.compose.ui.semantics.Role.Button
-            },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        onClick = { onProfileClick(entry.userId) }
+    if (entry == null) {
+        // Graceful half-populated podium (1–2 real members only)
+        Box(modifier = modifier.height(190.dp))
+        return
+    }
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Medal + crown for the champion
+        Box(contentAlignment = Alignment.Center) {
+            if (place == 1) {
+                Text(text = "👑", fontSize = 18.sp, modifier = Modifier.offset(y = (-2).dp))
+            }
+            Text(
+                text = medalEmoji,
+                fontSize = if (place == 1) 24.sp else 20.sp,
+                modifier = Modifier.padding(top = if (place == 1) 14.dp else 0.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Avatar with the user's REAL equipped frame
+        breathy.com.ui.components.BreathyAvatar(
+            photoURL = entry.photoURL,
+            frame = entry.avatarFrame,
+            rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
+            size = avatarSize,
+            contentDescription = "${entry.nickname}'s avatar"
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = entry.nickname,
+            style = MaterialTheme.typography.labelMedium.copy(
+                color = DarkBotanical,
+                fontWeight = FontWeight.Bold
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = "${entry.xp} XP",
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = GoldDeep,
+                fontWeight = FontWeight.ExtraBold
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Drawn pedestal block
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .height(pedestalHeight)
+                .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                .background(pedestalBrush)
+                .semantics {
+                    contentDescription = "Rank ${entry.rank}: ${entry.nickname}, ${entry.xp} XP"
+                    role = androidx.compose.ui.semantics.Role.Button
+                }
+                .clickable { onProfileClick(entry.userId) },
+            contentAlignment = Alignment.Center
         ) {
-            // Glow effect
+            // Decorative shine line on the podium top edge
             Canvas(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .height(3.dp)
                     .align(Alignment.TopCenter)
             ) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            medalColor.copy(alpha = glowAlpha),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width / 2, size.height * 0.3f),
-                        radius = size.minDimension * 0.6f
-                    ),
-                    radius = size.minDimension * 0.6f,
-                    center = Offset(size.width / 2, size.height * 0.3f)
+                drawRect(
+                    color = PureWhite.copy(alpha = 0.55f),
+                    size = size
                 )
             }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Medal emoji
-                Text(
-                    text = medalEmoji,
-                    fontSize = 20.sp
+            Text(
+                text = "$place",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Black,
+                    color = DarkBotanical.copy(alpha = 0.65f)
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Avatar with persisted frame
-                breathy.com.ui.components.BreathyAvatar(
-                    photoURL = entry.photoURL,
-                    frame = entry.avatarFrame,
-                    rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
-                    size = 52.dp,
-                    contentDescription = "${entry.nickname}'s avatar"
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Nickname
-                Text(
-                    text = entry.nickname,
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = themeTextPrimary,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // XP
-                Text(
-                    text = "${entry.xp} XP",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = AccentPrimary,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    fontFamily = FontFamily.Monospace
-                )
-            }
+            )
         }
     }
 }
@@ -746,7 +934,7 @@ private fun LeaderboardRow(
     onProfileClick: (String) -> Unit
 ) {
     val cardColor = if (isCurrentUser) {
-        AccentPrimary.copy(alpha = 0.08f)
+        AccentPrimary.copy(alpha = 0.10f)
     } else {
         MaterialTheme.colorScheme.surface
     }
@@ -759,11 +947,13 @@ private fun LeaderboardRow(
                 role = androidx.compose.ui.semantics.Role.Button
             },
         colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isCurrentUser) 2.dp else 0.dp),
+        shape = RoundedCornerShape(18.dp),
         border = if (isCurrentUser) {
-            androidx.compose.foundation.BorderStroke(1.dp, AccentPrimary.copy(alpha = 0.3f))
-        } else null,
+            androidx.compose.foundation.BorderStroke(1.5.dp, AccentPrimary.copy(alpha = 0.45f))
+        } else {
+            androidx.compose.foundation.BorderStroke(1.dp, SoftSage.copy(alpha = 0.5f))
+        },
         onClick = { onProfileClick(entry.userId) }
     ) {
         Row(
@@ -773,18 +963,27 @@ private fun LeaderboardRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Rank number
-            Text(
-                text = "${entry.rank}",
-                style = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isCurrentUser) AccentPrimary else themeTextSecondary
-                ),
-                modifier = Modifier.width(32.dp),
-                textAlign = TextAlign.Center
-            )
+            // Rank number in a soft circle
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isCurrentUser) AccentPrimary.copy(alpha = 0.16f)
+                        else VeryLightSage
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${entry.rank}",
+                    style = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isCurrentUser) DeepForest else themeTextSecondary
+                    )
+                )
+            }
 
             // Avatar with persisted frame
             breathy.com.ui.components.BreathyAvatar(
@@ -799,23 +998,42 @@ private fun LeaderboardRow(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = entry.nickname,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = if (isCurrentUser) AccentPrimary else themeTextPrimary,
+                            color = if (isCurrentUser) DeepForest else themeTextPrimary,
                             fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.SemiBold
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+                    if (isCurrentUser) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(AccentPrimary)
+                                .padding(horizontal = 6.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "YOU",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = PureWhite,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 9.sp,
+                                    letterSpacing = 1.sp
+                                )
+                            )
+                        }
+                    }
                     if (entry.isPremium) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "✦",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = breathy.com.ui.theme.DeepForest,
+                                color = DeepForest,
                                 fontWeight = FontWeight.Bold
                             )
                         )
@@ -830,22 +1048,32 @@ private fun LeaderboardRow(
                 )
             }
 
-            // XP
-            Text(
-                text = "${entry.xp} XP",
-                style = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isCurrentUser) AccentPrimary else AccentSecondary
+            // XP pill
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (isCurrentUser) AccentPrimary.copy(alpha = 0.14f)
+                        else VeryLightSage
+                    )
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "${entry.xp} XP",
+                    style = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isCurrentUser) DeepForest else AccentSecondary
+                    )
                 )
-            )
+            }
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Current User Bottom Bar — Fixed at bottom if not in top rankings
+//  Current User Bottom Bar — YOUR POSITION + YOUR SCORE, fixed at bottom
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -862,8 +1090,8 @@ private fun CurrentUserBottomBar(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 12.dp,
             tonalElevation = 0.dp
         ) {
             Row(
@@ -873,52 +1101,71 @@ private fun CurrentUserBottomBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "${entry.rank}",
-                    style = TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentPrimary
-                    ),
-                    modifier = Modifier.width(32.dp),
-                    textAlign = TextAlign.Center
-                )
-
                 breathy.com.ui.components.BreathyAvatar(
                     photoURL = entry.photoURL,
                     frame = entry.avatarFrame,
                     rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
-                    size = 44.dp,
+                    size = 46.dp,
                     contentDescription = "Your avatar"
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "You",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = AccentPrimary,
+                        text = "YOUR POSITION",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = themeTextSecondary,
+                            letterSpacing = 1.5.sp,
                             fontWeight = FontWeight.Bold
                         )
                     )
-                    Text(
-                        text = "${entry.daysSmokeFree} days smoke-free",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = themeTextSecondary,
-                            fontSize = 11.sp
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "#${entry.rank}",
+                            style = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = DeepForest
+                            )
                         )
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "You",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = AccentPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
 
-                Text(
-                    text = "${entry.xp} XP",
-                    style = TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentPrimary
-                    )
-                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(VeryLightSage)
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "YOUR SCORE",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = themeTextSecondary,
+                                letterSpacing = 1.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp
+                            )
+                        )
+                        Text(
+                            text = "${entry.xp} XP",
+                            style = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DeepForest
+                            )
+                        )
+                    }
+                }
             }
         }
     }

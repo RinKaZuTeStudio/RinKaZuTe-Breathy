@@ -5,6 +5,7 @@ import breathy.com.data.repository.AuthRepository
 import breathy.com.data.repository.ChatRepository
 import breathy.com.data.repository.GoldRepository
 import breathy.com.data.repository.EventRepository
+import breathy.com.data.repository.FollowRepository
 import breathy.com.data.repository.FriendRepository
 import breathy.com.data.repository.PremiumRepository
 import breathy.com.data.repository.RewardRepository
@@ -142,6 +143,18 @@ class AppModule(
     val friendRepository: FriendRepository by lazy {
         Timber.d("Initializing FriendRepository")
         FriendRepository(
+            firestore = firestore,
+            auth = firebaseAuth
+        )
+    }
+
+    /**
+     * Follow repository — one-way FOLLOWERS / FOLLOWING social graph,
+     * independent of the friends system. Real accounts only.
+     */
+    val followRepository: FollowRepository by lazy {
+        Timber.d("Initializing FollowRepository")
+        FollowRepository(
             firestore = firestore,
             auth = firebaseAuth
         )

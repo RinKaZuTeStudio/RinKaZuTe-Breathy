@@ -10,6 +10,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -47,6 +51,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -91,6 +96,8 @@ import breathy.com.data.repository.FriendRepository
 import breathy.com.data.repository.UserRepository
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentSecondary
+import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.SoftSage
 
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
@@ -146,7 +153,14 @@ data class FriendsUiState(
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val isSendingRequest: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** REAL followers — accounts whose `followedId` points at the current user. */
+    val followers: List<PublicProfile> = emptyList(),
+    /** REAL following — accounts the current user follows (one-way edges). */
+    val following: List<PublicProfile> = emptyList(),
+    /** Uids the current user follows (fast lookup for Follow/Unfollow buttons). */
+    val followingIds: Set<String> = emptySet(),
+    val isFollowBusy: Boolean = false
 )
 
 sealed class FriendsSingleEvent {
@@ -165,7 +179,8 @@ class FriendsViewModel(
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository,
     private val chatRepository: ChatRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val followRepository: breathy.com.data.repository.FollowRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FriendsUiState())
@@ -185,6 +200,57 @@ class FriendsViewModel(
         observeIncomingRequests()
         observeOutgoingRequests()
         observeChats()
+        observeFollowGraph()
+    }
+
+    /** Stream the real FOLLOWERS / FOLLOWING lists for the current account. */
+    private fun observeFollowGraph() {
+        val repo = followRepository ?: return
+        val uid = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            repo.observeFollowers(uid).collect { followers ->
+                _uiState.update { it.copy(followers = followers) }
+            }
+        }
+        viewModelScope.launch {
+            repo.observeFollowing(uid).collect { following ->
+                _uiState.update {
+                    it.copy(
+                        following = following,
+                        followingIds = following.map { p -> p.userId }.toSet()
+                    )
+                }
+            }
+        }
+    }
+
+    /** Follow or unfollow a real account (one-way edge, never auto-friend). */
+    fun toggleFollow(profile: PublicProfile) {
+        val repo = followRepository ?: return
+        if (_uiState.value.isFollowBusy) return
+        _uiState.update { it.copy(isFollowBusy = true) }
+        viewModelScope.launch {
+            val isFollowing = _uiState.value.followingIds.contains(profile.userId)
+            val result = if (isFollowing) repo.unfollowUser(profile.userId)
+            else repo.followUser(profile.userId)
+            result.fold(
+                onSuccess = {
+                    _events.emit(
+                        FriendsSingleEvent.ShowSnackbar(
+                            if (isFollowing) "Unfollowed ${profile.nickname}"
+                            else "You now follow ${profile.nickname}"
+                        )
+                    )
+                },
+                onFailure = { e ->
+                    if (e !is CancellationException) {
+                        Timber.e(e, "toggleFollow failed")
+                        _events.emit(FriendsSingleEvent.ShowSnackbar("Action failed — try again"))
+                    }
+                }
+            )
+            _uiState.update { it.copy(isFollowBusy = false) }
+        }
     }
 
     private fun observeFriends() {
@@ -409,11 +475,12 @@ class FriendsViewModelFactory(
     private val friendRepository: FriendRepository,
     private val userRepository: UserRepository,
     private val chatRepository: ChatRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val followRepository: breathy.com.data.repository.FollowRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return FriendsViewModel(friendRepository, userRepository, chatRepository, auth) as T
+        return FriendsViewModel(friendRepository, userRepository, chatRepository, auth, followRepository) as T
     }
 }
 
@@ -426,6 +493,7 @@ class FriendsViewModelFactory(
 fun FriendsScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToChat: (chatId: String) -> Unit = {},
+    onNavigateToProfile: (userId: String) -> Unit = {},
     viewModel: FriendsViewModel = run {
         val context = LocalContext.current
         val app = context.applicationContext as BreathyApplication
@@ -433,7 +501,8 @@ fun FriendsScreen(
             friendRepository = app.appModule.friendRepository,
             userRepository = app.appModule.userRepository,
             chatRepository = app.appModule.chatRepository,
-            auth = app.appModule.firebaseAuth
+            auth = app.appModule.firebaseAuth,
+            followRepository = app.appModule.followRepository
         ))
     }
 ) {
@@ -495,7 +564,7 @@ fun FriendsScreen(
         onDispose { Timber.d("FriendsScreen: disposed") }
     }
 
-    val tabs = listOf("Chats", "Friends", "Requests")
+    val tabs = listOf("Chats", "Friends", "Requests", "Followers", "Following")
     val incomingCount = uiState.incomingRequests.size
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -569,7 +638,7 @@ fun FriendsScreen(
                                         else FontWeight.Normal
                                     )
                                 )
-                                if (index == 1 && incomingCount > 0) {
+                                if (index == 2 && incomingCount > 0) {
                                     Surface(
                                         shape = CircleShape,
                                         color = AccentPrimary
@@ -633,6 +702,28 @@ fun FriendsScreen(
                     isLoading = uiState.isLoading,
                     onAccept = { request -> viewModel.acceptRequest(request) },
                     onReject = { request -> viewModel.rejectRequest(request) }
+                )
+
+                3 -> FollowListTab(
+                    title = "Followers",
+                    emptyIcon = "\uD83C\uDF3F",
+                    emptyMessage = "When people follow you, they'll appear here.",
+                    profiles = uiState.followers,
+                    followingIds = uiState.followingIds,
+                    isBusy = uiState.isFollowBusy,
+                    onToggleFollow = { viewModel.toggleFollow(it) },
+                    onProfileClick = onNavigateToProfile
+                )
+
+                4 -> FollowListTab(
+                    title = "Following",
+                    emptyIcon = "\uD83C\uDF31",
+                    emptyMessage = "Follow people from their profile to fill your feed.",
+                    profiles = uiState.following,
+                    followingIds = uiState.followingIds,
+                    isBusy = uiState.isFollowBusy,
+                    onToggleFollow = { viewModel.toggleFollow(it) },
+                    onProfileClick = onNavigateToProfile
                 )
             }
         }
@@ -701,6 +792,184 @@ fun FriendsScreen(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Follow List Tab — FOLLOWERS and FOLLOWING (one-way relationship, real data)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun FollowListTab(
+    title: String,
+    emptyIcon: String,
+    emptyMessage: String,
+    profiles: List<PublicProfile>,
+    followingIds: Set<String>,
+    isBusy: Boolean,
+    onToggleFollow: (PublicProfile) -> Unit,
+    onProfileClick: (String) -> Unit
+) {
+    if (profiles.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = emptyIcon, fontSize = 40.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = emptyMessage,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(profiles, key = { it.userId }) { profile ->
+            FollowUserCard(
+                profile = profile,
+                isFollowing = profile.userId in followingIds,
+                isBusy = isBusy,
+                onToggleFollow = { onToggleFollow(profile) },
+                onProfileClick = { onProfileClick(profile.userId) }
+            )
+        }
+    }
+}
+
+/**
+ * A real follower/following user card: REAL avatar + REAL equipped frame,
+ * nickname, rank badge, follower count, relationship state and a single
+ * Follow/Unfollow action.
+ */
+@Composable
+private fun FollowUserCard(
+    profile: PublicProfile,
+    isFollowing: Boolean,
+    isBusy: Boolean,
+    onToggleFollow: () -> Unit,
+    onProfileClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "Social card for ${profile.nickname}"
+                role = Role.Button
+            },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, SoftSage.copy(alpha = 0.5f)),
+        onClick = onProfileClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // REAL avatar + REAL equipped frame — updates live when changed
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = profile.photoURL,
+                frame = breathy.com.data.models.AvatarFrame.fromId(profile.avatarFrame),
+                rankTier = breathy.com.data.models.RankTier.forLevel(
+                    breathy.com.data.models.User.computeLevel(profile.xp)
+                ),
+                size = 46.dp,
+                contentDescription = "${profile.nickname}'s avatar"
+            )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = profile.nickname,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (profile.premium) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "✦",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = DeepForest,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+                Text(
+                    text = run {
+                        val tier = breathy.com.data.models.RankTier.forLevel(
+                            breathy.com.data.models.User.computeLevel(profile.xp)
+                        )
+                        "${tier.icon} ${tier.label}"
+                    } + " · ${profile.daysSmokeFree} days smoke-free" +
+                        " · ${profile.followerCount.coerceAtLeast(0)} followers",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            // Relationship action — one-way follow, never auto-friend
+            OutlinedButton(
+                onClick = onToggleFollow,
+                enabled = !isBusy,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (isFollowing) MaterialTheme.colorScheme.surface
+                    else AccentPrimary.copy(alpha = 0.12f),
+                    contentColor = if (isFollowing) MaterialTheme.colorScheme.onSurfaceVariant
+                    else DeepForest
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    if (isFollowing) SoftSage else AccentPrimary.copy(alpha = 0.5f)
+                ),
+                modifier = Modifier.semantics {
+                    contentDescription = if (isFollowing) "Unfollow ${profile.nickname}"
+                    else "Follow ${profile.nickname}"
+                    role = Role.Button
+                }
+            ) {
+                Text(
+                    text = if (isFollowing) "Following ✓" else "Follow",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 
@@ -799,37 +1068,18 @@ private fun ChatListItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
-            Card(
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = AccentPrimary.copy(alpha = 0.15f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                if (profile?.photoURL != null) {
-                    NetworkImage(
-                        model = profile.photoURL,
-                        contentDescription = "${profile.nickname}'s avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+            // Avatar with REAL equipped frame (updates live — spec section 40)
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = profile?.photoURL,
+                frame = breathy.com.data.models.AvatarFrame.fromId(profile?.avatarFrame),
+                rankTier = profile?.let {
+                    breathy.com.data.models.RankTier.forLevel(
+                        breathy.com.data.models.User.computeLevel(it.xp)
                     )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = (profile?.nickname ?: "?").take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = AccentPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-            }
+                },
+                size = 48.dp,
+                contentDescription = "${profile?.nickname ?: "Chat"}'s avatar"
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -951,38 +1201,17 @@ private fun FriendItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ── Avatar with online indicator ───────────────────────────────
+            // ── Avatar with REAL equipped frame + online indicator ─────────
             Box {
-                Card(
-                    modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = AccentPrimary.copy(alpha = 0.15f)
+                breathy.com.ui.components.BreathyAvatar(
+                    photoURL = profile.photoURL,
+                    frame = breathy.com.data.models.AvatarFrame.fromId(profile.avatarFrame),
+                    rankTier = breathy.com.data.models.RankTier.forLevel(
+                        breathy.com.data.models.User.computeLevel(profile.xp)
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    if (profile.photoURL != null) {
-                        NetworkImage(
-                            model = profile.photoURL,
-                            contentDescription = "${profile.nickname}'s avatar",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = profile.nickname.take(1).uppercase(),
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    color = AccentPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                }
+                    size = 48.dp,
+                    contentDescription = "${profile.nickname}'s avatar"
+                )
                 // Online indicator dot (shows if user has daysSmokeFree > 0
                 // as a proxy for active status; real app uses Firestore presence)
                 if (profile.daysSmokeFree > 0) {
@@ -1703,37 +1932,16 @@ private fun SearchResultItem(
                 .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
-            Card(
-                modifier = Modifier.size(36.dp),
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = AccentPrimary.copy(alpha = 0.15f)
+            // Avatar with REAL equipped frame (spec section 40)
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = profile.photoURL,
+                frame = breathy.com.data.models.AvatarFrame.fromId(profile.avatarFrame),
+                rankTier = breathy.com.data.models.RankTier.forLevel(
+                    breathy.com.data.models.User.computeLevel(profile.xp)
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                if (profile.photoURL != null) {
-                    NetworkImage(
-                        model = profile.photoURL,
-                        contentDescription = "${profile.nickname}'s avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = profile.nickname.take(1).uppercase(),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = AccentPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-            }
+                size = 36.dp,
+                contentDescription = "${profile.nickname}'s avatar"
+            )
 
             Spacer(modifier = Modifier.width(10.dp))
 

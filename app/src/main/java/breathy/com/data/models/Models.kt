@@ -287,6 +287,12 @@ data class PublicProfile(
     /** Whether this user has a verified active Premium subscription. */
     @PropertyName("premium")
     val premium: Boolean = false,
+    /** Denormalized follower count (one-way follow graph — see FollowRepository). */
+    @PropertyName("followerCount")
+    val followerCount: Int = 0,
+    /** Denormalized following count (one-way follow graph — see FollowRepository). */
+    @PropertyName("followingCount")
+    val followingCount: Int = 0,
     /** Last-activity timestamp — used by the initial leaderboard reset filter. */
     @PropertyName("updatedAt")
     @Serializable(with = TimestampSerializer::class)
@@ -303,6 +309,8 @@ data class PublicProfile(
             quitDate = map["quitDate"] as? Timestamp,
             avatarFrame = map["avatarFrame"] as? String,
             premium = map["premium"] as? Boolean ?: false,
+            followerCount = (map["followerCount"] as? Long)?.toInt() ?: 0,
+            followingCount = (map["followingCount"] as? Long)?.toInt() ?: 0,
             updatedAt = map["updatedAt"] as? Timestamp
         )
     }
@@ -789,14 +797,18 @@ data class Subscription(
     @Serializable(with = TimestampSerializer::class)
         val expiresAt: Timestamp = Timestamp.now(),
     @PropertyName("purchaseToken")
-    val purchaseToken: String = ""
+    val purchaseToken: String = "",
+    /** Whether Google Play will renew automatically. false = user cancelled auto-renewal. */
+    @PropertyName("autoRenewing")
+    val autoRenewing: Boolean = true
 ){
     companion object {
         fun fromFirestoreMap(map: Map<String, Any?>): Subscription = Subscription(
             active = map["active"] as? Boolean ?: false,
             plan = map["plan"] as? String ?: "",
             expiresAt = map["expiresAt"] as? Timestamp ?: Timestamp.now(),
-            purchaseToken = map["purchaseToken"] as? String ?: ""
+            purchaseToken = map["purchaseToken"] as? String ?: "",
+            autoRenewing = map["autoRenewing"] as? Boolean ?: true
         )
     }
 
@@ -909,17 +921,17 @@ data class HealthMilestone(
         /** Scientifically-backed health milestones as specified in the PRD. */
         val ALL = listOf(
             HealthMilestone(20L, "Heart Rate Normalizes", "Your heart rate and blood pressure begin to drop to normal levels, reducing cardiovascular stress immediately.", "\u2764\uFE0F"),
-            HealthMilestone(480L, "Carbon Monoxide Levels Drop", "Carbon monoxide levels in your blood decrease by half, allowing oxygen levels to return to normal. Your cells begin receiving the oxygen they need.", "\uD83E\uDE81"),
+            HealthMilestone(480L, "Carbon Monoxide Levels Drop", "Carbon monoxide levels in your blood fall toward normal, allowing oxygen delivery to your cells to recover.", "\uD83E\uDE81"),
             HealthMilestone(1440L, "Heart Attack Risk Decreases", "Your risk of heart attack begins to decrease as the effects of carbon monoxide and nicotine on your cardiovascular system begin to reverse.", "\uD83D\uDEE1\uFE0F"),
             HealthMilestone(2880L, "Taste and Smell Improve", "Nerve endings begin to regrow, and your ability to taste and smell is noticeably enhanced. Food begins to taste richer and more complex.", "\uD83D\uDC45"),
             HealthMilestone(4320L, "Breathing Becomes Easier", "Bronchial tubes relax and lung capacity increases, making breathing feel noticeably easier and deeper.", "\uD83D\uDCA8"),
             HealthMilestone(20160L, "Circulation Improves", "Blood circulation throughout your body improves significantly, making walking and exercise easier and more enjoyable.", "\uD83E\uDE78"),
-            HealthMilestone(43200L, "Lung Function Improves", "Lung cilia regrow and lung function increases by up to 30%, significantly improving respiratory health and reducing coughing.", "\uD83E\uDE81"),
-            HealthMilestone(129600L, "Coughing Decreases", "Cilia in the lungs fully regrow, reducing the frequency and severity of coughing, sinus congestion, and shortness of breath.", "\uD83C\uDF2C\uFE0F"),
+            HealthMilestone(43200L, "Lung Cilia Recover", "The tiny hair-like cilia in your airways begin to regrow, helping clear mucus and reducing the risk of infection. Breathing gradually feels easier.", "\uD83E\uDE81"),
+            HealthMilestone(129600L, "Coughing Eases", "As cilia continue to recover, coughing, sinus congestion and shortness of breath gradually decrease.", "\uD83C\uDF2C\uFE0F"),
             HealthMilestone(525600L, "Heart Disease Risk Halved", "Your risk of coronary heart disease is now half that of a smoker's, a dramatic reduction in cardiovascular danger.", "\u2764\uFE0F\u200D\uD83E\uDE79"),
             HealthMilestone(2628000L, "Stroke Risk Equal to Non-Smoker", "Your risk of having a stroke is now reduced to that of a non-smoker, a major milestone in vascular health recovery.", "\uD83E\uDDE0"),
             HealthMilestone(5256000L, "Lung Cancer Risk Halved", "Your risk of lung cancer falls to about half that of a smoker, and your risk of other cancers also decreases.", "\uD83D\uDEE1\uFE0F"),
-            HealthMilestone(7884000L, "Heart Disease Risk Equal to Non-Smoker", "Your risk of coronary heart disease is now equivalent to that of someone who has never smoked \u2014 full cardiovascular recovery.", "\uD83C\uDFC6")
+            HealthMilestone(7884000L, "Heart Disease Risk Similar to a Non-Smoker", "Your risk of coronary heart disease is now similar to that of someone who has never smoked — a major long-term recovery milestone.", "\uD83C\uDFC6")
         )
 
         /** Find the most recently achieved milestone for a given minutes-since-quit value. */

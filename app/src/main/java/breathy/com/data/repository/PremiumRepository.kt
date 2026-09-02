@@ -38,6 +38,30 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
 /**
+ * Lifecycle state of the Google Play subscription, derived from REAL Play
+ * Billing data on every re-check — never from a locally cached flag.
+ *
+ * - [ACTIVE]: purchase verified, auto-renewal on.
+ * - [CANCELED_BUT_STILL_ENTITLED]: the user cancelled auto-renewal in
+ *   Google Play but the current billing period has not ended yet —
+ *   premium STAYS active until Play stops returning the purchase.
+ * - [EXPIRED] / [REVOKED]: Play no longer returns a valid purchase
+ *   (period ended, or revoked/refunded) — premium removed.
+ * - [PENDING]: purchase awaiting payment (no entitlement yet).
+ * - [PAUSED]: reported via the Firestore mirror when known (account hold).
+ * - [NONE]: no subscription on Google Play for this account.
+ */
+enum class SubscriptionStatus {
+    NONE,
+    ACTIVE,
+    CANCELED_BUT_STILL_ENTITLED,
+    EXPIRED,
+    REVOKED,
+    PENDING,
+    PAUSED
+}
+
+/**
  * Central, app-scoped Premium entitlement manager for Breathy.
  *
  * Implements a REAL Google Play auto-renewing subscription:
@@ -118,7 +142,17 @@ class PremiumRepository(
         /** True while a purchase flow is running. */
         val isPurchasing: Boolean = false,
         /** The active subscription document (Firestore mirror), when available. */
-        val subscription: Subscription? = null
+        val subscription: Subscription? = null,
+        /** Detailed lifecycle state derived from the last verified Play query. */
+        val status: SubscriptionStatus = SubscriptionStatus.NONE,
+        /** Whether Google Play will auto-renew (false = user cancelled renewal). */
+        val isAutoRenewing: Boolean? = null,
+        /**
+         * The account uid the CURRENT in-memory entitlement belongs to.
+         * Premium is ALWAYS bound to the authenticated app account that
+         * owns the Play purchase — never a global app-wide flag.
+         */
+        val entitlementUid: String? = null
     )
 
     private val appContext = context.applicationContext
@@ -132,6 +166,48 @@ class PremiumRepository(
     private var cachedOfferToken: String? = null
 
     private val isConnecting = AtomicBoolean(false)
+
+    // ═════════════════════════════════════════════════════════════════
+    //  Account binding — premium NEVER leaks between accounts
+    // ═════════════════════════════════════════════════════════════════
+
+    /**
+     * Called whenever the authenticated app account changes (login, logout,
+     * account switch, restore session). The in-memory entitlement is RESET
+     * immediately and then re-resolved for the CURRENT account:
+     *
+     * - logout (uid == null)   → entitlement wiped from memory at once;
+     *   Account B never sees Account A's premium while resolving.
+     * - login (uid != null)    → fresh Google Play re-check; the purchase
+     *   token must be bound to THIS uid in `subscriptions/{uid}` to grant
+     *   premium (see [processSinglePurchase]).
+     *
+     * Safe to call repeatedly with the same uid — the state is only reset
+     * when the uid actually changes.
+     */
+    fun onAuthStateChanged(newUid: String?) {
+        if (_state.value.entitlementUid == newUid) return
+        if (newUid == null) {
+            Timber.i("PremiumRepo: account signed out — clearing premium state from memory")
+            _state.value = PremiumState(
+                localizedPrice = _state.value.localizedPrice,
+                currencyCode = _state.value.currencyCode,
+                hasLaunchOffer = _state.value.hasLaunchOffer,
+                isChecking = false,
+                status = SubscriptionStatus.NONE
+            )
+        } else {
+            Timber.i("PremiumRepo: account changed to %s — re-resolving entitlement for the new account", newUid)
+            _state.value = PremiumState(
+                localizedPrice = _state.value.localizedPrice,
+                currencyCode = _state.value.currencyCode,
+                hasLaunchOffer = _state.value.hasLaunchOffer,
+                entitlementUid = newUid,
+                isChecking = true
+            )
+            recheckEntitlement()
+        }
+    }
 
     // ═════════════════════════════════════════════════════════════════════
     //  Billing client lifecycle
@@ -332,7 +408,7 @@ class PremiumRepository(
         if (!anyPremiumActive) recheckEntitlement()
     }
 
-    /** @return true when this purchase grants an active premium entitlement. */
+    /** @return true when this purchase will be (or already is) resolved into an entitlement decision. */
     private fun processSinglePurchase(purchase: Purchase): Boolean {
         return when (purchase.purchaseState) {
             Purchase.PurchaseState.PURCHASED -> {
@@ -346,26 +422,129 @@ class PremiumRepository(
                 if (!purchase.isAcknowledged) {
                     acknowledge(purchase.purchaseToken)
                 }
-                Timber.i("PremiumRepo: verified premium purchase (token=%s…)", purchase.purchaseToken.take(8))
-                persistEntitlement(purchase)
-                _state.update {
-                    it.copy(
-                        isPremium = true,
-                        subscription = it.subscription?.copy(active = true, purchaseToken = purchase.purchaseToken)
-                            ?: Subscription(active = true, plan = BASE_PLAN_ID, purchaseToken = purchase.purchaseToken)
-                    )
-                }
+                // Binding check is async (Firestore read); Play callbacks must
+                // return quickly, so the grant/deny decision happens in scope.
+                scope.launch { resolvePurchaseEntitlement(purchase) }
                 true
             }
             Purchase.PurchaseState.PENDING -> {
                 Timber.i("PremiumRepo: purchase pending (awaiting payment method)")
-                _state.update { it.copy(isPurchasing = false) }
+                _state.update {
+                    it.copy(isPurchasing = false, status = SubscriptionStatus.PENDING, isPremium = false)
+                }
                 false
             }
             else -> {
                 Timber.i("PremiumRepo: purchase state %d — no entitlement", purchase.purchaseState)
                 false
             }
+        }
+    }
+
+    /**
+     * Resolve whether a verified Play purchase grants premium to the CURRENT
+     * signed-in app account.
+     *
+     * Binding rule: the purchase token must be recorded under THIS account
+     * (`subscriptions/{uid}.purchaseToken`, written at purchase time by
+     * [persistEntitlement]). A purchase bound to a different app account on
+     * this device NEVER leaks into the current account.
+     *
+     * Unreachable Firestore policy: keep the previous in-memory decision for
+     * the SAME account (don't strip a paying user on a network blip);
+     * fail-closed (deny) for a NEW account so no state can leak through.
+     */
+    private suspend fun resolvePurchaseEntitlement(purchase: Purchase) {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            Timber.w("PremiumRepo: verified purchase but no signed-in app account — not granting premium")
+            return
+        }
+        val previous = _state.value
+        val sameAccount = previous.entitlementUid == uid
+
+        val binding = readTokenBinding(uid, purchase.purchaseToken)
+        val bound = when (binding) {
+            true -> true
+            false -> false
+            null -> sameAccount && previous.isPremium // Firestore unreachable — trust same-account cache
+        }
+
+        if (!bound) {
+            Timber.w(
+                "PremiumRepo: premium purchase exists on Google Play but is NOT bound to account %s — premium denied",
+                uid
+            )
+            _state.update {
+                it.copy(
+                    isPremium = false,
+                    isChecking = false,
+                    isPurchasing = false,
+                    status = SubscriptionStatus.NONE,
+                    isAutoRenewing = null,
+                    entitlementUid = uid
+                )
+            }
+            return
+        }
+
+        val autoRenewing = purchase.isAutoRenewing
+        val status = if (autoRenewing) SubscriptionStatus.ACTIVE
+        else SubscriptionStatus.CANCELED_BUT_STILL_ENTITLED
+        Timber.i(
+            "PremiumRepo: verified premium purchase (token=%s…) autoRenewing=%s → %s",
+            purchase.purchaseToken.take(8), autoRenewing, status
+        )
+        persistEntitlement(purchase)
+        _state.update {
+            it.copy(
+                isPremium = true,
+                isChecking = false,
+                isPurchasing = false,
+                status = status,
+                isAutoRenewing = autoRenewing,
+                entitlementUid = uid,
+                subscription = it.subscription?.copy(
+                    active = true,
+                    purchaseToken = purchase.purchaseToken,
+                    autoRenewing = autoRenewing
+                )
+                    ?: Subscription(
+                        active = true,
+                        plan = BASE_PLAN_ID,
+                        purchaseToken = purchase.purchaseToken,
+                        autoRenewing = autoRenewing
+                    )
+            )
+        }
+    }
+
+    /**
+     * Read the purchase-token binding for [uid] from Firestore.
+     * Returns:
+     * - `true`  → token bound to this account;
+     * - `false` → token belongs to a different account (or this account has
+     *   no purchase record at all);
+     * - `null`  → Firestore unreachable / timed out (binding UNKNOWN).
+     */
+    private suspend fun readTokenBinding(uid: String, purchaseToken: String): Boolean? {
+        return try {
+            val doc = withTimeoutOrNull(8_000L) {
+                firestore.collection(SUBSCRIPTIONS_COLLECTION).document(uid).get().await()
+            }
+            when {
+                doc == null -> null // timeout — unknown
+                !doc.exists() -> false // this account has never recorded a purchase
+                else -> {
+                    val mirrored = doc.getString("purchaseToken")
+                    !mirrored.isNullOrBlank() && mirrored == purchaseToken
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "PremiumRepo: failed to read token binding for %s", uid)
+            null
         }
     }
 
@@ -389,8 +568,14 @@ class PremiumRepository(
 
     /**
      * Re-query Google Play for active subscriptions and recompute the
-     * entitlement. Called on app startup, on restore, and after purchases so
-     * that expiry/cancellation always takes effect.
+     * entitlement. Called on app start, on login/account switch, on restore,
+     * and after purchases so expiry/cancellation always takes effect.
+     *
+     * State derivation:
+     * - purchase found, autoRenewing=true  → ACTIVE
+     * - purchase found, autoRenewing=false → CANCELED_BUT_STILL_ENTITLED
+     * - no purchase (previously entitled)  → EXPIRED (period ended or revoked)
+     * - no purchase (never entitled)       → NONE
      */
     fun recheckEntitlement() {
         val client = billingClient
@@ -417,10 +602,17 @@ class PremiumRepository(
                     it.purchaseState == Purchase.PurchaseState.PURCHASED
             }
             if (premiumPurchase == null) {
-                Timber.i("PremiumRepo: no active premium subscription on Google Play")
-                setPremium(false, null)
+                val previousStatus = _state.value.status
+                val wasEntitled = previousStatus == SubscriptionStatus.ACTIVE ||
+                        previousStatus == SubscriptionStatus.CANCELED_BUT_STILL_ENTITLED
+                Timber.i(
+                    "PremiumRepo: no active premium subscription on Google Play (previous=%s)",
+                    previousStatus
+                )
+                setPremium(false, null, if (wasEntitled) SubscriptionStatus.EXPIRED else SubscriptionStatus.NONE)
             } else {
                 processSinglePurchase(premiumPurchase)
+                _state.update { it.copy(isChecking = false) }
             }
             _state.update { it.copy(isChecking = false) }
         }
@@ -452,7 +644,7 @@ class PremiumRepository(
                 processSinglePurchase(premiumPurchase)
                 onFinished(true)
             } else {
-                setPremium(false, null)
+                setPremium(false, null, SubscriptionStatus.NONE)
                 onFinished(false)
             }
         }
@@ -546,11 +738,16 @@ class PremiumRepository(
         }
     }
 
-    /** Mark the entitlement inactive locally and in Firestore. */
-    private fun setPremium(active: Boolean, subscription: Subscription?) {
+    /**
+     * Mark the entitlement inactive locally and in Firestore.
+     * [status] carries WHY premium ended (EXPIRED, REVOKED, NONE…).
+     */
+    private fun setPremium(active: Boolean, subscription: Subscription?, status: SubscriptionStatus = SubscriptionStatus.NONE) {
         _state.update { current ->
             current.copy(
                 isPremium = active,
+                status = if (active) current.status else status,
+                isAutoRenewing = if (active) current.isAutoRenewing else null,
                 subscription = if (active) {
                     subscription ?: current.subscription?.copy(active = true)
                         ?: Subscription(active = true, plan = BASE_PLAN_ID)
@@ -610,6 +807,14 @@ class PremiumRepository(
                     it.copy(
                         isChecking = false,
                         isPremium = mirrorActive,
+                        status = when {
+                            mirrorActive && sub?.autoRenewing == true -> SubscriptionStatus.ACTIVE
+                            mirrorActive -> SubscriptionStatus.CANCELED_BUT_STILL_ENTITLED
+                            sub != null && sub.active -> SubscriptionStatus.EXPIRED
+                            else -> SubscriptionStatus.NONE
+                        },
+                        isAutoRenewing = sub?.autoRenewing,
+                        entitlementUid = auth.currentUser?.uid,
                         subscription = sub
                     )
                 }

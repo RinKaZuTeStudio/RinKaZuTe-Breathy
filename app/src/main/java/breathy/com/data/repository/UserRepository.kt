@@ -957,6 +957,22 @@ class UserRepository(
             awaitClose { registration.remove() }
         }
 
+    /**
+     * Count the REAL leaderboard members: public profiles whose last activity
+     * is at or after [cutoffMillis] (the one-time pre-launch reset cutoff).
+     * Uses a server-side aggregate COUNT — the number is calculated from the
+     * actual created accounts, never invented or hardcoded.
+     */
+    suspend fun countLeaderboardMembers(cutoffMillis: Long): Result<Int> = runCatching {
+        val cutoff = com.google.firebase.Timestamp(java.util.Date(cutoffMillis))
+        val snapshot = firestore.collection(PUBLIC_PROFILES_COLLECTION)
+            .whereGreaterThanOrEqualTo("updatedAt", cutoff)
+            .count()
+            .get(com.google.firebase.firestore.AggregateSource.SERVER)
+            .await()
+        snapshot.count.toInt()
+    }
+
     /** Observe public profiles ordered by days smoke-free (leaderboard). */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observePublicProfilesOrderedByDaysSmokeFree(limit: Int): Flow<List<PublicProfile>> =

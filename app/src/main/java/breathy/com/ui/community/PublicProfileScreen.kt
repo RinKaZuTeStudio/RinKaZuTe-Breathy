@@ -72,6 +72,7 @@ import breathy.com.data.repository.UserRepository
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
+import breathy.com.ui.theme.SoftSage
 import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeBgSurface
 import breathy.com.ui.theme.themeBgSurfaceVariant
@@ -128,6 +129,7 @@ fun PublicProfileScreen(
             userRepository = application.appModule.userRepository,
             storyRepository = application.appModule.storyRepository,
             friendRepository = application.appModule.friendRepository,
+            followRepository = application.appModule.followRepository,
             profileUserId = userId
         )
     )
@@ -234,7 +236,10 @@ fun PublicProfileScreen(
                     ProfileActions(
                         friendStatus = uiState.friendStatus,
                         isSendingRequest = uiState.isSendingRequest,
+                        isFollowing = uiState.isFollowing,
+                        isFollowBusy = uiState.isFollowBusy,
                         onAddFriend = viewModel::sendFriendRequest,
+                        onToggleFollow = viewModel::toggleFollow,
                         onMessage = {
                             // Pass the other user's ID directly — ChatScreen handles chat ID computation
                             onNavigateToChat(userId)
@@ -353,14 +358,16 @@ private fun ProfileHeader(profile: PublicProfile) {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Avatar
-            NetworkImage(
-                model = profile.photoURL?.takeIf { it.isNotBlank() },
-                contentDescription = "${profile.nickname}'s avatar",
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+            // Avatar with the user's REAL equipped frame — updates live when
+            // the user changes it (spec section 40)
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = profile.photoURL?.takeIf { it.isNotBlank() },
+                frame = breathy.com.data.models.AvatarFrame.fromId(profile.avatarFrame),
+                rankTier = breathy.com.data.models.RankTier.forLevel(
+                    User.computeLevel(profile.xp)
+                ),
+                size = 88.dp,
+                contentDescription = "${profile.nickname}'s avatar"
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -404,6 +411,20 @@ private fun ProfileHeader(profile: PublicProfile) {
                         text = "Lv.$level",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         color = AccentPurple,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Follower count — REAL one-way follow graph (spec sections 32-34)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = SoftSage.copy(alpha = 0.4f)
+                ) {
+                    Text(
+                        text = "${profile.followerCount.coerceAtLeast(0)} followers",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        color = breathy.com.ui.theme.DeepForest,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -466,9 +487,13 @@ private fun ProfileHeader(profile: PublicProfile) {
 private fun ProfileActions(
     friendStatus: FriendStatus,
     isSendingRequest: Boolean,
+    isFollowing: Boolean,
+    isFollowBusy: Boolean,
     onAddFriend: () -> Unit,
+    onToggleFollow: () -> Unit,
     onMessage: () -> Unit
 ) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -479,7 +504,7 @@ private fun ProfileActions(
                 // Don't show action buttons for own profile
             }
             FriendStatus.FRIENDS -> {
-                // Already friends — show message button full width
+                // FRIENDS → MESSAGE (full width); follow toggle below
                 Button(
                     onClick = onMessage,
                     modifier = Modifier
@@ -505,7 +530,7 @@ private fun ProfileActions(
                 }
             }
             FriendStatus.REQUEST_SENT -> {
-                // Pending request
+                // Pending request + one-way follow state
                 OutlinedButton(
                     onClick = {},
                     enabled = false,
@@ -664,6 +689,70 @@ private fun ProfileActions(
             }
         }
     }
+
+        // One-way FOLLOW / FOLLOWING state under the friend actions —
+        // visible in every non-self relationship state (spec section 28).
+        if (friendStatus != FriendStatus.SELF) {
+            FollowToggleButton(
+                isFollowing = isFollowing,
+                isBusy = isFollowBusy,
+                onToggle = onToggleFollow,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/** One-way follow toggle — FOLLOW / FOLLOWING with relationship sync. */
+@Composable
+private fun FollowToggleButton(
+    isFollowing: Boolean,
+    isBusy: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onToggle,
+        enabled = !isBusy,
+        modifier = modifier
+            .height(44.dp)
+            .semantics {
+                contentDescription = if (isFollowing) "Unfollow this member" else "Follow this member"
+                role = Role.Button
+            },
+        shape = RoundedCornerShape(22.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (isFollowing) MaterialTheme.colorScheme.surface else AccentPrimary.copy(alpha = 0.12f),
+            contentColor = if (isFollowing) themeTextSecondary else AccentPrimary
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isFollowing) SoftSage else AccentPrimary.copy(alpha = 0.5f)
+        )
+    ) {
+        if (isBusy) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = AccentPrimary
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Filled.PersonAdd,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = when {
+                isBusy -> "..."
+                isFollowing -> "Following ✓"
+                else -> "Follow"
+            },
+            fontWeight = FontWeight.SemiBold
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -698,13 +787,17 @@ data class PublicProfileUiState(
     val isLoading: Boolean = true,
     val isLoadingStories: Boolean = false,
     val isSendingRequest: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    /** One-way follow relationship: does the CURRENT user follow this profile? */
+    val isFollowing: Boolean = false,
+    val isFollowBusy: Boolean = false
 )
 
 class PublicProfileViewModel(
     private val userRepository: UserRepository,
     private val storyRepository: StoryRepository,
     private val friendRepository: FriendRepository,
+    private val followRepository: breathy.com.data.repository.FollowRepository?,
     private val profileUserId: String
 ) : ViewModel() {
 
@@ -745,6 +838,7 @@ class PublicProfileViewModel(
                     )
                     // After loading profile, check friend status and load stories
                     checkFriendStatus()
+                    checkFollowStatus()
                     loadUserStories()
                 },
                 onFailure = { e ->
@@ -852,6 +946,54 @@ class PublicProfileViewModel(
         }
     }
 
+    /** Resolve the one-way follow relationship for the CURRENT account. */
+    private fun checkFollowStatus() {
+        val repo = followRepository ?: return
+        val uid = currentUserId ?: return
+        if (profileUserId == uid) return
+        viewModelScope.launch {
+            repo.isFollowing(profileUserId).fold(
+                onSuccess = { following ->
+                    _uiState.value = _uiState.value.copy(isFollowing = following)
+                },
+                onFailure = { e -> Timber.w(e, "Failed to check follow status") }
+            )
+        }
+    }
+
+    /** Follow / unfollow this profile (one-way edge, real accounts only). */
+    fun toggleFollow() {
+        val repo = followRepository ?: return
+        if (_uiState.value.isFollowBusy) return
+        _uiState.value = _uiState.value.copy(isFollowBusy = true)
+        viewModelScope.launch {
+            val following = _uiState.value.isFollowing
+            val result = if (following) repo.unfollowUser(profileUserId)
+            else repo.followUser(profileUserId)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        isFollowing = !following,
+                        isFollowBusy = false,
+                        // Optimistically refresh the denormalized counter
+                        profile = _uiState.value.profile?.let { p ->
+                            p.copy(
+                                followerCount = (p.followerCount + if (following) -1 else 1)
+                                    .coerceAtLeast(0)
+                            )
+                        }
+                    )
+                },
+                onFailure = { e ->
+                    if (e !is CancellationException) {
+                        Timber.e(e, "toggleFollow failed")
+                        _uiState.value = _uiState.value.copy(isFollowBusy = false)
+                    }
+                }
+            )
+        }
+    }
+
     fun retry() {
         loadProfile()
     }
@@ -861,6 +1003,7 @@ class PublicProfileViewModelFactory(
     private val userRepository: UserRepository,
     private val storyRepository: StoryRepository,
     private val friendRepository: FriendRepository,
+    private val followRepository: breathy.com.data.repository.FollowRepository? = null,
     private val profileUserId: String
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
@@ -870,6 +1013,7 @@ class PublicProfileViewModelFactory(
                 userRepository,
                 storyRepository,
                 friendRepository,
+                followRepository,
                 profileUserId
             ) as T
         }

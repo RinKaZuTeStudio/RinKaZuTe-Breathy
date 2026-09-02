@@ -127,6 +127,13 @@ service cloud.firestore {
                      && isNonEmptyString(request.resource.data.nickname)
                      && isNonNegative(request.resource.data.daysSmokeFree)
                      && isNonNegative(request.resource.data.xp);
+      // FOLLOW SYSTEM: any authenticated user may maintain the denormalized
+      // follow counters on someone else's profile — but ONLY those fields
+      // (FieldValue.increment writes; no profile data may be touched).
+      allow update: if isAuthenticated()
+                     && !isOwner(userId)
+                     && request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['followerCount', 'followingCount']);
       allow delete: if false;
     }
 
@@ -226,6 +233,24 @@ service cloud.firestore {
                      && request.resource.data.createdAt is timestamp;
       allow update: if false;
       allow delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  follows/{followId}  — one-way FOLLOW / FOLLOWING graph
+    //  Deterministic id: {followerId}_{followedId}
+    //  A user may only create/delete edges where they are the follower.
+    // ═══════════════════════════════════════════════════════════════════
+
+    match /follows/{followId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated()
+                     && request.resource.data.followerId == request.auth.uid
+                     && request.resource.data.followedId is string
+                     && request.resource.data.followedId != request.auth.uid
+                     && request.resource.data.createdAt is timestamp;
+      allow update: if false;
+      allow delete: if isAuthenticated()
+                     && resource.data.followerId == request.auth.uid;
     }
 
     // ═══════════════════════════════════════════════════════════════════

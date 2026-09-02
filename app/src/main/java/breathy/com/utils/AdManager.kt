@@ -54,18 +54,11 @@ class AdManager(
         /** Production interstitial ad unit ID. */
         private const val INTERSTITIAL_AD_UNIT_ID_PROD = "ca-app-pub-9434446627275871/7446506098"
 
-        // Google's official TEST ad units — guaranteed fill. Used ONLY in debug
-        // builds so development/testing always renders real ads without
-        // generating invalid traffic on the production account. Release builds
-        // always use the production units above.
-        private const val APP_OPEN_AD_UNIT_ID_TEST = "ca-app-pub-3940256099942544/9257395921"
-        private const val INTERSTITIAL_AD_UNIT_ID_TEST = "ca-app-pub-3940256099942544/1033173712"
-
-        /** The ad unit actually used — depends on build type. */
-        private val APP_OPEN_AD_UNIT_ID: String =
-            if (breathy.com.BuildConfig.DEBUG) APP_OPEN_AD_UNIT_ID_TEST else APP_OPEN_AD_UNIT_ID_PROD
-        private val INTERSTITIAL_AD_UNIT_ID: String =
-            if (breathy.com.BuildConfig.DEBUG) INTERSTITIAL_AD_UNIT_ID_TEST else INTERSTITIAL_AD_UNIT_ID_PROD
+        // REAL PRODUCTION ADS ONLY — spec mandate. Google's official test ad
+        // units are intentionally NOT used anywhere (debug or release): the
+        // production units are the verified, working ad units for this app.
+        private val APP_OPEN_AD_UNIT_ID: String = APP_OPEN_AD_UNIT_ID_PROD
+        private val INTERSTITIAL_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID_PROD
 
         // ── Timing ─────────────────────────────────────────────────────────
         /** Maximum age of a cached app-open ad before it's considered stale (4 hours). */

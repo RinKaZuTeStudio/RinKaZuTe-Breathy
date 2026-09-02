@@ -109,6 +109,8 @@ fun HealthTimeline(
         }
     }
 
+    val currentIndex = milestones.indexOfFirst { !it.second }
+
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // ── TODAY ───────────────────────────────────────────────────────
         TodayCard(
@@ -127,24 +129,115 @@ fun HealthTimeline(
             )
         }
 
-        // ── RECOVERY JOURNEY (full path) ────────────────────────────────
-        JourneySectionHeader()
+        // ── RECOVERY PATH (grouped journey, not a flat checklist) ───────
+        JourneySectionHeader(achievedCount = milestones.count { it.second }, total = milestones.size)
+
+        // Chapter the milestones into the botanical stages so the path reads
+        // as a journey through chapters — Seed → Sprout → Leaf → Plant → …
+        val stageGroups = remember(milestones) { groupMilestonesByStage(milestones) }
+
         Column(modifier = Modifier.fillMaxWidth()) {
-            milestones.forEachIndexed { index, (milestone, isAchieved) ->
+            stageGroups.forEachIndexed { groupIndex, group ->
+                val groupVisible = visibleCount >= group.firstMilestoneIndex + 1
                 AnimatedVisibility(
-                    visible = index < visibleCount,
-                    enter = fadeIn(animationSpec = tween(300)) +
-                            slideInVertically(
-                                animationSpec = tween(300),
-                                initialOffsetY = { it / 8 }
-                            )
+                    visible = groupVisible,
+                    enter = fadeIn(animationSpec = tween(300))
                 ) {
-                    TimelineItem(
-                        milestone = milestone,
-                        isAchieved = isAchieved,
-                        isLast = index == milestones.lastIndex
-                    )
+                    Column {
+                        StageChapterHeader(
+                            stage = group.stage,
+                            isCurrentStage = daysSmokeFree <= group.stage.maxDay &&
+                                (groupIndex == 0 || daysSmokeFree > stageGroups[groupIndex - 1].stage.maxDay)
+                        )
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            group.items.forEachIndexed { itemIndex, (milestone, isAchieved) ->
+                                val flatIndex = group.firstMilestoneIndex + itemIndex
+                                AnimatedVisibility(
+                                    visible = flatIndex < visibleCount,
+                                    enter = fadeIn(animationSpec = tween(300)) +
+                                            slideInVertically(
+                                                animationSpec = tween(300),
+                                                initialOffsetY = { it / 8 }
+                                            )
+                                ) {
+                                    JourneyMilestoneCard(
+                                        milestone = milestone,
+                                        isAchieved = isAchieved,
+                                        isCurrent = flatIndex == currentIndex,
+                                        isLast = flatIndex == milestones.lastIndex
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Journey chapters — milestones grouped by botanical stage
+// ═══════════════════════════════════════════════════════════════════════════
+
+private data class JourneyStageGroup(
+    val stage: RecoveryStage,
+    val items: List<Pair<HealthMilestone, Boolean>>,
+    val firstMilestoneIndex: Int
+)
+
+private fun groupMilestonesByStage(
+    milestones: List<Pair<HealthMilestone, Boolean>>
+): List<JourneyStageGroup> {
+    val groups = mutableListOf<JourneyStageGroup>()
+    milestones.forEachIndexed { index, pair ->
+        val day = (pair.first.minutesAfterQuit / 1440.0).toInt()
+        val stage = stageForDay(day)
+        val last = groups.lastOrNull()
+        if (last != null && last.stage == stage) {
+            groups[groups.lastIndex] = last.copy(items = last.items + pair)
+        } else {
+            groups.add(JourneyStageGroup(stage, listOf(pair), index))
+        }
+    }
+    return groups
+}
+
+/** Chapter header — the name of the current chapter of the journey. */
+@Composable
+private fun StageChapterHeader(stage: RecoveryStage, isCurrentStage: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 2.dp, start = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = stage.emoji, fontSize = 14.sp)
+        Text(
+            text = stage.label.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = if (isCurrentStage) DeepForest else themeTextSecondary,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold
+            )
+        )
+        if (isCurrentStage) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(DeepForest)
+                    .padding(horizontal = 6.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = "CURRENT CHAPTER",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = NaturalYellow,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
+                    )
+                )
             }
         }
     }
@@ -411,32 +504,47 @@ private fun NextMilestoneCard(
 }
 
 @Composable
-private fun JourneySectionHeader() {
-    Text(
-        text = "RECOVERY JOURNEY",
-        style = MaterialTheme.typography.labelSmall.copy(
-            color = themeTextSecondary,
-            letterSpacing = 2.sp,
-            fontWeight = FontWeight.Bold
-        ),
-        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
-    )
+private fun JourneySectionHeader(achievedCount: Int, total: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "RECOVERY PATH",
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = themeTextSecondary,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            modifier = Modifier.padding(start = 4.dp)
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = "$achievedCount of $total reached",
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = NaturalGreen,
+                fontWeight = FontWeight.Bold
+            ),
+            modifier = Modifier.padding(end = 4.dp)
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Individual timeline item — milestone card on the journey path
+//  Journey milestone card — three clearly DIFFERENT states:
+//  REACHED (soft sage, glow, check) / YOU ARE HERE (hero gradient card) /
+//  UPCOMING (quiet, dimmed). No two adjacent cards look the same.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun TimelineItem(
+private fun JourneyMilestoneCard(
     milestone: HealthMilestone,
     isAchieved: Boolean,
+    isCurrent: Boolean,
     isLast: Boolean
 ) {
-    val accentColor = if (isAchieved) NaturalGreen else themeTextDisabled
-    val textColor = if (isAchieved) themeTextPrimary else themeTextSecondary
-    val surfaceVariantColor = themeBgSurfaceVariant
     val timeLabel = milestone.timeLabel()
+    val surfaceVariantColor = themeBgSurfaceVariant
 
     // Animated checkmark scale for achieved milestones
     var checkScale by remember { mutableFloatStateOf(0f) }
@@ -450,8 +558,8 @@ private fun TimelineItem(
         }
     }
 
-    // Pulse glow for achieved items
-    val infiniteTransition = rememberInfiniteTransition(label = "milestone_glow")
+    // Pulse glow for the current milestone
+    val infiniteTransition = rememberInfiniteTransition(label = "journey_glow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.25f,
         targetValue = 0.55f,
@@ -459,58 +567,74 @@ private fun TimelineItem(
             animation = tween(1600),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "milestone_glow_alpha"
+        label = "journey_glow_alpha"
     )
-    val nodeAlpha = if (isAchieved) glowAlpha else 0.85f
 
     Row(modifier = Modifier.fillMaxWidth()) {
-        // ── Timeline rail: node + connecting line ───────────────────────
+        // ── Journey rail: node + connecting vine line ───────────────────
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(44.dp)
+            modifier = Modifier.width(48.dp)
         ) {
             Box(
-                modifier = Modifier.size(34.dp),
+                modifier = Modifier.size(38.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Glow ring
-                Canvas(modifier = Modifier.size(34.dp)) {
+                // Glow halo (reached or current)
+                Canvas(modifier = Modifier.size(38.dp)) {
+                    val haloColor = when {
+                        isCurrent -> NaturalYellow
+                        isAchieved -> NaturalGreen
+                        else -> surfaceVariantColor
+                    }
                     drawCircle(
-                        color = if (isAchieved) accentColor else surfaceVariantColor,
+                        color = haloColor,
                         radius = size.minDimension / 2f,
-                        alpha = nodeAlpha * 0.35f
+                        alpha = if (isCurrent) glowAlpha * 0.5f else if (isAchieved) glowAlpha * 0.35f else 0f
                     )
                 }
                 // Node circle
                 Box(
                     modifier = Modifier
-                        .size(if (isAchieved) 26.dp else 22.dp)
+                        .size(
+                            when {
+                                isCurrent -> 30.dp
+                                isAchieved -> 26.dp
+                                else -> 20.dp
+                            }
+                        )
                         .scale(checkScale)
                         .clip(CircleShape)
-                        .background(if (isAchieved) accentColor else surfaceVariantColor),
+                        .background(
+                            when {
+                                isCurrent -> DeepForest
+                                isAchieved -> NaturalGreen
+                                else -> surfaceVariantColor
+                            }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isAchieved) {
-                        Icon(
+                    when {
+                        isCurrent -> Text(text = milestone.icon, fontSize = 13.sp)
+                        isAchieved -> Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = "Achieved",
+                            contentDescription = "Reached",
                             tint = PureWhite,
                             modifier = Modifier.size(15.dp)
                         )
-                    } else {
-                        Icon(
+                        else -> Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = "Upcoming",
                             tint = themeTextDisabled,
-                            modifier = Modifier.size(11.dp)
+                            modifier = Modifier.size(10.dp)
                         )
                     }
                 }
             }
             if (!isLast) {
-                Canvas(modifier = Modifier.width(3.dp).height(28.dp)) {
+                Canvas(modifier = Modifier.width(3.dp).height(30.dp)) {
                     drawLine(
-                        color = if (isAchieved) accentColor else surfaceVariantColor,
+                        color = if (isAchieved) NaturalGreen else surfaceVariantColor,
                         start = Offset(size.width / 2f, 0f),
                         end = Offset(size.width / 2f, size.height),
                         strokeWidth = size.width
@@ -521,52 +645,172 @@ private fun TimelineItem(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        // ── Milestone card ──────────────────────────────────────────────
-        Card(
-            modifier = Modifier
-                .weight(1f)
-                .padding(bottom = 12.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isAchieved) VeryLightSage else PureWhite
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            border = if (!isAchieved) androidx.compose.foundation.BorderStroke(
-                1.dp, SoftSage.copy(alpha = 0.5f)
-            ) else null
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = milestone.icon,
-                        fontSize = 18.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = milestone.title,
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            color = if (isAchieved) DarkBotanical else themeTextPrimary,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = timeLabel,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (isAchieved) NaturalGreen else themeTextSecondary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
+        // ── Card, per state ─────────────────────────────────────────────
+        when {
+            // ── YOU ARE HERE — hero card, most prominent ──────────────────
+            isCurrent -> {
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = 12.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                brush = Brush.linearGradient(listOf(DeepForest, DarkBotanical)),
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .padding(horizontal = 14.dp, vertical = 12.dp)
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "YOU ARE HERE",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = NaturalYellow,
+                                        letterSpacing = 2.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    text = "at $timeLabel",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = VeryLightSage,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = milestone.title,
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = PureWhite,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = milestone.description,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = VeryLightSage
+                                ),
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = milestone.description,
-                    style = MaterialTheme.typography.bodySmall.copy(color = textColor),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
+            }
+
+            // ── REACHED — soft sage card with glow + check ────────────────
+            isAchieved -> {
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = 12.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = VeryLightSage),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = milestone.icon, fontSize = 17.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = milestone.title,
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = DarkBotanical,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(NaturalGreen.copy(alpha = 0.16f))
+                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "REACHED",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = NaturalGreen,
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 1.sp
+                                    )
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = milestone.description,
+                            style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            // ── UPCOMING — quiet, dimmed, clearly not yet ─────────────────
+            else -> {
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = 12.dp)
+                        .alpha(0.85f),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = PureWhite),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, SoftSage.copy(alpha = 0.55f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = milestone.icon,
+                                fontSize = 17.sp,
+                                modifier = Modifier.alpha(0.6f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = milestone.title,
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = themeTextSecondary,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = timeLabel,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = themeTextDisabled,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = milestone.description,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = themeTextDisabled
+                            ),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
         }
     }
