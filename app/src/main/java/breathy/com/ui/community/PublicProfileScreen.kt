@@ -42,6 +42,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -118,6 +119,10 @@ fun PublicProfileScreen(
     onNavigateToChat: (String) -> Unit
 ) {
     val application = LocalContext.current.applicationContext as BreathyApplication
+    // ── UGC safety (spec section 30) ──
+    var showSafetySheet by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
     val viewModel: PublicProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = PublicProfileViewModelFactory(
             userRepository = application.appModule.userRepository,
@@ -237,6 +242,24 @@ fun PublicProfileScreen(
                     )
                 }
 
+                // ── Safety: report / block (spec section 30) ─────────────
+                if (uiState.friendStatus != FriendStatus.SELF) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                        ) {
+                            androidx.compose.material3.TextButton(onClick = { showSafetySheet = true }) {
+                                androidx.compose.material3.Text(
+                                    text = "Report or block this user",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = themeTextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // ── Stories header ────────────────────────────────────────
                 item {
                     Text(
@@ -298,11 +321,20 @@ fun PublicProfileScreen(
             }
         }
     }
+
+    // ── Report / Block sheet (spec section 30) ─────────────────────
+    if (showSafetySheet) {
+        breathy.com.ui.components.ReportBlockSheet(
+            targetType = breathy.com.data.repository.SafetyRepository.TARGET_USER,
+            targetId = userId,
+            safetyRepository = application.appModule.safetyRepository,
+            onDismiss = { showSafetySheet = false }
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Sub-components
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 @Composable
 private fun ProfileHeader(profile: PublicProfile) {

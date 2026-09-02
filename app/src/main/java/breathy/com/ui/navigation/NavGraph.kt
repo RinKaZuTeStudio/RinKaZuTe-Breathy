@@ -50,7 +50,6 @@ import breathy.com.BreathyApplication
 import breathy.com.ui.auth.AgeCompletionScreen
 import breathy.com.ui.auth.AuthScreen
 import breathy.com.ui.auth.OnboardingScreen
-import breathy.com.ui.coach.AICoachScreen
 import breathy.com.ui.community.CommunityScreen
 import breathy.com.ui.community.PostStoryScreen
 import breathy.com.ui.community.PublicProfileScreen
@@ -64,6 +63,7 @@ import breathy.com.ui.friends.ChatScreen
 import breathy.com.ui.friends.FriendsScreen
 import breathy.com.ui.home.HomeScreen
 import breathy.com.ui.leaderboard.LeaderboardScreen
+import breathy.com.ui.gold.GoldHistoryScreen
 import breathy.com.ui.notifications.NotificationsScreen
 import breathy.com.ui.profile.AchievementsListScreen
 import breathy.com.ui.profile.ProfileScreen
@@ -100,9 +100,9 @@ object BreathyRoutes {
     const val EVENT_CHECKIN = "eventCheckin/{eventId}"
     const val PUSHUP_COUNTER = "pushupCounter/{eventId}"
     const val ADMIN_REVIEW = "adminReview"
-    const val AI_COACH = "aiCoach"
     const val ACHIEVEMENTS = "achievements"
     const val NOTIFICATIONS = "notifications"
+    const val GOLD_HISTORY = "goldHistory"
     const val SUBSCRIPTION = "subscription"
 
     // ── Helper functions for parameterized routes ───────────────────────────
@@ -148,7 +148,6 @@ private val noBottomBarRoutes = setOf(
     BreathyRoutes.EVENT_CHECKIN,
     BreathyRoutes.PUSHUP_COUNTER,
     BreathyRoutes.ADMIN_REVIEW,
-    BreathyRoutes.AI_COACH,
     BreathyRoutes.SUBSCRIPTION,
     BreathyRoutes.ACHIEVEMENTS,
     BreathyRoutes.NOTIFICATIONS,
@@ -338,8 +337,8 @@ fun BreathyNavHost(
             composable(BreathyRoutes.HOME) {
                 HomeScreen(
                     onNavigateToProfile = { navigateToWithAd(BreathyRoutes.PROFILE) },
-                    onNavigateToAICoach = { navigateToWithAd(BreathyRoutes.AI_COACH) },
-                    onNavigateToNotifications = { navigateToWithAd(BreathyRoutes.NOTIFICATIONS) }
+                    onNavigateToNotifications = { navigateToWithAd(BreathyRoutes.NOTIFICATIONS) },
+                    onNavigateToEvents = { navigateToWithAd(BreathyRoutes.EVENTS) }
                 )
             }
 
@@ -509,20 +508,13 @@ fun BreathyNavHost(
                 )
             }
 
-            // ── AI Coach ────────────────────────────────────────────────
-            composable(BreathyRoutes.AI_COACH) {
-                AICoachScreen(
-                    onBack = { navigateBack() }
-                )
-            }
-
             // ── Profile ─────────────────────────────────────────────────
             composable(BreathyRoutes.PROFILE) {
                 ProfileScreen(
                     onNavigateToAchievements = { navigateToWithAd(BreathyRoutes.ACHIEVEMENTS) },
                     onNavigateToSubscription = { navigateToWithAd(BreathyRoutes.SUBSCRIPTION) },
-                    onNavigateToAICoach = { navigateToWithAd(BreathyRoutes.AI_COACH) },
                     onNavigateToFriends = { navigateToWithAd(BreathyRoutes.FRIENDS) },
+                    onNavigateToGoldHistory = { navigateToWithAd(BreathyRoutes.GOLD_HISTORY) },
                     onSignOut = { signOutAndNavigateToAuth() }
                 )
             }
@@ -531,6 +523,13 @@ fun BreathyNavHost(
             composable(BreathyRoutes.NOTIFICATIONS) {
                 NotificationsScreen(
                     onBack = { navigateBack() }
+                )
+            }
+
+            // ── Gold History ────────────────────────────────────────────
+            composable(BreathyRoutes.GOLD_HISTORY) {
+                GoldHistoryScreen(
+                    onNavigateBack = { navigateBack() }
                 )
             }
 

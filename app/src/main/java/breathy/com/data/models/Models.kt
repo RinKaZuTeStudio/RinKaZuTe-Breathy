@@ -155,7 +155,10 @@ data class User(
     @PropertyName("location")
     val location: String? = null,
     @PropertyName("avatarFrame")
-    val avatarFrame: String? = null
+    val avatarFrame: String? = null,
+    /** Frame IDs owned via Gold purchases (or unlocks). Safe default for legacy accounts. */
+    @PropertyName("ownedFrames")
+    val ownedFrames: List<String> = emptyList()
 ){
 
     companion object {
@@ -182,7 +185,8 @@ data class User(
             fcmToken = map["fcmToken"] as? String,
             photoURL = map["photoURL"] as? String,
             location = map["location"] as? String,
-            avatarFrame = map["avatarFrame"] as? String
+            avatarFrame = map["avatarFrame"] as? String,
+            ownedFrames = (map["ownedFrames"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
         )
 
         /** Compute level from XP using the PRD-specified threshold table. */
@@ -252,7 +256,8 @@ data class User(
         "fcmToken" to fcmToken,
         "photoURL" to photoURL,
         "location" to location,
-        "avatarFrame" to avatarFrame
+        "avatarFrame" to avatarFrame,
+        "ownedFrames" to ownedFrames
     )
 }
 
@@ -861,8 +866,7 @@ data class Achievement(
             Achievement("event_champion", "Event Champion", "Complete an event challenge", "\uD83C\uDFC5", 400),
             Achievement("streak_keeper", "Streak Keeper", "Claim daily reward 30 days in a row", "\uD83D\uDCC5", 300),
             Achievement("level_5", "Level 5", "Reach Level 5", "\uD83D\uDE80", 250),
-            Achievement("level_10", "Level 10", "Reach Level 10", "\uD83D\uDC51", 500),
-            Achievement("ai_explorer", "AI Explorer", "Have 50 AI Coach conversations", "\uD83E\uDD16", 300)
+            Achievement("level_10", "Level 10", "Reach Level 10", "\uD83D\uDC51", 500)
         )
 
         /** Create an Achievement with unlock state from the user's unlocked list. */
@@ -974,4 +978,73 @@ data class QuitStats(
     /** Format money saved with currency symbol. */
     fun formattedMoneySaved(currencySymbol: String = "$"): String =
         "$currencySymbol${"%,.2f".format(moneySaved)}"
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GoldTransaction — Immutable ledger entry at users/{uid}/goldTransactions/{id}
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Category of a Gold ledger entry — drives the icon/color in Gold History. */
+@Serializable
+enum class GoldTxType(val value: String) {
+    @SerialName("earn") EARN("earn"),
+    @SerialName("spend") SPEND("spend");
+
+    override fun toString(): String = value
+
+    companion object {
+        fun fromValue(value: String?): GoldTxType =
+            entries.find { it.value == value } ?: EARN
+    }
+}
+
+/**
+ * A single Gold ledger entry. Transactions are append-only: balances are
+ * always derived from the user document, never recomputed from the ledger.
+ *
+ * [dedupKey] powers duplicate-reward protection — when present, the write
+ * transaction refuses to create a second entry with the same key
+ * (e.g. "daily_checkin_2026-09-02" can only ever be claimed once).
+ */
+@Serializable
+data class GoldTransaction(
+    /** Firestore document ID — not stored as a field. */
+    val id: String = "",
+    /** Positive amount of Gold. Sign/direction comes from [type]. */
+    @PropertyName("amount")
+    val amount: Int = 0,
+    /** Earn or spend. */
+    @PropertyName("type")
+    val type: GoldTxType = GoldTxType.EARN,
+    /** Machine-readable source, e.g. "daily_checkin", "achievement_streak_7", "frame_bronze", "event_entry". */
+    @PropertyName("source")
+    val source: String = "",
+    /** Human-readable description shown in Gold History. */
+    @PropertyName("description")
+    val description: String = "",
+    /** Idempotency key — one transaction max per key (null = always allowed). */
+    @PropertyName("dedupKey")
+    val dedupKey: String? = null,
+    /** Balance snapshot AFTER this transaction applied (for auditability). */
+    @PropertyName("balanceAfter")
+    val balanceAfter: Int = 0,
+    @PropertyName("timestamp")
+    @Serializable(with = TimestampSerializer::class)
+        val timestamp: Timestamp = Timestamp.now()
+) {
+    companion object {
+        fun fromFirestoreMap(id: String, map: Map<String, Any?>): GoldTransaction = GoldTransaction(
+            id = id,
+            amount = (map["amount"] as? Long)?.toInt() ?: 0,
+            type = GoldTxType.fromValue(map["type"] as? String),
+            source = map["source"] as? String ?: "",
+            description = map["description"] as? String ?: "",
+            dedupKey = map["dedupKey"] as? String,
+            balanceAfter = (map["balanceAfter"] as? Long)?.toInt() ?: 0,
+            timestamp = map["timestamp"] as? Timestamp ?: Timestamp.now()
+        )
+    }
+
+    /** Signed delta for UI display: negative for spends. */
+    val signedAmount: Int get() = if (type == GoldTxType.SPEND) -amount else amount
 }

@@ -17,6 +17,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -109,9 +111,16 @@ import breathy.com.data.models.User
 import breathy.com.data.repository.AuthRepository
 import breathy.com.data.repository.RewardRepository
 import breathy.com.data.repository.UserRepository
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentWarning
+import breathy.com.ui.theme.GoldDeep
+import breathy.com.ui.theme.PureWhite
+import breathy.com.ui.theme.GoldSoft
 import breathy.com.ui.theme.themeAccentPrimary
 import breathy.com.ui.theme.themeAccentPrimaryMuted
 import breathy.com.ui.theme.themeAccentPurple
@@ -140,8 +149,8 @@ import kotlinx.coroutines.delay
 fun ProfileScreen(
     onNavigateToAchievements: () -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
-    onNavigateToAICoach: () -> Unit = {},
     onNavigateToFriends: () -> Unit = {},
+    onNavigateToGoldHistory: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: ProfileViewModel = run {
         val app = LocalContext.current.applicationContext as BreathyApplication
@@ -151,7 +160,8 @@ fun ProfileScreen(
             authRepository = app.appModule.authRepository,
             auth = app.appModule.firebaseAuth,
             firestore = app.appModule.firestore,
-            premiumRepository = app.appModule.premiumRepository
+            premiumRepository = app.appModule.premiumRepository,
+            goldRepository = app.appModule.goldRepository
         ))
     }
 ) {
@@ -161,6 +171,7 @@ fun ProfileScreen(
 
     // Dialog states
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showAccountPrivacy by remember { mutableStateOf(false) }
     var showEditNicknameDialog by remember { mutableStateOf(false) }
     var showEditQuitDateDialog by remember { mutableStateOf(false) }
     var showEditAgeDialog by remember { mutableStateOf(false) }
@@ -254,6 +265,16 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // ── Gold Section ────────────────────────────────────────────
+                AnimatedVisibility(visible = sectionsVisible) {
+                    GoldSection(
+                        goldBalance = uiState.goldBalance,
+                        onOpenHistory = onNavigateToGoldHistory
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // ── Quit Date ───────────────────────────────────────────────
                 AnimatedVisibility(visible = sectionsVisible) {
                     QuitDateSection(
@@ -278,17 +299,11 @@ fun ProfileScreen(
                 AnimatedVisibility(visible = sectionsVisible) {
                     SettingsSection(
                         notificationsEnabled = uiState.notificationsEnabled,
-                        darkModeEnabled = uiState.darkModeEnabled,
-                        themeMode = uiState.themeMode,
                         privacyEnabled = uiState.privacyEnabled,
                         onNotificationsToggle = { viewModel.toggleNotifications(it) },
-                        onDarkModeToggle = { viewModel.toggleDarkMode(it) },
-                        onThemeModeChange = { mode ->
-                            viewModel.setThemeMode(mode)
-                            (context as? Activity)?.recreate()
-                        },
                         onPrivacyToggle = { viewModel.togglePrivacy(it) },
-                        onNavigateToFriends = onNavigateToFriends
+                        onNavigateToFriends = onNavigateToFriends,
+                        onOpenAccountPrivacy = { showAccountPrivacy = true }
                     )
                 }
 
@@ -308,7 +323,7 @@ fun ProfileScreen(
                 AnimatedVisibility(visible = sectionsVisible) {
                     ActionButtonsSection(
                         onSignOut = onSignOut,
-                        onDeleteAccount = { showDeleteDialog = true }
+                        onOpenAccountPrivacy = { showAccountPrivacy = true }
                     )
                 }
 
@@ -538,6 +553,17 @@ fun ProfileScreen(
         showEditQuitDateDialog = false
     }
 
+    // ── Account & Privacy sheet (spec section 33) ────────────
+    if (showAccountPrivacy) {
+        AccountPrivacySheet(
+            onDismiss = { showAccountPrivacy = false },
+            onDeleteAccount = {
+                showAccountPrivacy = false
+                showDeleteDialog = true
+            }
+        )
+    }
+
     // ── Avatar Frame Picker ──────────────────────────────────
     if (showFramePicker) {
         AvatarFramePickerSheet(
@@ -546,10 +572,13 @@ fun ProfileScreen(
             level = uiState.user?.level ?: 1,
             hasAchievements = uiState.achievements.any { it.unlocked },
             hasEventWin = uiState.user?.achievements?.contains("event_champion") == true,
+            goldBalance = uiState.goldBalance,
+            ownedFrames = uiState.user?.ownedFrames ?: emptyList(),
             onSelect = { frame ->
                 viewModel.updateAvatarFrame(frame)
                 showFramePicker = false
             },
+            onPurchase = { frame -> viewModel.purchaseFrame(frame) },
             onDismiss = { showFramePicker = false }
         )
     }
@@ -832,6 +861,84 @@ private fun ProfileHeader(
 //  Stats Section — Days smoke-free, money saved, XP, level
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Gold section (spec sections 36/38) — balance card with entry to the
+ * full Gold transaction history.
+ */
+@Composable
+private fun GoldSection(
+    goldBalance: Int,
+    onOpenHistory: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenHistory)
+            .semantics {
+                contentDescription = "Gold balance " + "%,d".format(goldBalance) + ". Open Gold history."
+                role = androidx.compose.ui.semantics.Role.Button
+            },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, GoldSoft)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(GoldSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "🪙", fontSize = 20.sp)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Gold",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+                Text(
+                    text = "Earned from check-ins, achievements & events",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "%,d".format(goldBalance),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = GoldDeep
+                    )
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "History",
+                        style = MaterialTheme.typography.labelSmall.copy(color = themeAccentPrimary)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = themeAccentPrimary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ProfileStatsSection(
     daysSmokeFree: Int,
@@ -1094,14 +1201,11 @@ private fun AchievementChip(achievement: Achievement) {
 @Composable
 private fun SettingsSection(
     notificationsEnabled: Boolean,
-    darkModeEnabled: Boolean,
-    themeMode: String,
     privacyEnabled: Boolean,
     onNotificationsToggle: (Boolean) -> Unit,
-    onDarkModeToggle: (Boolean) -> Unit,
-    onThemeModeChange: (String) -> Unit = {},
     onPrivacyToggle: (Boolean) -> Unit,
-    onNavigateToFriends: () -> Unit = {}
+    onNavigateToFriends: () -> Unit = {},
+    onOpenAccountPrivacy: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1143,92 +1247,6 @@ private fun SettingsSection(
                 checked = notificationsEnabled,
                 onCheckedChange = onNotificationsToggle
             )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
-
-            // Theme mode selector
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Palette,
-                        contentDescription = "Theme",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Column {
-                        Text(
-                            text = "Theme Mode",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onBackground,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                        Text(
-                            text = "Choose light or dark appearance",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                    }
-                }
-                // Theme mode dropdown
-                var expanded by remember { mutableStateOf(false) }
-                Box {
-                    TextButton(onClick = { expanded = true }) {
-                        Text(
-                            text = when (themeMode) {
-                                "DARK" -> "Dark"
-                                "LIGHT" -> "Light"
-                                else -> "System"
-                            },
-                            color = themeAccentPrimary,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Select theme",
-                            tint = themeAccentPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Light") },
-                            onClick = {
-                                expanded = false
-                                onThemeModeChange("LIGHT")
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Dark") },
-                            onClick = {
-                                expanded = false
-                                onThemeModeChange("DARK")
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("System") },
-                            onClick = {
-                                expanded = false
-                                onThemeModeChange("SYSTEM")
-                            }
-                        )
-                    }
-                }
-            }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
@@ -1433,7 +1451,7 @@ private fun SubscriptionStatusSection(
 @Composable
 private fun ActionButtonsSection(
     onSignOut: () -> Unit,
-    onDeleteAccount: () -> Unit
+    onOpenAccountPrivacy: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1471,35 +1489,130 @@ private fun ActionButtonsSection(
             }
         }
 
-        // Delete account
+        // Account & Privacy — houses the account deletion flow (spec section 33).
+        // The destructive action is no longer a prominent button on the main
+        // settings screen; it lives in a discoverable privacy context.
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RoundedCornerShape(12.dp),
-            onClick = onDeleteAccount
+            onClick = onOpenAccountPrivacy
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete account",
-                    tint = MaterialTheme.colorScheme.error,
+                    imageVector = Icons.Default.PrivacyTip,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Delete Account",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.SemiBold
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Account & Privacy",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.Medium
+                        )
                     )
+                    Text(
+                        text = "Manage your data, account deletion and privacy",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Account & Privacy sheet (spec section 33) — explains what happens on
+ * deletion and hosts the actual delete-account entry point.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountPrivacySheet(
+    onDismiss: () -> Unit,
+    onDeleteAccount: () -> Unit
+) {
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp)
+        ) {
+            Text(
+                text = "Account & Privacy",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Your recovery data (streaks, milestones, achievements) belongs to you. " +
+                    "Signing out keeps your data on this account. Deleting your account permanently " +
+                    "removes your profile, posts, friendships, chats and progress. This cannot be undone.",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.06f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                onClick = onDeleteAccount
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Delete account",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                        Text(
+                            text = "Permanent — removes all your data",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
             }
         }
     }
@@ -1532,15 +1645,17 @@ data class ProfileUiState(
     val subscription: Subscription? = null,
     val levelProgress: Float = 0f,
     val notificationsEnabled: Boolean = true,
-    val darkModeEnabled: Boolean = true,
-    val themeMode: String = "SYSTEM",
     val privacyEnabled: Boolean = false,
     val isLoading: Boolean = true,
     val isPhotoUploading: Boolean = false,
     val photoCacheBust: Long = 0L,
     val errorMessage: String? = null,
     /** Verified premium entitlement for premium-gated UI. */
-    val isPremium: Boolean = false
+    val isPremium: Boolean = false,
+    /** Real-time Gold balance for frame purchases and profile display. */
+    val goldBalance: Int = 0,
+    /** Success celebration for a freshly purchased frame. */
+    val justPurchasedFrame: breathy.com.data.models.AvatarFrame? = null
 )
 
 class ProfileViewModel(
@@ -1549,7 +1664,8 @@ class ProfileViewModel(
     private val authRepository: AuthRepository,
     private val auth: FirebaseAuth,
     private val firestore: com.google.firebase.firestore.FirebaseFirestore,
-    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -1563,21 +1679,10 @@ class ProfileViewModel(
         try {
             val context = breathy.com.BreathyApplication.instance
             val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
-            val savedTheme = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
-            val isSystemDarkMode = context.resources.configuration.uiMode and
-                android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
-                android.content.res.Configuration.UI_MODE_NIGHT_YES
-            val darkEnabled = when (savedTheme) {
-                "DARK" -> true
-                "LIGHT" -> false
-                else -> isSystemDarkMode // SYSTEM
-            }
             val notificationsEnabled = prefs.getBoolean("notifications_enabled", true)
             val privacyEnabled = prefs.getBoolean("privacy_enabled", false)
             _uiState.update {
                 it.copy(
-                    darkModeEnabled = darkEnabled,
-                    themeMode = savedTheme,
                     notificationsEnabled = notificationsEnabled,
                     privacyEnabled = privacyEnabled
                 )
@@ -1588,6 +1693,41 @@ class ProfileViewModel(
         loadAchievements()
         loadSubscription()
         observePremium()
+        observeGoldBalance()
+    }
+
+    /** Stream the real Gold balance for display and frame purchases. */
+    private fun observeGoldBalance() {
+        goldRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.balanceFlow().collect { balance ->
+                    _uiState.update { it.copy(goldBalance = balance) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Buy a Gold-purchasable frame: deducts the exact price once, records
+     * ownership, and equips the frame (single atomic transaction).
+     */
+    fun purchaseFrame(frame: breathy.com.data.models.AvatarFrame) {
+        val repo = goldRepository ?: return
+        viewModelScope.launch {
+            try {
+                repo.purchaseFrame(frame).getOrThrow()
+                _uiState.update { it.copy(justPurchasedFrame = frame, errorMessage = null) }
+            } catch (e: breathy.com.data.repository.InsufficientGoldException) {
+                _uiState.update {
+                    it.copy(errorMessage = "Not enough Gold — the ${frame.label} frame costs ${frame.goldPrice} Gold.")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to purchase frame")
+                _uiState.update { it.copy(errorMessage = "Purchase failed. Please try again.") }
+            }
+        }
     }
 
     /** Mirror the verified premium entitlement into profile UI state. */
@@ -1781,40 +1921,7 @@ class ProfileViewModel(
         Timber.i("Notifications toggled: %s", enabled)
     }
 
-    fun toggleDarkMode(enabled: Boolean) {
-        val mode = if (enabled) "DARK" else "LIGHT"
-        _uiState.update { it.copy(darkModeEnabled = enabled, themeMode = mode) }
-        // Save to SharedPreferences so MainActivity can read it on recreation
-        try {
-            val context = breathy.com.BreathyApplication.instance
-            val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
-            prefs.edit().putString("theme_mode", mode).commit()
-        } catch (_: Exception) { }
-        Timber.i("Theme mode changed: %s", mode)
-    }
 
-    fun setThemeMode(mode: String) {
-        val isSystemDarkMode = try {
-            val context = breathy.com.BreathyApplication.instance
-            context.resources.configuration.uiMode and
-                android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
-                android.content.res.Configuration.UI_MODE_NIGHT_YES
-        } catch (_: Exception) { false }
-
-        val darkEnabled = when (mode) {
-            "DARK" -> true
-            "LIGHT" -> false
-            else -> isSystemDarkMode // SYSTEM
-        }
-        _uiState.update { it.copy(darkModeEnabled = darkEnabled, themeMode = mode) }
-        // Save to SharedPreferences synchronously so MainActivity can read it immediately on recreation
-        try {
-            val context = breathy.com.BreathyApplication.instance
-            val prefs = context.getSharedPreferences("breathy_prefs", android.content.Context.MODE_PRIVATE)
-            prefs.edit().putString("theme_mode", mode).commit()
-        } catch (_: Exception) { }
-        Timber.i("Theme mode changed: %s", mode)
-    }
 
     fun togglePrivacy(enabled: Boolean) {
         _uiState.update { it.copy(privacyEnabled = enabled) }
@@ -1848,11 +1955,12 @@ class ProfileViewModelFactory(
     private val authRepository: AuthRepository,
     private val auth: FirebaseAuth,
     private val firestore: com.google.firebase.firestore.FirebaseFirestore,
-    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return ProfileViewModel(userRepository, rewardRepository, authRepository, auth, firestore, premiumRepository) as T
+        return ProfileViewModel(userRepository, rewardRepository, authRepository, auth, firestore, premiumRepository, goldRepository) as T
     }
 }
 
@@ -1868,7 +1976,10 @@ private fun AvatarFramePickerSheet(
     level: Int,
     hasAchievements: Boolean,
     hasEventWin: Boolean,
+    goldBalance: Int,
+    ownedFrames: List<String>,
     onSelect: (breathy.com.data.models.AvatarFrame) -> Unit,
+    onPurchase: (breathy.com.data.models.AvatarFrame) -> Unit,
     onDismiss: () -> Unit
 ) {
     val frames = breathy.com.data.models.AvatarFrame.entries
@@ -1896,6 +2007,39 @@ private fun AvatarFramePickerSheet(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(modifier = Modifier.height(10.dp))
+            // YOUR GOLD — always visible while shopping (spec section 10)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = GoldSoft),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "🪙", fontSize = 18.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Your Gold",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            color = GoldDeep
+                        )
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "%,d".format(goldBalance),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = GoldDeep
+                        )
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1908,7 +2052,8 @@ private fun AvatarFramePickerSheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         for (frame in row) {
-                            val unlocked = frame.isUnlockedFor(
+                            val ownedByGold = ownedFrames.contains(frame.id)
+                            val unlocked = ownedByGold || frame.isUnlockedFor(
                                 level = level,
                                 hasAchievement = hasAchievements,
                                 hasEventWin = hasEventWin,
@@ -1923,6 +2068,8 @@ private fun AvatarFramePickerSheet(
                                 hasAchievements = hasAchievements,
                                 hasEventWin = hasEventWin,
                                 isPremium = isPremium,
+                                goldBalance = goldBalance,
+                                onBuy = { onPurchase(frame) },
                                 modifier = Modifier.weight(1f),
                                 onClick = { if (unlocked) onSelect(frame) }
                             )
@@ -1947,6 +2094,8 @@ private fun FrameCard(
     hasAchievements: Boolean,
     hasEventWin: Boolean,
     isPremium: Boolean,
+    goldBalance: Int,
+    onBuy: () -> Unit = {},
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -1991,7 +2140,8 @@ private fun FrameCard(
 
         Text(
             text = when {
-                unlocked -> if (isSelected) "Selected" else "Unlocked"
+                unlocked -> if (isSelected) "Equipped" else "Owned"
+                frame.goldPrice != null -> "${frame.goldPrice} Gold"
                 frame == breathy.com.data.models.AvatarFrame.BRONZE -> "Level 3"
                 frame == breathy.com.data.models.AvatarFrame.SILVER -> "Level 5"
                 frame == breathy.com.data.models.AvatarFrame.GOLD -> "Level 8"
@@ -2007,5 +2157,31 @@ private fun FrameCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+
+        // BUY WITH GOLD — one-time purchase for Gold-priced frames (spec §10)
+        if (!unlocked && frame.goldPrice != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            val canAfford = goldBalance >= frame.goldPrice
+            androidx.compose.material3.TextButton(
+                onClick = onBuy,
+                enabled = canAfford,
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                    contentColor = if (canAfford) GoldDeep else MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                modifier = Modifier.semantics {
+                    contentDescription = if (canAfford)
+                        "Buy ${frame.label} frame for ${frame.goldPrice} Gold"
+                    else
+                        "${frame.label} frame costs ${frame.goldPrice} Gold, you have $goldBalance"
+                }
+            ) {
+                Text(
+                    text = "🪙 Buy",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1
+                )
+            }
+        }
     }
 }

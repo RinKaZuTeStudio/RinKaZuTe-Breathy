@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import breathy.com.R
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,6 +80,12 @@ import breathy.com.BreathyApplication
 import breathy.com.data.models.Event
 import breathy.com.data.models.EventParticipant
 import breathy.com.data.repository.EventRepository
+import breathy.com.ui.theme.GoldDeep
+import breathy.com.ui.theme.NaturalYellow
+import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.SoftSage
+import breathy.com.ui.theme.PureWhite
+import breathy.com.ui.theme.VeryLightSage
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeBgSurface
@@ -124,7 +133,9 @@ data class EventsUiState(
     val errorMessage: String? = null,
     val joiningEventId: String? = null,
     /** Verified premium entitlement — gates premium-only events. */
-    val isPremium: Boolean = false
+    val isPremium: Boolean = false,
+    /** Real-time Gold balance — powers the 500-Gold entry gate. */
+    val goldBalance: Int = 0
 )
 
 data class EventWithStatus(
@@ -143,7 +154,8 @@ data class EventWithStatus(
 class EventsViewModel(
     private val eventRepository: EventRepository,
     private val auth: FirebaseAuth,
-    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -159,6 +171,18 @@ class EventsViewModel(
     init {
         loadEvents()
         observePremium()
+        observeGoldBalance()
+    }
+
+    /** Stream the real Gold balance so the entry gate is always accurate. */
+    private fun observeGoldBalance() {
+        goldRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.balanceFlow().collect { balance ->
+                    _uiState.update { it.copy(goldBalance = balance) }
+                }
+            }
+        }
     }
 
     /** Mirror the app-wide verified premium entitlement into UI state. */
@@ -253,7 +277,13 @@ class EventsViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "Failed to join event: %s", eventId)
-                        _uiState.update { it.copy(joiningEventId = null) }
+                        val message = when (e) {
+                            is breathy.com.data.repository.InsufficientGoldException ->
+                                "Not enough Gold — entry costs 500 Gold, you have ${e.available}."
+                            is IllegalStateException -> e.message ?: "Failed to join event"
+                            else -> e.localizedMessage ?: "Failed to join event"
+                        }
+                        _uiState.update { it.copy(joiningEventId = null, errorMessage = message) }
                     }
                 }
             )
@@ -273,12 +303,13 @@ class EventsViewModel(
 class EventsViewModelFactory(
     private val eventRepository: EventRepository,
     private val auth: FirebaseAuth,
-    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(EventsViewModel::class.java)) {
-            return EventsViewModel(eventRepository, auth, premiumRepository) as T
+            return EventsViewModel(eventRepository, auth, premiumRepository, goldRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
@@ -301,7 +332,8 @@ fun EventsScreen(
             EventsViewModelFactory(
                 eventRepository = app.appModule.eventRepository,
                 auth = app.appModule.firebaseAuth,
-                premiumRepository = app.appModule.premiumRepository
+                premiumRepository = app.appModule.premiumRepository,
+                goldRepository = app.appModule.goldRepository
             )
         )[EventsViewModel::class.java]
     }
@@ -400,6 +432,10 @@ fun EventsScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            // Canonical featured event hero (same artwork as Home — spec §21)
+                            item(key = "featured_hero") {
+                                EventHeroBanner(goldBalance = uiState.goldBalance)
+                            }
                             items(
                                 items = uiState.events,
                                 key = { it.event.id }
@@ -407,6 +443,8 @@ fun EventsScreen(
                                 EventCard(
                                     eventWithStatus = eventWithStatus,
                                     isJoining = uiState.joiningEventId == eventWithStatus.event.id,
+                                    goldBalance = uiState.goldBalance,
+                                    entryFee = 500,
                                     onJoin = { viewModel.joinEvent(eventWithStatus.event.id) },
                                     onClick = { onNavigateToEventDetail(eventWithStatus.event.id) }
                                 )
@@ -427,6 +465,98 @@ fun EventsScreen(
     }
 }
 
+/**
+ * Canonical featured event hero — the SAME artwork as the Home featured card
+ * (spec section 21). Coming Soon badge + title + description + reward preview.
+ */
+@Composable
+private fun EventHeroBanner(goldBalance: Int) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, SoftSage.copy(alpha = 0.6f))
+    ) {
+        Column {
+            Box {
+                Image(
+                    painter = painterResource(R.drawable.event_pushup_hero),
+                    contentDescription = "Push-Up Challenge event artwork",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(170.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(10.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = DeepForest)
+                ) {
+                    Text(
+                        text = "COMING SOON",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = NaturalYellow,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Push-Up Challenge",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = themeTextPrimary
+                    )
+                )
+                Text(
+                    text = "Compete with the community. Daily push-up check-ins, live event leaderboard, exclusive rewards.",
+                    style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = VeryLightSage)
+                    ) {
+                        Text(
+                            text = "🪙 Entry 500 Gold",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = GoldDeep,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = VeryLightSage)
+                    ) {
+                        Text(
+                            text = "Your balance: %,d".format(goldBalance),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = themeTextSecondary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  Event Card
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -435,6 +565,8 @@ fun EventsScreen(
 private fun EventCard(
     eventWithStatus: EventWithStatus,
     isJoining: Boolean,
+    goldBalance: Int,
+    entryFee: Int,
     onJoin: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -713,33 +845,47 @@ private fun EventCard(
                         )
                     }
                 } else if (isCurrentlyActive || (event.active && System.currentTimeMillis() < event.startDate.toDate().time)) {
-                    Button(
-                        onClick = onJoin,
-                        enabled = !isJoining,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentPrimary,
-                            contentColor = themeBgPrimary,
-                            disabledContainerColor = AccentPrimary.copy(alpha = 0.5f)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Join ${event.title}"
-                            role = Role.Button
-                        }
-                    ) {
-                        if (isJoining) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = themeBgPrimary,
-                                strokeWidth = 2.dp
+                    // Entry-fee aware CTA: exact fee, disabled when balance is short.
+                    val canAfford = goldBalance >= entryFee
+                    Column(horizontalAlignment = Alignment.End) {
+                        Button(
+                            onClick = onJoin,
+                            enabled = !isJoining && canAfford,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AccentPrimary,
+                                contentColor = themeBgPrimary,
+                                disabledContainerColor = AccentPrimary.copy(alpha = 0.4f)
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.semantics {
+                                contentDescription = "Join ${event.title} for $entryFee Gold"
+                                role = Role.Button
+                            }
+                        ) {
+                            if (isJoining) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = themeBgPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            Text(
+                                text = if (isJoining) "Joining..." else "Join · $entryFee \uD83E\uDE99",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
                         }
-                        Text(
-                            text = if (isJoining) "Joining..." else "Join",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
+                        if (!canAfford) {
+                            Text(
+                                text = "Need ${(entryFee - goldBalance).coerceAtLeast(0)} more \uD83E\uDE99",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = themeTextSecondary,
+                                    fontSize = 10.sp
+                                ),
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                     }
                 } else {
                     // Event not yet started — show countdown
@@ -811,16 +957,16 @@ private fun EventsLoadingState() {
 }
 
 @Composable
-private fun EventsEmptyState() {
+private fun EventsEmptyState(featured: Boolean = true) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         breathy.com.ui.components.BreathyEmptyState(
+            icon = "\uD83C\uDFCB\uFE0F",
             title = "Exclusive events are coming soon",
             subtitle = "Compete, complete challenges, and earn rewards. " +
-                "Premium members get first access to every event.",
-            icon = "\uD83C\uDF3F"
+                "Premium members get first access to every event."
         )
     }
 }

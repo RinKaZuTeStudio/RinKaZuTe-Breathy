@@ -441,13 +441,17 @@ class UserRepository(
         isPremium: Boolean
     ): Result<Unit> = runCatching {
         val user = getUser(userId).getOrThrow()
-        if (!frame.isUnlockedFor(
-                level = user.level,
-                hasAchievement = user.achievements.isNotEmpty(),
-                hasEventWin = user.achievements.contains("event_champion"),
-                isPremium = isPremium
-            )
-        ) {
+        // Unlock paths: natural progression unlocks OR explicit Gold ownership
+        // (users.ownedFrames). Premium frame additionally requires the verified
+        // subscription entitlement — ownership can never be faked for it.
+        val ownedByPurchase = user.ownedFrames.contains(frame.id)
+        val progressionUnlocked = frame.isUnlockedFor(
+            level = user.level,
+            hasAchievement = user.achievements.isNotEmpty(),
+            hasEventWin = user.achievements.contains("event_champion"),
+            isPremium = isPremium
+        )
+        if (!ownedByPurchase && !progressionUnlocked) {
             throw IllegalStateException("Frame '${frame.id}' is not unlocked for this user")
         }
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
@@ -644,6 +648,23 @@ class UserRepository(
                     "lastDailyClaim" to Timestamp.now()
                 ))
                 transaction.update(profileRef, "xp", newXp)
+
+                // Gold ledger entry — dedup key makes replayed claims no-ops.
+                val dayKey = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(java.util.Date())
+                transaction.set(
+                    userRef.collection("goldTransactions").document("daily_checkin_$dayKey"),
+                    mapOf(
+                        "amount" to reward,
+                        "type" to "earn",
+                        "source" to "daily_checkin",
+                        "description" to "Daily check-in",
+                        "dedupKey" to "daily_checkin_$dayKey",
+                        "balanceAfter" to newCoins,
+                        "timestamp" to FieldValue.serverTimestamp()
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
 
                 reward
             }.await()

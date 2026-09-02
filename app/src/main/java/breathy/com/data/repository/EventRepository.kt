@@ -52,6 +52,7 @@ class EventRepository(
         private const val EVENT_PARTICIPANTS_COLLECTION = "eventParticipants"
         private const val EVENT_CHECKINS_COLLECTION = "eventCheckins"
         private const val PUBLIC_PROFILES_COLLECTION = "publicProfiles"
+        private const val USERS_COLLECTION = "users"
         private const val LEADERBOARD_LIMIT = 50L
     }
 
@@ -112,45 +113,68 @@ class EventRepository(
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Join an event. Uses a deterministic participant ID ({userId}_{eventId})
-     * to prevent duplicate joins.
+     * Join an event — charges the ENTRY FEE (500 Gold) and creates the
+     * participant record inside ONE atomic Firestore transaction.
+     *
+     * Guarantees (spec section 24):
+     * - Deterministic participant ID ({userId}_{eventId}) prevents duplicate joins.
+     * - The exact fee is deducted once; insufficient balance throws
+     *   [InsufficientGoldException] and nothing is charged.
+     * - The Gold ledger entry uses a deterministic dedup key, so network
+     *   retries can never double-charge.
      */
-    suspend fun joinEvent(eventId: String): Result<EventParticipant> = runCatching {
+    suspend fun joinEvent(eventId: String, entryFee: Int = 500): Result<EventParticipant> = runCatching {
         val uid = currentUserId
         val participantId = EventParticipant.participantId(uid, eventId)
+        val participantRef = firestore.collection(EVENT_PARTICIPANTS_COLLECTION).document(participantId)
+        val userRef = firestore.collection(USERS_COLLECTION).document(uid)
+        val dedupKey = "event_entry_$eventId"
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            val existingDoc = try {
-                firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
-                    .document(participantId)
-                    .get(Source.SERVER)
-                    .await()
-            } catch (e: Exception) {
-                Timber.w(e, "Server fetch failed for participant %s — trying cache", participantId)
-                firestore.collection(EVENT_PARTICIPANTS_COLLECTION)
-                    .document(participantId)
-                    .get(Source.CACHE)
-                    .await()
-            }
+            firestore.runTransaction { tx ->
+                val participantSnap = tx.get(participantRef)
+                if (participantSnap.exists()) {
+                    throw IllegalStateException("Already joined this event")
+                }
 
-            if (existingDoc.exists()) {
-                throw IllegalStateException("Already joined this event")
-            }
+                // Charge entry fee atomically with the join (null-safe: legacy
+                // documents always carry `coins`; missing means 0 Gold).
+                val userSnap = tx.get(userRef)
+                val balance = (userSnap.getLong("coins") ?: 0L).toInt()
+                if (balance < entryFee) {
+                    throw breathy.com.data.repository.InsufficientGoldException(
+                        required = entryFee, available = balance
+                    )
+                }
+                val newBalance = balance - entryFee
+                tx.update(userRef, "coins", newBalance)
+                tx.set(
+                    userRef.collection("goldTransactions").document(dedupKey),
+                    mapOf(
+                        "amount" to entryFee,
+                        "type" to "spend",
+                        "source" to "event_entry",
+                        "description" to "Entered the challenge event",
+                        "dedupKey" to dedupKey,
+                        "balanceAfter" to newBalance,
+                        "timestamp" to FieldValue.serverTimestamp()
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
 
-            val participantData = mapOf(
-                "userId" to uid,
-                "eventId" to eventId,
-                "currentStreak" to 0,
-                "totalApprovedDays" to 0,
-                "completed" to false,
-                "joinedAt" to FieldValue.serverTimestamp(),
-                "rank" to 0
-            )
-
-            firestore.collection(EVENT_PARTICIPANTS_COLLECTION).document(participantId)
-                .set(participantData)
-                .await()
+                val participantData = mapOf(
+                    "userId" to uid,
+                    "eventId" to eventId,
+                    "currentStreak" to 0,
+                    "totalApprovedDays" to 0,
+                    "completed" to false,
+                    "entryFee" to entryFee,
+                    "joinedAt" to FieldValue.serverTimestamp(),
+                    "rank" to 0
+                )
+                tx.set(participantRef, participantData)
                 Unit
+            }.await()
 
             EventParticipant(
                 id = participantId,

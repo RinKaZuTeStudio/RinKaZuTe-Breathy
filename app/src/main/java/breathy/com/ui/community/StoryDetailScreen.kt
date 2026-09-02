@@ -108,6 +108,7 @@ fun StoryDetailScreen(
     onNavigateToProfile: (String) -> Unit
 ) {
     val application = LocalContext.current.applicationContext as BreathyApplication
+    var showReportSheet by remember { mutableStateOf(false) }
     val viewModel: StoryDetailViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = StoryDetailViewModelFactory(
             storyRepository = application.appModule.storyRepository,
@@ -161,6 +162,24 @@ fun StoryDetailScreen(
                     }
                 },
                 actions = {
+                    // Report button (only for non-owners — spec section 30)
+                    if (uiState.story != null && currentUserId != null &&
+                        uiState.story!!.userId != currentUserId) {
+                        IconButton(
+                            onClick = { showReportSheet = true },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Report story"
+                                role = Role.Button
+                            }
+                        ) {
+                            Text(
+                                text = "⋮",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.54f)
+                                )
+                            )
+                        }
+                    }
                     // Delete button (only for story owners)
                     if (uiState.story != null && currentUserId != null &&
                         uiState.story!!.userId == currentUserId) {
@@ -344,7 +363,16 @@ fun StoryDetailScreen(
             }
         }
     }
-}
+        // ── Report story sheet (spec section 30) ───────────────────────────
+        if (showReportSheet && uiState.story != null) {
+            breathy.com.ui.components.ReportBlockSheet(
+                targetType = breathy.com.data.repository.SafetyRepository.TARGET_POST,
+                targetId = storyId,
+                safetyRepository = application.appModule.safetyRepository,
+                onDismiss = { showReportSheet = false }
+            )
+        }
+    }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  Sub-components

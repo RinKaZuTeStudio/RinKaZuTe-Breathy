@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -74,7 +76,8 @@ sealed class HomeSingleEvent {
 class HomeViewModel(
     private val userRepository: UserRepository,
     private val rewardRepository: RewardRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -94,6 +97,30 @@ class HomeViewModel(
 
     init {
         loadUserData()
+        checkStreakMilestones()
+    }
+
+    /**
+     * Award streak-milestone Gold (7/14/30/90/180/365 days smoke-free).
+     * Dedup keys inside the Gold ledger make each milestone earnable once;
+     * this check is safe to run on every app start / home load.
+     */
+    private fun checkStreakMilestones() {
+        val repo = goldRepository ?: return
+        val uid = userId ?: return
+        viewModelScope.launch {
+            try {
+                val days = userRepository.observeUser(uid).firstOrNull()?.daysSmokeFree ?: 0
+                val awarded = repo.checkStreakMilestones(daysSmokeFree = days).getOrDefault(0)
+                if (awarded > 0) {
+                    _events.emit(HomeSingleEvent.ShowDailyReward(awarded))
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Streak milestone check failed")
+            }
+        }
     }
 
     // ── Data Loading ──────────────────────────────────────────────────────
@@ -375,13 +402,14 @@ class HomeViewModel(
 class HomeViewModelFactory(
     private val userRepository: UserRepository,
     private val rewardRepository: RewardRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            return HomeViewModel(userRepository, rewardRepository, auth) as T
+            return HomeViewModel(userRepository, rewardRepository, auth, goldRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

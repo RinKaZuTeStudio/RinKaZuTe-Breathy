@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Canonical Breathy featured event artwork: PUSH-UP CHALLENGE.
+     Clean athletic silhouette in a botanical sage scene — healthy, energetic,
+     competitive, natural. No smoking imagery, no text. This single asset is
+     the canonical hero for Home and the Events page (spec section 21). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="160dp"
+    android:viewportWidth="320"
+    android:viewportHeight="160">
+
+    <!-- Sky wash -->
+    <path
+        android:fillColor="#EAF3E5"
+        android:pathData="M0,0 L320,0 L320,160 L0,160 Z"/>
+
+    <!-- Soft sun disc -->
+    <path
+        android:fillColor="#F1D98A"
+        android:fillAlpha="0.55"
+        android:pathData="M262,34 m-20,0 a20,20 0 1,1 40,0 a20,20 0 1,1 -40,0"/>
+
+    <!-- Rolling ground hill -->
+    <path
+        android:fillColor="#D5E6CC"
+        android:pathData="M0,118 C60,104 130,104 190,114 C240,122 288,122 320,112 L320,160 L0,160 Z"/>
+
+    <!-- Ground line under the athlete -->
+    <path
+        android:pathData="M96,116 L232,116"
+        android:strokeColor="#AFC8A3"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"/>
+
+    <!-- ── Push-up athlete (side view, up position) ── -->
+    <!-- Torso: shoulders to hips -->
+    <path
+        android:pathData="M186,74 L148,80"
+        android:strokeColor="#285C3A"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"/>
+    <!-- Legs: hips to heels -->
+    <path
+        android:pathData="M148,80 L120,96"
+        android:strokeColor="#285C3A"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"/>
+    <!-- Rear arm: shoulder to hand -->
+    <path
+        android:pathData="M186,74 L190,112"
+        android:strokeColor="#1E4A2E"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"/>
+    <!-- Front arm: shoulder to hand -->
+    <path
+        android:pathData="M182,76 L178,113"
+        android:strokeColor="#3E7350"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"/>
+    <!-- Head -->
+    <path
+        android:fillColor="#285C3A"
+        android:pathData="M196,62 m-8.5,0 a8.5,8.5 0 1,1 17,0 a8.5,8.5 0 1,1 -17,0"/>
+    <!-- Feet -->
+    <path
+        android:pathData="M120,96 L112,104"
+        android:strokeColor="#285C3A"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"/>
+
+    <!-- Motion spark: three breath dots rising in front -->
+    <path
+        android:fillColor="#6F9B5E"
+        android:fillAlpha="0.85"
+        android:pathData="M214,86 m-3.2,0 a3.2,3.2 0 1,1 6.4,0 a3.2,3.2 0 1,1 -6.4,0"/>
+    <path
+        android:fillColor="#6F9B5E"
+        android:fillAlpha="0.6"
+        android:pathData="M224,72 m-2.6,0 a2.6,2.6 0 1,1 5.2,0 a2.6,2.6 0 1,1 -5.2,0"/>
+    <path
+        android:fillColor="#6F9B5E"
+        android:fillAlpha="0.4"
+        android:pathData="M232,58 m-2.0,0 a2.0,2.0 0 1,1 4.0,0 a2.0,2.0 0 1,1 -4.0,0"/>
+
+    <!-- Botanical leaves left -->
+    <path
+        android:fillColor="#6F9B5E"
+        android:pathData="M52,96 C44,84 30,80 20,84 C26,96 40,102 52,96 Z"/>
+    <path
+        android:fillColor="#3E7350"
+        android:pathData="M36,104 C30,94 20,90 12,93 C17,103 27,108 36,104 Z"/>
+    <!-- Stem vein -->
+    <path
+        android:pathData="M48,94 L24,85"
+        android:strokeColor="#F8FAF6"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"/>
+
+    <!-- Small leaf right -->
+    <path
+        android:fillColor="#AFC8A3"
+        android:pathData="M290,92 C284,84 274,82 267,85 C272,94 282,97 290,92 Z"/>
+</vector>

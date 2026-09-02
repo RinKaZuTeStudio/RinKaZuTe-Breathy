@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import breathy.com.di.AppModule
 import breathy.com.ui.navigation.BreathyNavHost
 import breathy.com.ui.theme.BreathyTheme
-import breathy.com.ui.theme.ThemeMode
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -41,9 +40,6 @@ class MainActivity : ComponentActivity() {
 
     /** Google Sign-In ID token, shared with Compose navigation via state. */
     private var googleIdToken by mutableStateOf<String?>(null)
-
-    /** Reactive theme mode — changes trigger recomposition of BreathyTheme. */
-    private var themeMode by mutableStateOf(ThemeMode.SYSTEM)
 
     /** Lazy reference to the app-scoped [AppModule] for manual DI. */
     private val appModule: AppModule by lazy {
@@ -80,11 +76,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Load saved theme preference
-        val prefs = getSharedPreferences("breathy_prefs", MODE_PRIVATE)
-        val themeName = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
-        themeMode = try { ThemeMode.valueOf(themeName) } catch (_: Exception) { ThemeMode.SYSTEM }
-
         // Initialize AdMob SDK via AdManager (avoids double initialization)
         appModule.adManager.initialize()
 
@@ -109,7 +100,7 @@ class MainActivity : ComponentActivity() {
         isFirstLaunch = false
 
         setContent {
-            BreathyTheme(themeMode = themeMode) {
+            BreathyTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -127,11 +118,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-
-        // Re-read theme preference in case it was changed in ProfileScreen
-        val prefs = getSharedPreferences("breathy_prefs", MODE_PRIVATE)
-        val themeName = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
-        themeMode = try { ThemeMode.valueOf(themeName) } catch (_: Exception) { ThemeMode.SYSTEM }
 
         // Show app-open ad only when coming back from background (not on first launch)
         // The AdManager handles frequency capping and premium exemption

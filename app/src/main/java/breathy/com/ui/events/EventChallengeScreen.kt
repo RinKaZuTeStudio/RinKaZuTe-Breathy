@@ -10,6 +10,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import breathy.com.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,6 +95,10 @@ import breathy.com.BreathyApplication
 import breathy.com.data.models.Event
 import breathy.com.data.models.EventParticipant
 import breathy.com.data.repository.EventRepository
+import breathy.com.ui.theme.SoftSage
+import breathy.com.ui.theme.DarkBotanical
+import breathy.com.ui.theme.PureWhite
+import breathy.com.ui.theme.VeryLightSage
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
@@ -129,7 +136,9 @@ data class EventChallengeUiState(
     val canCheckinToday: Boolean = false,
     val errorMessage: String? = null,
     val countdownSeconds: Long = 0L,
-    val isPushupChallenge: Boolean = false
+    val isPushupChallenge: Boolean = false,
+    /** Real-time Gold balance — powers the 500-Gold entry gate. */
+    val goldBalance: Int = 0
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -139,7 +148,8 @@ data class EventChallengeUiState(
 class EventChallengeViewModel(
     private val eventRepository: EventRepository,
     private val auth: FirebaseAuth,
-    private val eventId: String
+    private val eventId: String,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -154,6 +164,18 @@ class EventChallengeViewModel(
 
     init {
         loadEventData()
+        observeGoldBalance()
+    }
+
+    /** Stream the real Gold balance so the entry gate is always accurate. */
+    private fun observeGoldBalance() {
+        goldRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.balanceFlow().collect { balance ->
+                    _uiState.update { it.copy(goldBalance = balance) }
+                }
+            }
+        }
     }
 
     fun loadEventData() {
@@ -251,6 +273,13 @@ class EventChallengeViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "Failed to join event")
+                        val message = when (e) {
+                            is breathy.com.data.repository.InsufficientGoldException ->
+                                "Not enough Gold — entry costs 500 Gold, you have ${e.available}."
+                            is IllegalStateException -> e.message ?: "Failed to join event"
+                            else -> e.localizedMessage ?: "Failed to join event"
+                        }
+                        _uiState.update { it.copy(errorMessage = message) }
                     }
                 }
             )
@@ -265,12 +294,13 @@ class EventChallengeViewModel(
 class EventChallengeViewModelFactory(
     private val eventRepository: EventRepository,
     private val auth: FirebaseAuth,
-    private val eventId: String
+    private val eventId: String,
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(EventChallengeViewModel::class.java)) {
-            return EventChallengeViewModel(eventRepository, auth, eventId) as T
+            return EventChallengeViewModel(eventRepository, auth, eventId, goldRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
@@ -296,7 +326,8 @@ fun EventChallengeScreen(
             EventChallengeViewModelFactory(
                 eventRepository = app.appModule.eventRepository,
                 auth = app.appModule.firebaseAuth,
-                eventId = eventId
+                eventId = eventId,
+                goldRepository = app.appModule.goldRepository
             )
         )[EventChallengeViewModel::class.java]
     }
@@ -482,6 +513,25 @@ private fun DetailsTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // ── Canonical Event Hero (same artwork as Home/Events — spec §21) ──
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = PureWhite),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.event_pushup_hero),
+                    contentDescription = "Push-Up Challenge event artwork",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+
         // ── Event Info Card ─────────────────────────────────────────────
         item {
             EventInfoCard(event = event)
@@ -522,6 +572,16 @@ private fun DetailsTab(
             }
         }
 
+        // ── Rewards info (spec section 25) ─────────────────────────────
+        item {
+            EventRewardsInfoCard()
+        }
+
+        // ── Rules & Terms (spec section 26) ────────────────────────────
+        item {
+            EventRulesCard(event = event)
+        }
+
         // ── Check-in Button (if joined and active) ─────────────────────
         if (uiState.isJoined && event.isCurrentlyActive() && participant?.completed != true) {
             item {
@@ -543,7 +603,11 @@ private fun DetailsTab(
         // ── Join Button (if not joined and event is active or upcoming) ──
         if (!uiState.isJoined && (event.isCurrentlyActive() || (event.active && nowMillis < startMillis))) {
             item {
-                JoinEventButton(onClick = onJoin)
+                JoinEventButton(
+                    goldBalance = uiState.goldBalance,
+                    entryFee = 500,
+                    onClick = onJoin
+                )
             }
         }
 
@@ -1323,33 +1387,95 @@ private fun PushupCheckinButton(
 }
 
 @Composable
-private fun JoinEventButton(onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .semantics {
-                contentDescription = "Join this event"
-                role = Role.Button
-            },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = AccentPrimary,
-            contentColor = themeBgPrimary
-        ),
-        shape = RoundedCornerShape(16.dp)
+private fun JoinEventButton(
+    goldBalance: Int,
+    entryFee: Int,
+    onClick: () -> Unit
+) {
+    val canAfford = goldBalance >= entryFee
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(
-            imageVector = Icons.Filled.EmojiEvents,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "Join Challenge",
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp
-        )
+        // Entry fee + balance summary (spec section 24)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = VeryLightSage),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "ENTRY FEE",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = themeTextSecondary,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                    Text(
+                        text = "$entryFee Gold",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = themeTextPrimary
+                        )
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "YOUR BALANCE",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = themeTextSecondary,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                    Text(
+                        text = "%,d Gold".format(goldBalance),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = if (canAfford) themeTextPrimary else MaterialTheme.colorScheme.error
+                        )
+                    )
+                }
+            }
+        }
+
+        Button(
+            onClick = onClick,
+            enabled = canAfford,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .semantics {
+                    contentDescription = if (canAfford) "Join this event for $entryFee Gold"
+                    else "Need $entryFee Gold to join — your balance is $goldBalance"
+                    role = Role.Button
+                },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentPrimary,
+                contentColor = themeBgPrimary,
+                disabledContainerColor = AccentPrimary.copy(alpha = 0.4f)
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.EmojiEvents,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = if (canAfford) "Enter Challenge · $entryFee Gold"
+                else "Need ${(entryFee - goldBalance).coerceAtLeast(0)} more Gold",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
     }
 }
 
@@ -1388,6 +1514,105 @@ private fun CompletionBadgeCard() {
                     style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                 )
             }
+        }
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Rewards information (spec section 25) — clear, honest reward conditions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun EventRewardsInfoCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, SoftSage.copy(alpha = 0.55f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "REWARDS",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = themeTextSecondary,
+                    letterSpacing = 2.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            val rewardLines = listOf(
+                "🏆 Reward type: exclusive in-app rewards (Gold, the Event avatar frame, and community recognition).",
+                "👥 Winners: the top performers on the event leaderboard.",
+                "✅ Requirement: approved daily check-ins during the event window determine your score.",
+                "⏱️ Distribution: rewards are granted after the event ends and all check-ins are reviewed.",
+                "🎯 Eligibility: one entry per account; entry fee (500 Gold) is paid once at join.",
+                "⚖️ Ties are broken by the earliest date the top score was reached.",
+                "🛡️ Verified cheating, automated check-ins, or manipulated videos lead to disqualification and forfeited rewards."
+            )
+            rewardLines.forEach { line ->
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Rules & Terms (spec section 26) — required acceptance-grade clarity
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun EventRulesCard(event: Event) {
+    val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val rules = listOf(
+        "👤 Eligibility: any Breathy account in good standing. Minimum age: 13 (or the minimum digital-consent age in your country).",
+        "📅 Event dates: ${dateFormatter.format(event.startDate.toDate())} → ${dateFormatter.format(event.endDate.toDate())}.",
+        "🪙 Entry: 500 Gold, charged once when you join. Entry is not refundable after the event starts.",
+        "📈 Scoring: each approved daily check-in (verified push-up video) adds to your approved days and event score.",
+        "🏅 Leaderboard: ranked by approved days; ties broken by earliest achievement of the score.",
+        "🛡️ Anti-cheat: submissions are human-reviewed. Automated, reused, or manipulated content is rejected.",
+        "🚫 Disqualification: cheating, multiple accounts, or abusive behavior. Forfeits all event rewards.",
+        "🎁 Rewards: distributed to eligible winners within days after review completes, as in-app Gold and cosmetic items. No cash value.",
+        "🤝 Prohibited: harassment, inappropriate content, or any attempt to game the challenge.",
+        "🔒 Privacy: check-in videos are reviewed by moderators for verification and are not shared publicly without your action. You keep ownership of your content."
+    )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = VeryLightSage),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "RULES & TERMS",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = DarkBotanical,
+                    letterSpacing = 2.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            rules.forEach { line ->
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
+                )
+            }
+            Text(
+                text = "Joining the event means you accept these rules.",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = DarkBotanical,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
         }
     }
 }

@@ -81,8 +81,7 @@ class RewardRepository(
             Achievement("social_butterfly", "Social Butterfly", "Add 10 friends", "\uD83E\uDD8B", 200),
             Achievement("streak_keeper", "Streak Keeper", "Claim daily reward 30 days in a row", "\uD83D\uDCC5", 300),
             Achievement("level_5", "Level 5", "Reach Level 5", "\uD83D\uDE80", 250),
-            Achievement("level_10", "Level 10", "Reach Level 10", "\uD83D\uDC51", 500),
-            Achievement("ai_explorer", "AI Explorer", "Have 50 AI Coach conversations", "\uD83E\uDD16", 300)
+            Achievement("level_10", "Level 10", "Reach Level 10", "\uD83D\uDC51", 500)
         )
 
         // ═════════════════════════════════════════════════════════════════════
@@ -106,6 +105,28 @@ class RewardRepository(
         const val COINS_CRAVING_RESISTED = 3
         const val COINS_EVENT_CHECKIN = 10
         const val COINS_ACHIEVEMENT_MULTIPLIER = 1 // coins = xpReward * multiplier
+
+        /**
+         * Gold reward for unlocking an achievement (spec section 8 — earned
+         * through legitimate activities). Streak-based achievements pay the
+         * largest bonuses; engagement ones are smaller.
+         */
+        fun achievementGoldReward(achievementId: String): Int = when (achievementId) {
+            "first_day" -> 50
+            "one_week" -> 100
+            "one_month" -> 250
+            "three_months" -> 400
+            "six_months" -> 600
+            "one_year" -> 1000
+            "money_saver_100" -> 100
+            "money_saver_1000" -> 300
+            "craving_crusher_10" -> 100
+            "craving_crusher_50" -> 250
+            "level_5" -> 150
+            "level_10" -> 300
+            "event_champion" -> 300
+            else -> 50
+        }
     }
 
     private val currentUserId: String
@@ -350,11 +371,33 @@ class RewardRepository(
                             if (achievementId !in currentAchievements) {
                                 val currentXp = (snapshot.getLong("xp") ?: 0L).toInt()
                                 val newXp = currentXp + achievement.xpReward
+                                // Gold reward for the achievement (spec section 8)
+                                val goldReward = achievementGoldReward(achievementId)
+                                val currentCoins = (snapshot.getLong("coins") ?: 0L).toInt()
+                                val newCoins = currentCoins + goldReward
                                 transaction.update(userRef, mapOf(
                                     "achievements" to FieldValue.arrayUnion(achievementId),
-                                    "xp" to newXp
+                                    "xp" to newXp,
+                                    "coins" to newCoins
                                 ))
                                 transaction.update(profileRef, "xp", newXp)
+
+                                // Gold ledger entry (dedup: one per achievement, ever)
+                                val txRef = userRef.collection("goldTransactions")
+                                    .document("achievement_$achievementId")
+                                transaction.set(
+                                    txRef,
+                                    mapOf(
+                                        "amount" to goldReward,
+                                        "type" to "earn",
+                                        "source" to "achievement",
+                                        "description" to "Achievement: ${achievement.title}",
+                                        "dedupKey" to "achievement_$achievementId",
+                                        "balanceAfter" to newCoins,
+                                        "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                    ),
+                                    com.google.firebase.firestore.SetOptions.merge()
+                                )
                             }
                         }.await()
 

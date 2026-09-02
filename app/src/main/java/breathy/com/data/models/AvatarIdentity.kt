@@ -4,6 +4,20 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * Rarity tier for avatar frames — drives presentation (labels, colors,
+ * unlock animations) in the Avatar Collection.
+ */
+@Serializable
+enum class FrameRarity(val label: String) {
+    @SerialName("common") COMMON("Common"),
+    @SerialName("uncommon") UNCOMMON("Uncommon"),
+    @SerialName("rare") RARE("Rare"),
+    @SerialName("epic") EPIC("Epic"),
+    @SerialName("legendary") LEGENDARY("Legendary"),
+    @SerialName("premium") PREMIUM("Premium");
+}
+
+/**
  * Avatar frame/border system for Breathy.
  *
  * Frames are the visual ring drawn around a user's avatar everywhere the
@@ -12,8 +26,9 @@ import kotlinx.serialization.Serializable
  *
  * Unlock rules — intentionally honest, tied to REAL progression data only:
  * - [NONE], [NATURE], [LEAF]: available to everyone.
- * - [BRONZE] / [SILVER] / [GOLD]: unlocked by the user's real level
- *   (derived from XP via [User.computeLevel]) — levels 3 / 5 / 8.
+ * - [BRONZE] / [SILVER] / [GOLD]: unlocked FREE by the user's real level
+ *   (derived from XP via [User.computeLevel]) — levels 3 / 5 / 8 — or
+ *   instantly via a one-time Gold purchase (see [goldPrice]).
  * - [ACHIEVEMENT]: requires at least one unlocked achievement.
  * - [EVENT]: requires the `event_champion` achievement (completing an
  *   event challenge) — the app already awards that achievement.
@@ -23,23 +38,27 @@ import kotlinx.serialization.Serializable
  *
  * The value persisted in Firestore (users.avatarFrame / publicProfiles.avatarFrame)
  * is the [id] string, so renaming display labels never breaks stored data.
+ * Gold-purchased ownership is persisted in users.ownedFrames (list of [id]s).
  */
 @Serializable
 enum class AvatarFrame(
     val id: String,
     val label: String,
-    val description: String
+    val description: String,
+    val rarity: FrameRarity,
+    /** One-time Gold price when purchasable; null = cannot be bought with Gold. */
+    val goldPrice: Int? = null
 ) {
-    @SerialName("none") NONE("none", "Classic", "A clean, minimal ring."),
-    @SerialName("nature") NATURE("nature", "Nature", "A soft sage ring inspired by new growth."),
-    @SerialName("leaf") LEAF("leaf", "Leaf", "A botanical leaf-green ring."),
-    @SerialName("bronze") BRONZE("bronze", "Bronze", "Reach Level 3 to unlock."),
-    @SerialName("silver") SILVER("silver", "Silver", "Reach Level 5 to unlock."),
-    @SerialName("gold") GOLD("gold", "Gold", "Reach Level 8 to unlock."),
-    @SerialName("achievement") ACHIEVEMENT("achievement", "Achievement", "Unlock any achievement to wear."),
-    @SerialName("event") EVENT("event", "Event", "Complete an event challenge to wear."),
-    @SerialName("premium") PREMIUM("premium", "Premium", "Exclusive for Breathy Premium members."),
-    @SerialName("rank") RANK("rank", "Rank", "A living border that shows your current rank.");
+    @SerialName("none") NONE("none", "Classic", "A clean, minimal ring.", FrameRarity.COMMON),
+    @SerialName("nature") NATURE("nature", "Nature", "A soft sage ring inspired by new growth.", FrameRarity.COMMON),
+    @SerialName("leaf") LEAF("leaf", "Leaf", "A botanical leaf-green ring.", FrameRarity.UNCOMMON),
+    @SerialName("bronze") BRONZE("bronze", "Bronze", "Reach Level 3 — or unlock instantly with Gold.", FrameRarity.RARE, goldPrice = 250),
+    @SerialName("silver") SILVER("silver", "Silver", "Reach Level 5 — or unlock instantly with Gold.", FrameRarity.RARE, goldPrice = 600),
+    @SerialName("gold") GOLD("gold", "Gold", "Reach Level 8 — or unlock instantly with Gold.", FrameRarity.EPIC, goldPrice = 1200),
+    @SerialName("achievement") ACHIEVEMENT("achievement", "Achievement", "Unlock any achievement to wear.", FrameRarity.RARE),
+    @SerialName("event") EVENT("event", "Event", "Complete an event challenge to wear.", FrameRarity.LEGENDARY),
+    @SerialName("premium") PREMIUM("premium", "Premium", "Exclusive for Breathy Premium members.", FrameRarity.PREMIUM),
+    @SerialName("rank") RANK("rank", "Rank", "A living border that shows your current rank.", FrameRarity.EPIC);
 
     override fun toString(): String = id
 

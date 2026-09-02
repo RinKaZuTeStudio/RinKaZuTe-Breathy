@@ -14,6 +14,20 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import breathy.com.ui.theme.GoldSoft
+import breathy.com.ui.theme.GoldDeep
+import breathy.com.ui.theme.PureWhite
+import breathy.com.ui.theme.SoftSage
+import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.NaturalYellow
+import breathy.com.R
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,14 +109,15 @@ import androidx.compose.material3.Icon
 fun HomeScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToAICoach: () -> Unit = {},
+    onNavigateToEvents: () -> Unit = {},
     viewModel: HomeViewModel = run {
         val context = LocalContext.current
         val app = context.applicationContext as BreathyApplication
         viewModel(factory = HomeViewModelFactory(
             userRepository = app.appModule.userRepository,
             rewardRepository = app.appModule.rewardRepository,
-            auth = app.appModule.firebaseAuth
+            auth = app.appModule.firebaseAuth,
+            goldRepository = app.appModule.goldRepository
         ))
     }
 ) {
@@ -238,9 +253,9 @@ fun HomeScreen(
                     TopBar(
                         nickname = uiState.nickname,
                         photoURL = uiState.photoURL,
+                        goldBalance = uiState.coins,
                         onAvatarClick = onNavigateToProfile,
-                        onNotificationClick = onNavigateToNotifications,
-                        onAICoachClick = onNavigateToAICoach
+                        onNotificationClick = onNavigateToNotifications
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -331,18 +346,17 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // ── Health Timeline ────────────────────────────────────
-                    Text(
-                        text = "Health Timeline",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier.padding(bottom = 12.dp)
+                    // ── Featured Event (canonical artwork, spec §21) ────────
+                    FeaturedEventCard(
+                        onClick = onNavigateToEvents,
+                        modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
 
+                    // ── Recovery Journey ───────────────────────────────────
                     HealthTimeline(
                         milestones = uiState.healthMilestones,
+                        daysSmokeFree = uiState.daysSmokeFree,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -370,10 +384,6 @@ fun HomeScreen(
                 onMiniGame = {
                     showCravingSheet = false
                     showTapGame = true
-                },
-                onAICoach = {
-                    showCravingSheet = false
-                    onNavigateToAICoach()
                 },
                 onLogCraving = { method, success ->
                     viewModel.logCraving(method, success)
@@ -495,9 +505,9 @@ fun HomeScreen(
 private fun TopBar(
     nickname: String,
     photoURL: String?,
+    goldBalance: Int,
     onAvatarClick: () -> Unit,
-    onNotificationClick: () -> Unit,
-    onAICoachClick: () -> Unit = {}
+    onNotificationClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -562,25 +572,32 @@ private fun TopBar(
             }
         }
 
-        // AI Coach + Notification icons
+        // Gold balance + Notification icons
         Row(
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // AI Coach button
+            // Gold balance pill — the in-app currency (spec section 35)
             Card(
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.15f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                onClick = onAICoachClick
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = GoldSoft),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "🤖",
-                        fontSize = 18.sp
+                        text = "🪙",
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "%,d".format(goldBalance),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            color = GoldDeep,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
                 }
             }
@@ -600,6 +617,90 @@ private fun TopBar(
                     Text(
                         text = "🔔",
                         fontSize = 18.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Featured event card — the SAME canonical push-up challenge artwork used on
+ * the Events page (spec section 21). Coming Soon badge, title, short
+ * description and a reward preview. Tapping opens the Events tab.
+ */
+@Composable
+private fun FeaturedEventCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.semantics {
+            contentDescription = "Featured event: Push-Up Challenge. Coming soon. Open Events."
+            role = Role.Button
+        },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, SoftSage.copy(alpha = 0.6f))
+    ) {
+        Column {
+            Box {
+                Image(
+                    painter = painterResource(R.drawable.event_pushup_hero),
+                    contentDescription = "Push-Up Challenge event artwork",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    contentScale = ContentScale.Crop
+                )
+                // Coming Soon badge
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(10.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = DeepForest)
+                ) {
+                    Text(
+                        text = "COMING SOON",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = NaturalYellow,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                }
+            }
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = "Push-Up Challenge",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Build your streak, one push-up at a time. Daily check-ins, real progress, community glory.",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "🏆", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Entry 500 Gold · Exclusive rewards for top performers",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = GoldDeep,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     )
                 }
             }

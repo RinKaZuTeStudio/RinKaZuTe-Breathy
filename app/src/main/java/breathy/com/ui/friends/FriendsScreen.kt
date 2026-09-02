@@ -445,6 +445,13 @@ fun FriendsScreen(
     var showSearchDialog by remember { mutableStateOf(false) }
     var friendToRemove by remember { mutableStateOf<FriendWithProfile?>(null) }
 
+    // Blocked-user enforcement: hide conversations with blocked users (spec §30)
+    val safetyRepository = (LocalContext.current.applicationContext as BreathyApplication).appModule.safetyRepository
+    var blockedUsers by remember { mutableStateOf(setOf<String>()) }
+    LaunchedEffect(Unit) {
+        safetyRepository.observeBlockedUsers().collect { blockedUsers = it }
+    }
+
     // Handle single events
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -591,7 +598,12 @@ fun FriendsScreen(
             // ── Tab Content ────────────────────────────────────────────────
             when (selectedTab) {
                 0 -> ChatsListTab(
-                    chats = uiState.chats,
+                    chats = uiState.chats.filter { chatWithProfile ->
+                        val otherId = chatWithProfile.chat.otherParticipant(
+                            try { FirebaseAuth.getInstance().currentUser?.uid ?: "" } catch (_: Exception) { "" }
+                        )
+                        otherId == null || otherId !in blockedUsers
+                    },
                     isLoading = uiState.isLoading,
                     onChatClick = { chatWithProfile ->
                         onNavigateToChat(chatWithProfile.chat.otherParticipant(

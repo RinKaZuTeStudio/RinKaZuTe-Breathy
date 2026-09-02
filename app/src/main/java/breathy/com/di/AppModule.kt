@@ -3,11 +3,12 @@ package breathy.com.di
 import android.content.Context
 import breathy.com.data.repository.AuthRepository
 import breathy.com.data.repository.ChatRepository
-import breathy.com.data.repository.CoachRepository
+import breathy.com.data.repository.GoldRepository
 import breathy.com.data.repository.EventRepository
 import breathy.com.data.repository.FriendRepository
 import breathy.com.data.repository.PremiumRepository
 import breathy.com.data.repository.RewardRepository
+import breathy.com.data.repository.SafetyRepository
 import breathy.com.data.repository.StoryRepository
 import breathy.com.data.repository.UserRepository
 import breathy.com.utils.AdManager
@@ -147,6 +148,30 @@ class AppModule(
     }
 
     /**
+     * Gold repository — in-app currency ledger (balance, earn, spend,
+     * transaction history, frame purchases). Atomic + duplicate-protected.
+     */
+    val goldRepository: GoldRepository by lazy {
+        Timber.d("Initializing GoldRepository")
+        GoldRepository(
+            firestore = firestore,
+            auth = firebaseAuth
+        )
+    }
+
+    /**
+     * Safety repository — report user/post/message and block user
+     * (UGC safety tooling for social features).
+     */
+    val safetyRepository: SafetyRepository by lazy {
+        Timber.d("Initializing SafetyRepository")
+        SafetyRepository(
+            firestore = firestore,
+            auth = firebaseAuth
+        )
+    }
+
+    /**
      * Chat repository — direct messaging, typing indicators, and unread
      * message tracking.
      */
@@ -185,18 +210,6 @@ class AppModule(
         )
     }
 
-    /**
-     * AI Coach repository — conversational AI powered by Cloud Functions,
-     * with local Firestore message persistence.
-     */
-    val coachRepository: CoachRepository by lazy {
-        Timber.d("Initializing CoachRepository")
-        CoachRepository(
-            firestore = firestore,
-            auth = firebaseAuth,
-            functions = firebaseFunctions
-        )
-    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Utility Singletons — lazily initialized
@@ -306,12 +319,4 @@ class AppModule(
         userRepository = userRepository
     )
 
-    /**
-     * Create a new [CoachRepository] instance.
-     */
-    fun createCoachRepository(): CoachRepository = CoachRepository(
-        firestore = firestore,
-        auth = firebaseAuth,
-        functions = firebaseFunctions
-    )
 }

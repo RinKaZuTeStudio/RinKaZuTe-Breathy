@@ -75,7 +75,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import breathy.com.ui.components.BlockedUserBanner
 import breathy.com.ui.components.NetworkImage
+import breathy.com.ui.components.ReportBlockSheet
 import breathy.com.BreathyApplication
 import breathy.com.data.models.Chat
 import breathy.com.data.models.Message
@@ -352,11 +354,23 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     DisposableEffect(Unit) {
         Timber.d("ChatScreen: composed with otherUserId=%s", otherUserId)
         onDispose { Timber.d("ChatScreen: disposed") }
     }
+
+    // ── UGC safety (spec section 30): block/report + enforcement ──────
+    val app = context.applicationContext as BreathyApplication
+    val safetyRepository = app.appModule.safetyRepository
+    var blockedUsers by remember { mutableStateOf(setOf<String>()) }
+    var showSafetySheet by remember { mutableStateOf(false) }
+    var unblocking by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        safetyRepository.observeBlockedUsers().collect { blockedUsers = it }
+    }
+    val isBlocked = otherUserId in blockedUsers
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -369,8 +383,30 @@ fun ChatScreen(
                 otherUserProfile = uiState.otherUserProfile,
                 isOnline = uiState.isOtherUserOnline,
                 isTyping = uiState.isOtherUserTyping,
-                onNavigateBack = onNavigateBack
+                onNavigateBack = onNavigateBack,
+                onSafetyMenu = { showSafetySheet = true }
             )
+
+            // ── Blocked banner (enforcement) ───────────────────────────────────
+            if (isBlocked) {
+                BlockedUserBanner(
+                    onUnblock = {
+                        unblocking = true
+                        scope.launch {
+                            try {
+                                safetyRepository.unblockUser(otherUserId).getOrThrow()
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.e(e, "unblock failed")
+                            } finally {
+                                unblocking = false
+                            }
+                        }
+                    },
+                    unblocking = unblocking
+                )
+            }
 
             // ── Messages List ──────────────────────────────────────────────────
             Box(modifier = Modifier.weight(1f)) {
@@ -447,13 +483,15 @@ fun ChatScreen(
                 TypingIndicatorBar(otherUserName = uiState.otherUserProfile?.nickname ?: "User")
             }
 
-            // ── Input Bar ──────────────────────────────────────────────────────
-            MessageInputBar(
-                text = uiState.inputText,
-                isSending = uiState.isSending,
-                onTextChanged = { viewModel.onInputTextChanged(it) },
-                onSend = { viewModel.sendMessage() }
-            )
+            // ── Input Bar (hidden while blocked) ───────────────────────────────
+            if (!isBlocked) {
+                MessageInputBar(
+                    text = uiState.inputText,
+                    isSending = uiState.isSending,
+                    onTextChanged = { viewModel.onInputTextChanged(it) },
+                    onSend = { viewModel.sendMessage() }
+                )
+            }
         }
 
         // Snackbar — positioned at bottom center above input bar
@@ -463,6 +501,16 @@ fun ChatScreen(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 72.dp)
         )
+
+        // ── Report / Block sheet (spec section 30) ─────────────────────────
+        if (showSafetySheet) {
+            ReportBlockSheet(
+                targetType = breathy.com.data.repository.SafetyRepository.TARGET_USER,
+                targetId = otherUserId,
+                safetyRepository = safetyRepository,
+                onDismiss = { showSafetySheet = false }
+            )
+        }
     }
 }
 
@@ -476,7 +524,8 @@ private fun ChatTopBar(
     otherUserProfile: PublicProfile?,
     isOnline: Boolean,
     isTyping: Boolean,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onSafetyMenu: () -> Unit = {}
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -575,6 +624,16 @@ private fun ChatTopBar(
                         )
                     )
                 }
+            }
+
+            // Safety menu (report / block — spec section 30)
+            IconButton(onClick = onSafetyMenu) {
+                Text(
+                    text = "⋮",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                )
             }
         }
     }

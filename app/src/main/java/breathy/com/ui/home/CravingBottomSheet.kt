@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.SelfImprovement
@@ -79,7 +78,6 @@ import kotlinx.coroutines.delay
  * @param lastCravingTimeAgo   Human-readable time since last craving.
  * @param onBreathingExercise  Callback to start the breathing exercise.
  * @param onMiniGame           Callback to start the tap game.
- * @param onAICoach            Callback to navigate to AI coach chat.
  * @param onLogCraving         Callback to log a craving with method and success.
  * @param onDismiss            Callback when the sheet is dismissed.
  */
@@ -88,7 +86,6 @@ fun CravingBottomSheet(
     lastCravingTimeAgo: String?,
     onBreathingExercise: () -> Unit,
     onMiniGame: () -> Unit,
-    onAICoach: () -> Unit,
     onLogCraving: (method: CopingMethod, success: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -229,24 +226,6 @@ fun CravingBottomSheet(
                             }
                         )
 
-                        CopingMethodCard(
-                            title = "Talk",
-                            description = "Chat with your AI coach",
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Default.Chat,
-                                    contentDescription = "AI Coach",
-                                    tint = AccentOrange,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            },
-                            accentColor = AccentOrange,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selectedMethod = CopingMethod.AI
-                                onAICoach()
-                            }
-                        )
                     }
 
                     Row(

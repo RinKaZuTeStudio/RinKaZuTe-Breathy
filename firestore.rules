@@ -84,17 +84,32 @@ service cloud.firestore {
                      && request.resource.data.createdAt is timestamp;
       allow delete: if false;   // Deletion only via Cloud Functions / admin SDK
 
-      // ── coach_chats sub-collection ─────────────────────────────────
-      // AI Coach conversations (nested under users/{userId})
-      match /coach_chats/{messageId} {
+      // ── goldTransactions sub-collection ────────────────────────────
+      // Gold ledger (spec: atomic currency with duplicate protection).
+      // The ledger is append-only — no client deletes, ever.
+      match /goldTransactions/{txId} {
         allow read:   if isOwner(userId);
         allow create: if isOwner(userId)
-                       && isNonEmptyString(request.resource.data.content)
-                       && request.resource.data.role is string
-                       && request.resource.data.timestamp is timestamp;
+                       && request.resource.data.amount is int
+                       && request.resource.data.amount >= 0
+                       && isNonEmptyString(request.resource.data.type)
+                       && isNonEmptyString(request.resource.data.source);
         allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow delete: if false;   // Ledger entries are immutable
       }
+    }
+
+    // ── reports — UGC moderation (report user / post / message) ──────
+    // Append-only for authenticated users; readable only by moderators
+    // (via Admin SDK); never editable or deletable from the client.
+    match /reports/{reportId} {
+      allow create: if isAuthenticated()
+                     && request.resource.data.reporterId == request.auth.uid
+                     && isNonEmptyString(request.resource.data.targetType)
+                     && isNonEmptyString(request.resource.data.targetId)
+                     && isNonEmptyString(request.resource.data.reason);
+      allow read:   if isAdmin();
+      allow update, delete: if false;
     }
 
     // ═══════════════════════════════════════════════════════════════════

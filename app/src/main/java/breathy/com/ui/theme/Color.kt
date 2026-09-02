@@ -70,6 +70,12 @@ val AccentInfo = Color(0xFF6FA6B5)
 /** Warning accent — natural yellow. */
 val AccentWarning = NaturalYellow
 
+// ── Gold currency tokens (in-app Gold identity, derived from Natural Yellow) ──
+/** Soft gold wash for Gold balance pills and reward highlights. */
+val GoldSoft = Color(0xFFFAF0D3)
+/** Deep gold for Gold amounts and icons on soft backgrounds. */
+val GoldDeep = Color(0xFF9A7B2E)
+
 /** "Purple" slot is remapped to DEEP FOREST GREEN — the premium identity. */
 val AccentPurple = DeepForest
 

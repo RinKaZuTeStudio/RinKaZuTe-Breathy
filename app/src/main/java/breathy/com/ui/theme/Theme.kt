@@ -1,10 +1,8 @@
 package breathy.com.ui.theme
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -137,66 +135,11 @@ val LocalBreathyComponents = staticCompositionLocalOf { BreathyComponents }
 val LocalBreathySpacing = staticCompositionLocalOf { BreathySpacing }
 
 // ── Theme preference ───────────────────────────────────────────────────────
-
-enum class ThemeMode {
-    SYSTEM,   // Follow system setting
-    LIGHT,    // Always light
-    DARK      // Always dark
-}
-
-val LocalThemeMode = staticCompositionLocalOf { ThemeMode.SYSTEM }
+// Breathy is a LIGHT-ONLY experience (spec section 32). The Sage Nature
+// identity renders identically on every screen; no dark variant exists.
 
 // ── Material 3 Color Schemes ───────────────────────────────────────────────
-// The app is light-first by design (calm, clean, premium wellness).
-// Both schemes render the Sage Nature identity; the "dark" scheme keeps
-// deep-forest accents for users who explicitly choose dark mode, while
-// retaining the same light botanical canvas so every screen stays coherent.
-
-private val BreathyDarkColorScheme = darkColorScheme(
-    primary = NaturalGreen,
-    onPrimary = TextInverse,
-    primaryContainer = VeryLightSage,
-    onPrimaryContainer = DarkBotanical,
-
-    secondary = WarmEarth,
-    onSecondary = TextInverse,
-    secondaryContainer = SoftSand.copy(alpha = 0.45f),
-    onSecondaryContainer = DarkBotanical,
-
-    tertiary = DeepForest,
-    onTertiary = TextInverse,
-    tertiaryContainer = VeryLightSage,
-    onTertiaryContainer = DarkBotanical,
-
-    background = WarmWhite,
-    onBackground = TextPrimary,
-
-    surface = PureWhite,
-    onSurface = TextPrimary,
-
-    surfaceVariant = VeryLightSage,
-    onSurfaceVariant = TextSecondary,
-
-    error = SemanticError,
-    onError = TextInverse,
-    errorContainer = SemanticError.copy(alpha = 0.12f),
-    onErrorContainer = SemanticError,
-
-    outline = OutlineColor,
-    outlineVariant = OutlineVariantColor,
-
-    inverseSurface = TextPrimary,
-    inverseOnSurface = WarmWhite,
-    inversePrimary = AccentPrimaryPressed,
-
-    surfaceContainerLowest = WarmWhite,
-    surfaceContainerLow = PureWhite,
-    surfaceContainer = VeryLightSage,
-    surfaceContainerHigh = PureWhite,
-    surfaceContainerHighest = PureWhite,
-
-    scrim = ScrimColor
-)
+// The app is light-only by design (calm, clean, premium wellness).
 
 // ── Material 3 Light Color Scheme ──────────────────────────────────────────
 
@@ -250,16 +193,10 @@ private val BreathyLightColorScheme = lightColorScheme(
 
 @Composable
 fun BreathyTheme(
-    themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
-    val useDarkTheme = when (themeMode) {
-        ThemeMode.DARK -> true
-        ThemeMode.LIGHT -> false
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-    }
-
-    val colorScheme = if (useDarkTheme) BreathyDarkColorScheme else BreathyLightColorScheme
+    // Light-only: the Sage Nature light scheme is the single app-wide theme.
+    val colorScheme = BreathyLightColorScheme
 
     // Merge our custom typography with Material 3's typography
     val materialTypography = androidx.compose.material3.Typography(
@@ -289,8 +226,7 @@ fun BreathyTheme(
     CompositionLocalProvider(
         LocalBreathyTypography provides BreathyTypography,
         LocalBreathyComponents provides BreathyComponents,
-        LocalBreathySpacing provides BreathySpacing,
-        LocalThemeMode provides themeMode
+        LocalBreathySpacing provides BreathySpacing
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -312,7 +248,4 @@ object BreathyTheme {
 
     val spacing: BreathySpacing
         @Composable @ReadOnlyComposable get() = LocalBreathySpacing.current
-
-    val themeMode: ThemeMode
-        @Composable @ReadOnlyComposable get() = LocalThemeMode.current
 }
