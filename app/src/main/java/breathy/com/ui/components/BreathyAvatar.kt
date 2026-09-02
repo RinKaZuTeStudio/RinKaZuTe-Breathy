@@ -21,7 +21,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -779,4 +781,36 @@ private fun DrawScope.drawPremiumCrestFrame(center: Offset, radius: Float, w: Fl
     drawShimmer(center, radius, w, phase, SoftSand)
     drawParticles(center, radius + w * 1.5f, phase, 10, NaturalYellow)
     drawParticles(center, radius + w * 1.9f, phase + 0.5f, 5, PureWhite.copy(alpha = 0.7f))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FramedStoryAvatar — community feed avatar with the author's REAL equipped
+//  frame (spec section 40). Observes the author's public profile live, so a
+//  frame change propagates to the feed without restarting the app.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun FramedStoryAvatar(
+    userId: String,
+    photoURL: String?,
+    nickname: String,
+    size: androidx.compose.ui.unit.Dp,
+    userRepository: breathy.com.data.repository.UserRepository,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    animated: Boolean = false
+) {
+    val profile by remember(userId) {
+        userRepository.observePublicProfile(userId)
+    }.collectAsState(initial = null)
+
+    BreathyAvatar(
+        photoURL = photoURL ?: profile?.photoURL,
+        frame = profile?.let { AvatarFrame.fromId(it.avatarFrame) },
+        rankTier = profile?.let { RankTier.forLevel(breathy.com.data.models.User.computeLevel(it.xp)) },
+        size = size,
+        modifier = modifier,
+        contentDescription = contentDescription ?: "$nickname's avatar",
+        animated = animated
+    )
 }

@@ -800,7 +800,14 @@ data class Subscription(
     val purchaseToken: String = "",
     /** Whether Google Play will renew automatically. false = user cancelled auto-renewal. */
     @PropertyName("autoRenewing")
-    val autoRenewing: Boolean = true
+    val autoRenewing: Boolean = true,
+    /**
+     * Optional backend lifecycle state written by RTDN/cloud tasks:
+     * "revoked" (refunded / revoked by Play) or "paused" (account hold).
+     * Client-only flows never set it; the mirror may carry it.
+     */
+    @PropertyName("state")
+    val state: String? = null
 ){
     companion object {
         fun fromFirestoreMap(map: Map<String, Any?>): Subscription = Subscription(
@@ -808,7 +815,8 @@ data class Subscription(
             plan = map["plan"] as? String ?: "",
             expiresAt = map["expiresAt"] as? Timestamp ?: Timestamp.now(),
             purchaseToken = map["purchaseToken"] as? String ?: "",
-            autoRenewing = map["autoRenewing"] as? Boolean ?: true
+            autoRenewing = map["autoRenewing"] as? Boolean ?: true,
+            state = map["state"] as? String
         )
     }
 

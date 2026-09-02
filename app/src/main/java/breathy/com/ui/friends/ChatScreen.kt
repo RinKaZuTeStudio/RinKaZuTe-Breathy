@@ -37,6 +37,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -125,7 +126,12 @@ data class ChatUiState(
     val isSendingTyping: Boolean = false,
     val errorMessage: String? = null,
     val hasOlderMessages: Boolean = true,
-    val isLoadingOlder: Boolean = false
+    val isLoadingOlder: Boolean = false,
+    /**
+     * Friends-only DM enforcement (spec): null = still checking, true = friends,
+     * false = NOT friends — sending blocked with a friendly notice.
+     */
+    val areFriends: Boolean? = null
 )
 
 sealed class ChatSingleEvent {
@@ -160,9 +166,43 @@ class ChatViewModel(
         }
 
     init {
+        checkFriendship()
         loadOtherUserProfile()
         loadChat()
         observeMessages()
+    }
+
+    /**
+     * Friends-only DM (spec section 38): private chats may only exist between
+     * friends. The check runs BEFORE any chat document is created so opening a
+     * conversation with a non-friend can never materialize a chat.
+     */
+    private fun checkFriendship() {
+        viewModelScope.launch {
+            if (otherUserId.isBlank() || otherUserId == currentUserId) {
+                _uiState.update { it.copy(areFriends = false) }
+                return@launch
+            }
+            friendRepository.isFriend(otherUserId).fold(
+                onSuccess = { friends ->
+                    _uiState.update { it.copy(areFriends = friends) }
+                    if (!friends) {
+                        _events.emit(
+                            ChatSingleEvent.ShowSnackbar(
+                                "You can only message friends. Send a friend request first."
+                            )
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    if (e !is CancellationException) {
+                        Timber.e(e, "Friendship check failed")
+                        // Fail closed: treat as not friends so nothing is created.
+                        _uiState.update { it.copy(areFriends = false) }
+                    }
+                }
+            )
+        }
     }
 
     private fun loadOtherUserProfile() {
@@ -180,6 +220,19 @@ class ChatViewModel(
 
     internal fun loadChat() {
         viewModelScope.launch {
+            // Friends-only: never create or attach a chat for a non-friend
+            if (_uiState.value.areFriends == false) {
+                _uiState.update { it.copy(isLoading = false) }
+                return@launch
+            }
+            if (_uiState.value.areFriends == null) {
+                // Wait for the friendship check to settle before creating anything
+                kotlinx.coroutines.delay(600)
+                if (_uiState.value.areFriends != true) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    return@launch
+                }
+            }
             // Get or create chat using otherUserId
             val chatResult = chatRepository.getOrCreateChat(otherUserId)
             chatResult.onSuccess { chat ->
@@ -252,6 +305,18 @@ class ChatViewModel(
     fun sendMessage() {
         val text = _uiState.value.inputText.trim()
         if (text.isBlank()) return
+
+        // Friends-only DM enforcement — non-friends can never send (spec section 38)
+        if (_uiState.value.areFriends != true) {
+            viewModelScope.launch {
+                _events.emit(
+                    ChatSingleEvent.ShowSnackbar(
+                        "You can only message friends. Send a friend request first."
+                    )
+                )
+            }
+            return
+        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSending = true) }
@@ -483,14 +548,35 @@ fun ChatScreen(
                 TypingIndicatorBar(otherUserName = uiState.otherUserProfile?.nickname ?: "User")
             }
 
-            // ── Input Bar (hidden while blocked) ───────────────────────────────
-            if (!isBlocked) {
-                MessageInputBar(
-                    text = uiState.inputText,
-                    isSending = uiState.isSending,
-                    onTextChanged = { viewModel.onInputTextChanged(it) },
-                    onSend = { viewModel.sendMessage() }
-                )
+            // ── Input Bar (hidden while blocked or non-friend) ─────────────────
+            when {
+                isBlocked -> { /* input stays hidden */ }
+                uiState.areFriends == false -> {
+                    // Friends-only DM notice (spec section 38)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Text(
+                            text = "You can only message friends. Add this person as a friend to start a conversation.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(14.dp)
+                        )
+                    }
+                }
+                else -> {
+                    MessageInputBar(
+                        text = uiState.inputText,
+                        isSending = uiState.isSending,
+                        onTextChanged = { viewModel.onInputTextChanged(it) },
+                        onSend = { viewModel.sendMessage() }
+                    )
+                }
             }
         }
 
@@ -656,6 +742,36 @@ private fun MessageList(
         if (listState.firstVisibleItemIndex == 0 && messages.size > 20) {
             onLoadOlder()
         }
+    }
+
+    // In-conversation empty state (spec section 38) — friendly "say hi" prompt
+    if (messages.isEmpty() && !isOtherTyping) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "\uD83C\uDF31", fontSize = 40.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "NO MESSAGES YET",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.5.sp
+                    )
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Say hi to ${otherUserProfile?.nickname ?: "your friend"} — every conversation starts with a single breath.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+            }
+        }
+        return
     }
 
     LazyColumn(

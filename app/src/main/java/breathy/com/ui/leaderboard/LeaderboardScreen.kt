@@ -284,14 +284,23 @@ class LeaderboardViewModel(
             val lastActivity = userProfile.updatedAt?.toDate()?.time ?: 0L
             if (lastActivity < LEADERBOARD_RESET_CUTOFF) return
             // Match by document ID (= userId) instead of nickname to avoid duplicate-nickname issues
-            val rank = profilePairs.indexOfFirst { it.first == uid } + 1
+            val listRank = profilePairs.indexOfFirst { it.first == uid } + 1
+            // TRUE global rank: when outside the loaded page, count everyone with
+            // more XP (server-side COUNT) instead of guessing page size + 1.
+            val trueRank = if (listRank > 0) listRank else {
+                val higher = userRepository.countProfilesWithHigherXp(
+                    xp = userProfile.xp.toLong(),
+                    cutoffMillis = LEADERBOARD_RESET_CUTOFF
+                ).getOrDefault(0L).toInt()
+                higher + 1
+            }
             val entry = LeaderboardEntry(
                 userId = uid,
                 nickname = userProfile.nickname,
                 photoURL = userProfile.photoURL,
                 xp = userProfile.xp,
                 daysSmokeFree = userProfile.daysSmokeFree,
-                rank = if (rank > 0) rank else profilePairs.size + 1,
+                rank = trueRank,
                 avatarFrame = breathy.com.data.models.AvatarFrame.fromId(userProfile.avatarFrame),
                 isPremium = userProfile.premium,
                 level = breathy.com.data.models.User.computeLevel(userProfile.xp)
@@ -594,39 +603,9 @@ private fun YourPositionPanel(
     onPeriodSelected: (LeaderboardPeriod) -> Unit
 ) {
     Column {
-        // Period filter chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LeaderboardPeriod.entries.forEach { p ->
-                FilterChip(
-                    selected = period == p,
-                    onClick = { onPeriodSelected(p) },
-                    label = {
-                        Text(
-                            text = p.label,
-                            fontWeight = if (period == p) FontWeight.Bold else FontWeight.Normal
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = AccentPrimary.copy(alpha = 0.18f),
-                        selectedLabelColor = DeepForest,
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        labelColor = themeTextSecondary
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        borderColor = SoftSage,
-                        selectedBorderColor = AccentPrimary.copy(alpha = 0.5f),
-                        enabled = true,
-                        selected = period == p
-                    )
-                )
-            }
-        }
-
+        // NOTE: Weekly/Monthly chips removed — the leaderboard is a single
+        // honest ALL-TIME ranking (spec section 13: no misleading UI).
+        // Time-windowed rankings would require per-period XP fields.
         Card(
             modifier = Modifier
                 .fillMaxWidth()

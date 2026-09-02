@@ -404,17 +404,15 @@ private fun FullStoryContent(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                NetworkImage(
-                    model = story.photoURL?.takeIf { it.isNotBlank() },
-                    contentDescription = "${story.nickname}'s avatar",
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .semantics {
-                            contentDescription = "View ${story.nickname}'s profile"
-                            role = Role.Button
-                        },
-                    contentScale = ContentScale.Crop
+                // Author avatar with REAL equipped frame (live, spec section 40)
+                val app = LocalContext.current.applicationContext as breathy.com.BreathyApplication
+                breathy.com.ui.components.FramedStoryAvatar(
+                    userId = story.userId,
+                    photoURL = story.photoURL,
+                    nickname = story.nickname,
+                    size = 44.dp,
+                    userRepository = app.appModule.userRepository,
+                    contentDescription = "View ${story.nickname}'s profile"
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -573,13 +571,15 @@ private fun ReplyItem(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                NetworkImage(
-                    model = reply.photoURL?.takeIf { it.isNotBlank() },
-                    contentDescription = "${reply.nickname}'s avatar",
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+                // Reply avatar with REAL equipped frame (live)
+                val replyApp = LocalContext.current.applicationContext as breathy.com.BreathyApplication
+                breathy.com.ui.components.FramedStoryAvatar(
+                    userId = reply.userId,
+                    photoURL = reply.photoURL,
+                    nickname = reply.nickname,
+                    size = 32.dp,
+                    userRepository = replyApp.appModule.userRepository,
+                    contentDescription = "${reply.nickname}'s avatar"
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))

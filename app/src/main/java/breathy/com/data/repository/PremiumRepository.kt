@@ -609,7 +609,16 @@ class PremiumRepository(
                     "PremiumRepo: no active premium subscription on Google Play (previous=%s)",
                     previousStatus
                 )
-                setPremium(false, null, if (wasEntitled) SubscriptionStatus.EXPIRED else SubscriptionStatus.NONE)
+                // Play hides a purchase while it is on account hold (paused) or
+                // after it was revoked/refunded — the mirror tells us which.
+                val mirrorState = _state.value.subscription?.state?.lowercase()
+                val status = when {
+                    mirrorState == "paused" -> SubscriptionStatus.PAUSED
+                    mirrorState == "revoked" -> SubscriptionStatus.REVOKED
+                    wasEntitled -> SubscriptionStatus.EXPIRED
+                    else -> SubscriptionStatus.NONE
+                }
+                setPremium(false, null, status)
             } else {
                 processSinglePurchase(premiumPurchase)
                 _state.update { it.copy(isChecking = false) }
@@ -808,6 +817,8 @@ class PremiumRepository(
                         isChecking = false,
                         isPremium = mirrorActive,
                         status = when {
+                            sub?.state?.lowercase() == "revoked" -> SubscriptionStatus.REVOKED
+                            sub?.state?.lowercase() == "paused" -> SubscriptionStatus.PAUSED
                             mirrorActive && sub?.autoRenewing == true -> SubscriptionStatus.ACTIVE
                             mirrorActive -> SubscriptionStatus.CANCELED_BUT_STILL_ENTITLED
                             sub != null && sub.active -> SubscriptionStatus.EXPIRED

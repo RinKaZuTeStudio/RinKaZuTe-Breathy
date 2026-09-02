@@ -144,6 +144,12 @@ data class EventChallengeUiState(
     val errorMessage: String? = null,
     val countdownSeconds: Long = 0L,
     val isPushupChallenge: Boolean = false,
+    /**
+     * True when the live event document is not available yet and the screen is
+     * rendering the canonical Coming Soon configuration — full structure
+     * (artwork / rewards / rules / entry info) with joining disabled.
+     */
+    val isComingSoonPreview: Boolean = false,
     /** Real-time Gold balance — powers the 500-Gold entry gate. */
     val goldBalance: Int = 0
 )
@@ -196,14 +202,27 @@ class EventChallengeViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                // Load event details
-                val event = eventRepository.getEvent(eventId).getOrNull() ?: run {
+                // Load event details — robust fallback chain (spec section 21):
+                // 1. The requested document, 2. any live pushup_challenge event,
+                // 3. the canonical Coming Soon configuration (full structure,
+                //    joining disabled — never fake live data).
+                val requestedResult = eventRepository.getEvent(eventId)
+                val resolved = requestedResult.recoverCatching {
+                    eventRepository.findFeaturedPushupEvent().getOrThrow()
+                }.recoverCatching {
+                    eventRepository.canonicalFeaturedEvent()
+                }
+                val event = resolved.getOrNull() ?: run {
                     _uiState.update { it.copy(isLoading = false, errorMessage = "Event not found") }
                     return@launch
                 }
+                // Coming Soon preview only when NO live document was resolved AND
+                // the event isn't currently running.
+                val comingSoonPreview = requestedResult.isFailure && !event.isCurrentlyActive()
 
                 // Load participant info
-                val participant = eventRepository.getParticipant(eventId, uid).getOrNull()
+                val participant = if (comingSoonPreview) null
+                    else eventRepository.getParticipant(eventId, uid).getOrNull()
                 val isJoined = participant != null
 
                 // Calculate current day number and check-in availability
@@ -230,7 +249,8 @@ class EventChallengeViewModel(
                         canCheckinToday = canCheckin,
                         countdownSeconds = countdownSeconds,
                         errorMessage = null,
-                        isPushupChallenge = event.isPushupChallenge()
+                        isPushupChallenge = event.isPushupChallenge(),
+                        isComingSoonPreview = comingSoonPreview
                     )
                 }
             } catch (e: CancellationException) {
@@ -495,6 +515,7 @@ fun EventChallengeScreen(
                         1 -> LeaderboardTab(
                             leaderboard = uiState.leaderboard,
                             currentUserId = viewModel.currentUserId,
+                            isLoading = uiState.isLoading,
                             onProfileClick = onNavigateToProfile
                         )
                     }
@@ -538,6 +559,51 @@ private fun DetailsTab(
                         .height(180.dp),
                     contentScale = ContentScale.Crop
                 )
+            }
+        }
+
+        // ── Coming Soon banner (full structure, no live event yet) ──────
+        if (uiState.isComingSoonPreview) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = VeryLightSage
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, AccentPrimary.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Timer,
+                            contentDescription = null,
+                            tint = AccentPrimary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "COMING SOON",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.5.sp,
+                                    color = DeepForest
+                                )
+                            )
+                            Text(
+                                text = "The next challenge hasn't opened yet. Review the rewards, rules and entry details below so you're ready when it goes live.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = themeTextSecondary
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -610,11 +676,14 @@ private fun DetailsTab(
         }
 
         // ── Join Button (if not joined and event is active or upcoming) ──
-        if (!uiState.isJoined && (event.isCurrentlyActive() || (event.active && nowMillis < startMillis))) {
+        if (!uiState.isJoined && participant?.completed != true) {
             item {
+                val eventOpen = event.isCurrentlyActive() ||
+                    (event.active && nowMillis < startMillis)
                 JoinEventButton(
                     goldBalance = uiState.goldBalance,
                     entryFee = 500,
+                    eventOpen = eventOpen,
                     onClick = onJoin
                 )
             }
@@ -640,6 +709,7 @@ private fun DetailsTab(
 private fun LeaderboardTab(
     leaderboard: List<EventRepository.EventLeaderboardEntry>,
     currentUserId: String?,
+    isLoading: Boolean = false,
     onProfileClick: (String) -> Unit
 ) {
     if (leaderboard.isEmpty()) {
@@ -650,16 +720,38 @@ private fun LeaderboardTab(
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = AccentPrimary,
-                    strokeWidth = 2.dp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Loading leaderboard...",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = AccentPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Loading leaderboard...",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
+                    )
+                } else {
+                    // Polished empty state — only real participants appear (spec section 30)
+                    Text(text = "🏅", fontSize = 44.sp)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "NO PARTICIPANTS YET",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.5.sp,
+                            color = themeTextPrimary
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "The leaderboard fills in as participants join and their check-ins are approved. Join the challenge and claim the top spot.",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = themeTextSecondary
+                        ),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             }
         }
     } else {
@@ -1602,9 +1694,11 @@ private fun PushupCheckinButton(
 private fun JoinEventButton(
     goldBalance: Int,
     entryFee: Int,
+    eventOpen: Boolean = true,
     onClick: () -> Unit
 ) {
     val canAfford = goldBalance >= entryFee
+    val canJoin = canAfford && eventOpen
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1659,13 +1753,16 @@ private fun JoinEventButton(
 
         Button(
             onClick = onClick,
-            enabled = canAfford,
+            enabled = canJoin,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
                 .semantics {
-                    contentDescription = if (canAfford) "Join this event for $entryFee Gold"
-                    else "Need $entryFee Gold to join — your balance is $goldBalance"
+                    contentDescription = when {
+                        !eventOpen -> "Entry opens when the event starts"
+                        canJoin -> "Join this event for $entryFee Gold"
+                        else -> "Need $entryFee Gold to join — your balance is $goldBalance"
+                    }
                     role = Role.Button
                 },
             colors = ButtonDefaults.buttonColors(
@@ -1682,10 +1779,22 @@ private fun JoinEventButton(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (canAfford) "Enter Challenge · $entryFee Gold"
-                else "Need ${(entryFee - goldBalance).coerceAtLeast(0)} more Gold",
+                text = when {
+                    !eventOpen -> "Entry Opens Soon"
+                    canAfford -> "Enter Challenge · $entryFee Gold"
+                    else -> "Need ${(entryFee - goldBalance).coerceAtLeast(0)} more Gold"
+                },
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
+            )
+        }
+        if (!eventOpen) {
+            Text(
+                text = "COMING SOON — entry opens when the event starts. Your Gold is only charged when you join an open event.",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = themeTextSecondary
+                ),
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
     }

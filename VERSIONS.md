@@ -6,7 +6,51 @@ Downloadable artifacts are attached to each GitHub Release.
 
 | Version | versionCode | Date       | Artifacts                        | Tag      |
 |---------|-------------|------------|----------------------------------|----------|
+| 1.0.2   | 3           | 2026-09-03 | release APK · debug APK · AAB    | `v1.0.2` |
 | 1.0.1   | 2           | 2026-09-02 | release APK · debug APK · AAB    | `v1.0.1` |
+
+---
+
+## v1.0.2 (versionCode 3) — 2026-09-03 (final bug fix + UI/UX polish build)
+
+**Signing:** same official release keystore as v1.0.1 (alias `breathy`, SHA-1
+`FC:79:B6:70:D4:8F:CC:EA:D5:E1:85:9A:0C:1E:5C:B9:E3:1B:1B:E8`, restored from
+`Breathy-Backup/builds/v5` and verified against the Firebase-registered cert).
+
+### Fixes and changes in this build
+
+- **Event page — canonical Coming Soon structure.** The featured event detail
+  now falls back to the centralized canonical configuration when no live event
+  document exists: artwork, name, description, rewards, RULES & TERMS and the
+  500-Gold entry summary (fee + YOUR BALANCE) are always fully presented, with
+  the JOIN button disabled ("Entry Opens Soon") until a real event opens. Gold
+  can never be charged for a closed event.
+- **Home featured card opens the EVENT PAGE directly** (canonical event id),
+  and the Events-page hero banner is now tappable with the same destination —
+  one canonical event across Home + Events + detail.
+- **Non-cash event rewards.** Configured prizes are Gold / cosmetic rewards
+  (Event avatar frame, Champion badge) — cash prize copy removed; consistent
+  with the "No cash value" rules section until a compliant payout system ships.
+- **Event leaderboard empty state** — polished "NO PARTICIPANTS YET" state
+  instead of an endless spinner; only real participants ever appear.
+- **Friends-only DM enforced.** Opening a chat with a non-friend no longer
+  creates a chat document; sending is blocked with a clear notice; the Message
+  button is removed from non-friend public profiles (Add Friend only).
+  Private chat is exclusively a friends feature.
+- **Chat in-conversation empty state** — friendly "NO MESSAGES YET" prompt.
+- **Leaderboard — true global rank.** Users outside the top-50 page now get
+  their REAL position via a server-side COUNT of higher-XP profiles instead of
+  the page-size approximation. Non-functional Weekly/Monthly chips removed
+  (single honest all-time ranking).
+- **Premium lifecycle — REVOKED / PAUSED states.** The subscription mirror can
+  now carry backend lifecycle state; revoked (refund/Play revocation) and
+  paused (account hold) are surfaced distinctly while entitlement correctly
+  remains OFF in both. Cancelled-but-still-entitled behavior unchanged.
+- **Community feed avatars** — story and reply cards now render the author's
+  REAL equipped avatar frame via a live profile observer (frame changes
+  propagate everywhere without restart).
+- **versionCode 3 / versionName 1.0.2** — required for a new Play upload after
+  the v1.0.1 (versionCode 2) closed-testing release.
 
 ---
 
@@ -53,8 +97,9 @@ Downloadable artifacts are attached to each GitHub Release.
   Play licensing public key, entitlement re-checked at every app start and
   mirrored to Firestore. Replaces the old one-time "supporter" purchase.
 - **Ads — fixed and activated** — MobileAds init, app-open + interstitial
-  (production ad units in release, Google official test units in debug),
-  load-retry with backoff, frequency capping, and a hard premium exemption:
+  (production ad units in ALL variants — debug and release both use the real
+  production units), load-retry with backoff, frequency capping, and a hard
+  premium exemption:
   verified premium → ads are never loaded or shown; expiry → free behavior
   resumes automatically.
 - **Sage Nature UI redesign** — full palette swap to white/warm white (60–70%),

@@ -123,49 +123,24 @@ fun StoryCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar
-                val photoUrl = story.photoURL?.takeIf { it.isNotBlank() }
-                if (photoUrl != null) {
-                    NetworkImage(
-                        model = photoUrl,
-                        contentDescription = "${story.nickname}'s avatar",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onAvatarClick)
-                            .semantics {
-                                contentDescription = "View ${story.nickname}'s profile"
-                                role = Role.Button
-                            },
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // Fallback avatar with initial letter
-                    Surface(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onAvatarClick)
-                            .semantics {
-                                contentDescription = "View ${story.nickname}'s profile"
-                                role = Role.Button
-                            },
-                        shape = CircleShape,
-                        color = AccentPrimary.copy(alpha = 0.15f)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = story.nickname.take(1).uppercase(),
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    color = AccentPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
+                // Avatar with the author's REAL equipped frame — renders live
+                // (frame changes propagate without restart, spec section 40)
+                val app = LocalContext.current.applicationContext as breathy.com.BreathyApplication
+                Box(
+                    modifier = Modifier
+                        .clickable(onClick = onAvatarClick)
+                        .semantics {
+                            contentDescription = "View ${story.nickname}'s profile"
+                            role = Role.Button
                         }
-                    }
+                ) {
+                    breathy.com.ui.components.FramedStoryAvatar(
+                        userId = story.userId,
+                        photoURL = story.photoURL,
+                        nickname = story.nickname,
+                        size = 44.dp,
+                        userRepository = app.appModule.userRepository
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))

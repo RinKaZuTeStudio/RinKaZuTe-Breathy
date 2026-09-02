@@ -958,6 +958,47 @@ class UserRepository(
         }
 
     /**
+     * Count profiles with MORE xp than [xp] (after the reset cutoff) — used to
+     * compute the user's TRUE global rank even when they are outside the
+     * top-50 page (rank = count + 1). Server-side aggregate, real data only.
+     */
+    suspend fun countProfilesWithHigherXp(xp: Long, cutoffMillis: Long): Result<Long> = runCatching {
+        val cutoff = com.google.firebase.Timestamp(java.util.Date(cutoffMillis))
+        val snapshot = firestore.collection(PUBLIC_PROFILES_COLLECTION)
+            .whereGreaterThanOrEqualTo("updatedAt", cutoff)
+            .whereGreaterThan("xp", xp)
+            .count()
+            .get(com.google.firebase.firestore.AggregateSource.SERVER)
+            .await()
+        snapshot.count
+    }
+
+    /**
+     * Observe ONE public profile in real time (used by community story cards so
+     * the author's real equipped frame propagates live — spec section 40).
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observePublicProfile(userId: String): Flow<PublicProfile?> = callbackFlow {
+        val registration = firestore.collection(PUBLIC_PROFILES_COLLECTION)
+            .document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observePublicProfile error for %s", userId)
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    trySend(
+                        if (snapshot.exists()) {
+                            PublicProfile.fromFirestoreMap(snapshot.id, snapshot.data ?: emptyMap())
+                        } else null
+                    )
+                }
+            }
+        awaitClose { registration.remove() }
+    }
+
+    /**
      * Count the REAL leaderboard members: public profiles whose last activity
      * is at or after [cutoffMillis] (the one-time pre-launch reset cutoff).
      * Uses a server-side aggregate COUNT — the number is calculated from the

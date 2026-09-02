@@ -625,7 +625,8 @@ private fun ProfileActions(
                 }
             }
             FriendStatus.NOT_FRIENDS -> {
-                // Not friends — show add friend + message
+                // Not friends — Add Friend only. Private chat is friends-only
+                // (spec section 38): the Message action appears once they accept.
                 Button(
                     onClick = onAddFriend,
                     enabled = !isSendingRequest,
@@ -664,28 +665,6 @@ private fun ProfileActions(
                     )
                 }
 
-                OutlinedButton(
-                    onClick = onMessage,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .semantics {
-                            contentDescription = "Send message"
-                            role = Role.Button
-                        },
-                    shape = RoundedCornerShape(22.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = AccentSecondary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Message,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Message", fontWeight = FontWeight.SemiBold)
-                }
             }
         }
     }

@@ -434,7 +434,10 @@ fun EventsScreen(
                         ) {
                             // Canonical featured event hero (same artwork as Home — spec §21)
                             item(key = "featured_hero") {
-                                EventHeroBanner(goldBalance = uiState.goldBalance)
+                                EventHeroBanner(
+                                    goldBalance = uiState.goldBalance,
+                                    onOpenEvent = { onNavigateToEventDetail(breathy.com.data.repository.EventRepository.FEATURED_EVENT_ID) }
+                                )
                             }
                             items(
                                 items = uiState.events,
@@ -470,8 +473,12 @@ fun EventsScreen(
  * (spec section 21). Coming Soon badge + title + description + reward preview.
  */
 @Composable
-private fun EventHeroBanner(goldBalance: Int) {
+private fun EventHeroBanner(
+    goldBalance: Int,
+    onOpenEvent: () -> Unit = {}
+) {
     Card(
+        onClick = onOpenEvent,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = PureWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),

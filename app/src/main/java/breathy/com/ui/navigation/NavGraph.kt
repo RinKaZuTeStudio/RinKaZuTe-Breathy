@@ -57,6 +57,7 @@ import breathy.com.ui.community.StoryDetailScreen
 import breathy.com.ui.events.AdminReviewScreen
 import breathy.com.ui.events.EventChallengeScreen
 import breathy.com.ui.events.EventCheckinScreen
+import breathy.com.data.repository.EventRepository
 import breathy.com.ui.events.EventsScreen
 import breathy.com.ui.events.PushupCounterScreen
 import breathy.com.ui.friends.ChatScreen
@@ -355,7 +356,13 @@ fun BreathyNavHost(
                 HomeScreen(
                     onNavigateToProfile = { navigateToWithAd(BreathyRoutes.PROFILE) },
                     onNavigateToNotifications = { navigateToWithAd(BreathyRoutes.NOTIFICATIONS) },
-                    onNavigateToEvents = { navigateToWithAd(BreathyRoutes.EVENTS) }
+                    // Home featured event card opens the EVENT PAGE directly
+                    // (same canonical event as the Events hero — spec section 21)
+                    onNavigateToEvents = {
+                        navigateToWithAd(
+                            BreathyRoutes.eventChallenge(EventRepository.FEATURED_EVENT_ID)
+                        )
+                    }
                 )
             }
 

@@ -54,6 +54,15 @@ class EventRepository(
         private const val PUBLIC_PROFILES_COLLECTION = "publicProfiles"
         private const val USERS_COLLECTION = "users"
         private const val LEADERBOARD_LIMIT = 50L
+
+        /**
+         * Canonical featured event id — used by the Home featured card, the Events
+         * hero banner, and the seed creator so every surface opens the SAME event
+         * (spec section 21). The detail screen also falls back to
+         * [canonicalFeaturedEvent] when this document is not live yet, so the
+         * Coming Soon presentation always shows the full structure.
+         */
+        const val FEATURED_EVENT_ID = "pushup_challenge_may2026"
     }
 
     private val currentUserId: String
@@ -106,6 +115,71 @@ class EventRepository(
         } ?: throw IllegalStateException("Get event timed out after 30 seconds")
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to get event: %s", eventId)
+    }
+
+    /**
+     * Find the featured push-up challenge event by type, regardless of doc id.
+     * Used as a fallback so entry points that navigate to [FEATURED_EVENT_ID]
+     * still resolve the real event when an admin created it under another id.
+     */
+    suspend fun findFeaturedPushupEvent(): Result<Event> = runCatching {
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val snapshot = firestore.collection(EVENTS_COLLECTION)
+                .whereEqualTo("type", "pushup_challenge")
+                .limit(1)
+                .get(Source.SERVER)
+                .await()
+            val doc = snapshot.documents.firstOrNull()
+                ?: throw NoSuchElementException("No pushup challenge event exists")
+            Event.fromFirestoreMap(doc.id, doc.data ?: emptyMap())
+        } ?: throw IllegalStateException("Find featured event timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.w(e, "No live featured event found")
+    }
+
+    /**
+     * Code-defined canonical configuration for the featured event — the SAME
+     * centralized values the seed creator writes to Firestore (real title,
+     * description, rules inputs, rewards). Used ONLY as a display fallback so
+     * the event page presents the complete structure (artwork, rewards, rules,
+     * entry) while the event is Coming Soon — never as fake live data:
+     * [Event.active] is false, so joining/checking-in stays unavailable.
+     */
+    fun canonicalFeaturedEvent(): Event {
+        val start = com.google.firebase.Timestamp(
+            java.util.Calendar.getInstance().apply {
+                set(2026, java.util.Calendar.MAY, 20, 0, 0, 0)
+            }.timeInMillis / 1000, 0
+        )
+        val end = com.google.firebase.Timestamp(
+            java.util.Calendar.getInstance().apply {
+                set(2026, java.util.Calendar.AUGUST, 20, 23, 59, 59)
+            }.timeInMillis / 1000, 0
+        )
+        return Event(
+            id = FEATURED_EVENT_ID,
+            title = "100 Pushup Challenge",
+            description = "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the event leaderboard, and earn Gold rewards and exclusive cosmetic prizes. Top finishers win the legendary Event avatar frame.",
+            eventType = "pushup_challenge",
+            active = false,
+            startDate = start,
+            endDate = end,
+            dailyRequired = 10,
+            targetPushups = 100,
+            prizes = mapOf(
+                "1st" to "10,000 Gold + Event avatar frame + Champion badge",
+                "2nd" to "6,000 Gold + Event avatar frame",
+                "3rd" to "3,000 Gold + Event avatar frame",
+                "4th" to "1,500 Gold",
+                "5th" to "1,500 Gold",
+                "6th" to "1,000 Gold",
+                "7th" to "1,000 Gold",
+                "8th" to "1,000 Gold",
+                "9th" to "1,000 Gold",
+                "10th" to "1,000 Gold"
+            ),
+            status = "upcoming"
+        )
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -533,7 +607,7 @@ class EventRepository(
             }
 
             // Fallback: create the event directly in Firestore
-            val eventId = "pushup_challenge_may2026"
+            val eventId = FEATURED_EVENT_ID
             val startDate = com.google.firebase.Timestamp(
                 java.util.Calendar.getInstance().apply {
                     set(2026, java.util.Calendar.MAY, 20, 0, 0, 0)
@@ -545,9 +619,12 @@ class EventRepository(
                 }.timeInMillis / 1000, 0
             )
 
+            // NOTE (spec section 25): cash rewards stay DISABLED until a compliant
+            // payout system exists. All configured rewards are non-cash — Gold,
+            // cosmetics, badges. These values are the real centralized config.
             val eventData = mapOf(
                 "title" to "100 Pushup Challenge",
-                "description" to "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the leaderboard, and win cash prizes. Rank 1-5 win \$20, Rank 6-10 win \$10!",
+                "description" to "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the event leaderboard, and earn Gold rewards and exclusive cosmetic prizes. Top finishers win the legendary Event avatar frame.",
                 "type" to "pushup_challenge",
                 "eventType" to "pushup_challenge",
                 "active" to true,
@@ -556,16 +633,16 @@ class EventRepository(
                 "dailyRequired" to 10,
                 "targetPushups" to 100,
                 "prizes" to mapOf(
-                    "1st" to "\$20",
-                    "2nd" to "\$20",
-                    "3rd" to "\$20",
-                    "4th" to "\$20",
-                    "5th" to "\$20",
-                    "6th" to "\$10",
-                    "7th" to "\$10",
-                    "8th" to "\$10",
-                    "9th" to "\$10",
-                    "10th" to "\$10"
+                    "1st" to "10,000 Gold + Event avatar frame + Champion badge",
+                    "2nd" to "6,000 Gold + Event avatar frame",
+                    "3rd" to "3,000 Gold + Event avatar frame",
+                    "4th" to "1,500 Gold",
+                    "5th" to "1,500 Gold",
+                    "6th" to "1,000 Gold",
+                    "7th" to "1,000 Gold",
+                    "8th" to "1,000 Gold",
+                    "9th" to "1,000 Gold",
+                    "10th" to "1,000 Gold"
                 ),
                 "createdAt" to FieldValue.serverTimestamp()
             )
