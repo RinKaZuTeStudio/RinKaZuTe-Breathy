@@ -129,6 +129,8 @@ fun HomeScreen(
     var showCravingSheet by remember { mutableStateOf(false) }
     var showBreathingExercise by remember { mutableStateOf(false) }
     var showTapGame by remember { mutableStateOf(false) }
+    var showExerciseWorkout by remember { mutableStateOf(false) }
+    var pendingExercise by remember { mutableStateOf(ExerciseType.PUSHUPS) }
     var isRefreshing by remember { mutableStateOf(false) }
     var showCravingConfetti by remember { mutableStateOf(false) }
 
@@ -400,6 +402,11 @@ fun HomeScreen(
                     showCravingSheet = false
                     showTapGame = true
                 },
+                onStartExercise = { exerciseType ->
+                    showCravingSheet = false
+                    pendingExercise = exerciseType
+                    showExerciseWorkout = true
+                },
                 onLogCraving = { method, success ->
                     viewModel.logCraving(method, success)
                     if (success) {
@@ -436,6 +443,21 @@ fun HomeScreen(
                 },
                 onCancel = {
                     showTapGame = false
+                }
+            )
+        }
+
+        // ── Guided Exercise Overlay (Pushups / Squats / Plank) ─────────
+        if (showExerciseWorkout) {
+            ExerciseWorkout(
+                exercise = pendingExercise,
+                onComplete = { success ->
+                    showExerciseWorkout = false
+                    viewModel.logCraving(CopingMethod.EXERCISE, success)
+                    if (success) showCravingConfetti = true
+                },
+                onCancel = {
+                    showExerciseWorkout = false
                 }
             )
         }

@@ -78,6 +78,7 @@ import kotlinx.coroutines.delay
  * @param lastCravingTimeAgo   Human-readable time since last craving.
  * @param onBreathingExercise  Callback to start the breathing exercise.
  * @param onMiniGame           Callback to start the tap game.
+ * @param onStartExercise      Callback to start a guided workout (Pushups/Squats/Plank).
  * @param onLogCraving         Callback to log a craving with method and success.
  * @param onDismiss            Callback when the sheet is dismissed.
  */
@@ -86,6 +87,7 @@ fun CravingBottomSheet(
     lastCravingTimeAgo: String?,
     onBreathingExercise: () -> Unit,
     onMiniGame: () -> Unit,
+    onStartExercise: (ExerciseType) -> Unit,
     onLogCraving: (method: CopingMethod, success: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -247,8 +249,7 @@ fun CravingBottomSheet(
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 selectedMethod = CopingMethod.EXERCISE
-                                onLogCraving(CopingMethod.EXERCISE, true)
-                                showConfetti = true
+                                onStartExercise(ExerciseType.PUSHUPS)
                             }
                         )
 
@@ -267,8 +268,7 @@ fun CravingBottomSheet(
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 selectedMethod = CopingMethod.EXERCISE
-                                onLogCraving(CopingMethod.EXERCISE, true)
-                                showConfetti = true
+                                onStartExercise(ExerciseType.SQUATS)
                             }
                         )
 
@@ -287,8 +287,7 @@ fun CravingBottomSheet(
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 selectedMethod = CopingMethod.EXERCISE
-                                onLogCraving(CopingMethod.EXERCISE, true)
-                                showConfetti = true
+                                onStartExercise(ExerciseType.PLANK)
                             }
                         )
                     }

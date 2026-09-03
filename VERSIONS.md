@@ -1,5 +1,26 @@
 # Breathy — Version History
 
+## v1.0.6 (versionCode 7) — guided craving workouts with 5-second countdown
+
+### Craving Coping — real workouts (fixes "instant confetti" bug)
+- ROOT CAUSE FIXED: tapping Pushups / Squats / Plank in the craving sheet
+  previously logged success instantly and fired confetti without any actual
+  exercise — no timer, no reps, no preparation. The three cards now launch a
+  full-screen guided workout (new ExerciseWorkout composable).
+- 5-SECOND "GET READY" COUNTDOWN: every workout starts with a big animated
+  5 → 1 countdown ("Get Ready!" + positioning instruction), then "GO! 🔥"
+  — the exercise only starts after the preparation count, as requested.
+- Guided workouts:
+  * Pushups — 10 reps, tap "+1 Rep" after each pushup, progress ring fills.
+  * Squats — 15 reps, tap "+1 Rep" after each squat, progress ring fills.
+  * Plank — 30-second hold with automatic countdown timer, pulsing seconds
+    and progress ring.
+- Completion shows "Awesome! 🎉" + confetti and auto-returns after 2 s,
+  logging the craving defeat. "Give up 😓" logs an unsuccessful attempt.
+  Closing with ✕ cancels without logging (consistent with breathing/game).
+- Craving logging is now honest: EXERCISE success is only logged when the
+  workout is actually completed.
+
 ## v1.0.5 (versionCode 6) — subscription UX, premium frame delivery, ads & rewards, follow errors
 
 ### Subscription / Premium
