@@ -22,19 +22,19 @@ enum class FrameRarity(val label: String) {
  *
  * Frames are the visual ring drawn around a user's avatar everywhere the
  * profile is displayed (profile page, leaderboard, community posts, event
- * participants, friends, chat).
+ * participants, friends, chat). The artwork comes from the official
+ * "Avatar Borders Collection" sprite sheet (res/drawable-nodpi/frame_*.png).
  *
- * Unlock rules — intentionally honest, tied to REAL progression data only:
- * - [NONE], [NATURE], [LEAF]: available to everyone.
- * - [BRONZE] / [SILVER] / [GOLD]: unlocked FREE by the user's real level
- *   (derived from XP via [User.computeLevel]) — levels 3 / 5 / 8 — or
- *   instantly via a one-time Gold purchase (see [goldPrice]).
+ * Unlock rules — smoke-free DAY-based progression (v1.0.7):
+ * - [NONE] (Classic, COMMON): owned from the moment the account is created.
+ * - [NATURE] (COMMON): unlocks on Day 7 smoke-free.
+ * - [LEAF] (UNCOMMON): unlocks on Day 30 smoke-free.
+ * - [BRONZE] / [SILVER] / [GOLD]: one-time Gold purchases (no level unlock).
  * - [ACHIEVEMENT]: requires at least one unlocked achievement.
  * - [EVENT]: requires the `event_champion` achievement (completing an
  *   event challenge) — the app already awards that achievement.
  * - [PREMIUM]: requires a verified active Breathy Premium subscription.
- * - [RANK]: always selectable — the border automatically reflects the
- *   user's current [RankTier] (nature-inspired progression identity).
+ * - [RANK]: the living rank border — reach Tree rank (Level 9).
  *
  * The value persisted in Firestore (users.avatarFrame / publicProfiles.avatarFrame)
  * is the [id] string, so renaming display labels never breaks stored data.
@@ -49,16 +49,16 @@ enum class AvatarFrame(
     /** One-time Gold price when purchasable; null = cannot be bought with Gold. */
     val goldPrice: Int? = null
 ) {
-    @SerialName("none") NONE("none", "Classic", "A clean, minimal ring.", FrameRarity.COMMON),
-    @SerialName("nature") NATURE("nature", "Nature", "A soft sage ring inspired by new growth.", FrameRarity.COMMON),
-    @SerialName("leaf") LEAF("leaf", "Leaf", "A botanical leaf-green ring.", FrameRarity.UNCOMMON),
-    @SerialName("bronze") BRONZE("bronze", "Bronze", "Reach Level 3 — or unlock instantly with Gold.", FrameRarity.RARE, goldPrice = 250),
-    @SerialName("silver") SILVER("silver", "Silver", "Reach Level 5 — or unlock instantly with Gold.", FrameRarity.RARE, goldPrice = 600),
-    @SerialName("gold") GOLD("gold", "Gold", "Reach Level 8 — or unlock instantly with Gold.", FrameRarity.EPIC, goldPrice = 1200),
-    @SerialName("achievement") ACHIEVEMENT("achievement", "Achievement", "Unlock any achievement to wear.", FrameRarity.RARE),
-    @SerialName("event") EVENT("event", "Event", "Complete an event challenge to wear.", FrameRarity.LEGENDARY),
-    @SerialName("premium") PREMIUM("premium", "Premium", "Exclusive for Breathy Premium members.", FrameRarity.PREMIUM),
-    @SerialName("rank") RANK("rank", "Rank", "A living border that shows your current rank.", FrameRarity.EPIC);
+    @SerialName("none") NONE("none", "Classic", "Clean · Simple · Timeless. Yours from day one.", FrameRarity.COMMON),
+    @SerialName("nature") NATURE("nature", "Nature", "Natural · Organic · Calm. Unlocks on Day 7 smoke-free.", FrameRarity.COMMON),
+    @SerialName("leaf") LEAF("leaf", "Leaf", "Fresh · Lively · Green. Unlocks on Day 30 smoke-free.", FrameRarity.UNCOMMON),
+    @SerialName("bronze") BRONZE("bronze", "Bronze", "Strong · Solid · Bronze. Unlock instantly with Gold.", FrameRarity.RARE, goldPrice = 250),
+    @SerialName("silver") SILVER("silver", "Silver", "Elegant · Refined · Silver. Unlock instantly with Gold.", FrameRarity.RARE, goldPrice = 600),
+    @SerialName("gold") GOLD("gold", "Gold", "Prestigious · Rich · Gold. Unlock instantly with Gold.", FrameRarity.EPIC, goldPrice = 1200),
+    @SerialName("achievement") ACHIEVEMENT("achievement", "Achievement", "Reward · Milestone · Honor. Unlock any achievement to wear.", FrameRarity.RARE),
+    @SerialName("event") EVENT("event", "Event", "Exclusive · Time-limited · Complete an event challenge to wear.", FrameRarity.LEGENDARY),
+    @SerialName("premium") PREMIUM("premium", "Premium", "Ultimate · Exclusive · For Breathy Premium members.", FrameRarity.PREMIUM),
+    @SerialName("rank") RANK("rank", "Rank", "Competitive · Bold · Reach Tree rank (Level 9) to wear.", FrameRarity.EPIC);
 
     override fun toString(): String = id
 
@@ -70,19 +70,24 @@ enum class AvatarFrame(
 
     /**
      * Whether this frame is unlocked for the given REAL progression state.
-     * Level thresholds match the tier mapping below; premium requires the
-     * verified subscription entitlement (never a local toggle).
+     *
+     * v1.0.7 schedule: Classic from signup; Nature on Day 7; Leaf on Day 30.
+     * Bronze/Silver/Gold are Gold-purchase only (ownedFrames) and return
+     * false here. Premium requires the verified subscription entitlement
+     * (never a local toggle). Rank requires Tree rank (Level 9).
      */
     fun isUnlockedFor(
         level: Int,
         hasAchievement: Boolean,
         hasEventWin: Boolean,
-        isPremium: Boolean
+        isPremium: Boolean,
+        daysSmokeFree: Int = 0
     ): Boolean = when (this) {
-        NONE, NATURE, LEAF, RANK -> true
-        BRONZE -> level >= 3
-        SILVER -> level >= 5
-        GOLD -> level >= 8
+        NONE -> true
+        NATURE -> daysSmokeFree >= 7
+        LEAF -> daysSmokeFree >= 30
+        RANK -> level >= 9
+        BRONZE, SILVER, GOLD -> false // Gold purchase only (users.ownedFrames)
         ACHIEVEMENT -> hasAchievement
         EVENT -> hasEventWin
         PREMIUM -> isPremium

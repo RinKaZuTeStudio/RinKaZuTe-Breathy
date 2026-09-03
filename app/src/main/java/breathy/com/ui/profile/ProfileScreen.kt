@@ -538,6 +538,7 @@ fun ProfileScreen(
             hasEventWin = uiState.user?.achievements?.contains("event_champion") == true,
             goldBalance = uiState.goldBalance,
             ownedFrames = uiState.user?.ownedFrames ?: emptyList(),
+            daysSmokeFree = uiState.user?.daysSmokeFree ?: 0,
             onSelect = { frame ->
                 viewModel.updateAvatarFrame(frame)
                 showFramePicker = false
@@ -1966,6 +1967,7 @@ private fun AvatarFramePickerSheet(
     hasEventWin: Boolean,
     goldBalance: Int,
     ownedFrames: List<String>,
+    daysSmokeFree: Int,
     onSelect: (breathy.com.data.models.AvatarFrame) -> Unit,
     onPurchase: (breathy.com.data.models.AvatarFrame) -> Unit,
     onDismiss: () -> Unit
@@ -2045,7 +2047,8 @@ private fun AvatarFramePickerSheet(
                                 level = level,
                                 hasAchievement = hasAchievements,
                                 hasEventWin = hasEventWin,
-                                isPremium = isPremium
+                                isPremium = isPremium,
+                                daysSmokeFree = daysSmokeFree
                             )
                             val isSelected = frame == currentFrame
                             FrameCard(
@@ -2057,6 +2060,7 @@ private fun AvatarFramePickerSheet(
                                 hasEventWin = hasEventWin,
                                 isPremium = isPremium,
                                 goldBalance = goldBalance,
+                                daysSmokeFree = daysSmokeFree,
                                 onBuy = { onPurchase(frame) },
                                 modifier = Modifier.weight(1f),
                                 onClick = { if (unlocked) onSelect(frame) }
@@ -2083,6 +2087,7 @@ private fun FrameCard(
     hasEventWin: Boolean,
     isPremium: Boolean,
     goldBalance: Int,
+    daysSmokeFree: Int = 0,
     onBuy: () -> Unit = {},
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -2189,9 +2194,9 @@ private fun FrameCard(
             text = when {
                 unlocked -> if (isSelected) "Equipped" else "Owned"
                 frame.goldPrice != null -> "${frame.goldPrice} Gold"
-                frame == breathy.com.data.models.AvatarFrame.BRONZE -> "Level 3"
-                frame == breathy.com.data.models.AvatarFrame.SILVER -> "Level 5"
-                frame == breathy.com.data.models.AvatarFrame.GOLD -> "Level 8"
+                frame == breathy.com.data.models.AvatarFrame.NATURE -> "Day 7"
+                frame == breathy.com.data.models.AvatarFrame.LEAF -> "Day 30"
+                frame == breathy.com.data.models.AvatarFrame.RANK -> "Level 9 · Tree"
                 frame == breathy.com.data.models.AvatarFrame.PREMIUM -> "Premium"
                 frame == breathy.com.data.models.AvatarFrame.EVENT -> "Win an event"
                 frame == breathy.com.data.models.AvatarFrame.ACHIEVEMENT -> "Any achievement"

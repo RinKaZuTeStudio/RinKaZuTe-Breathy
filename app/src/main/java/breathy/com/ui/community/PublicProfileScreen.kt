@@ -1001,13 +1001,19 @@ class PublicProfileViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        // SURFACE the failure — the Follow button must never
-                        // appear dead. (Most common cause: Firestore rules
-                        // denying the follow batch, e.g. rules not published.)
+                        // Distinguish a rules/rollout problem from a network
+                        // problem — "check your connection" was misleading when
+                        // the real cause was PERMISSION_DENIED.
+                        val denied = e is com.google.firebase.firestore.FirebaseFirestoreException &&
+                            e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED
                         _uiState.value = _uiState.value.copy(
                             isFollowBusy = false,
-                            error = "Couldn't " + if (following) "unfollow" else "follow" +
-                                " — check your connection and try again."
+                            error = if (denied) {
+                                "Follow is still rolling out on the server for your account — please try again soon."
+                            } else {
+                                "Couldn't " + (if (following) "unfollow" else "follow") +
+                                    " — check your connection and try again."
+                            }
                         )
                     }
                 }

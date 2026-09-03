@@ -847,7 +847,8 @@ private fun PodiumColumn(
             frame = entry.avatarFrame,
             rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
             size = avatarSize,
-            contentDescription = "${entry.nickname}'s avatar"
+            contentDescription = "${entry.nickname}'s avatar",
+            animated = false
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -975,7 +976,8 @@ private fun LeaderboardRow(
                 frame = entry.avatarFrame,
                 rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
                 size = 44.dp,
-                contentDescription = "${entry.nickname}'s avatar"
+                contentDescription = "${entry.nickname}'s avatar",
+                animated = false
             )
 
             // Nickname and days
@@ -1089,7 +1091,8 @@ private fun CurrentUserBottomBar(
                     frame = entry.avatarFrame,
                     rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
                     size = 46.dp,
-                    contentDescription = "Your avatar"
+                    contentDescription = "Your avatar",
+                    animated = false
                 )
 
                 Column(modifier = Modifier.weight(1f)) {

@@ -349,7 +349,8 @@ fun HomeScreen(
                     }
 
                     // ── Gold Ads (rewarded, limitless +200 Gold) ──────────
-                    // Hidden entirely for verified Premium subscribers.
+                    // Shown to EVERYONE — subscribers included: it is a reward
+                    // placement users opt into for Gold, never an interruption.
                     breathy.com.ui.components.GoldAdsCard(
                         modifier = Modifier.fillMaxWidth()
                     )

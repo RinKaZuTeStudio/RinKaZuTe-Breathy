@@ -1,5 +1,58 @@
 # Breathy — Version History
 
+## v1.0.7 (versionCode 8) — new avatar borders, day-based unlocks, per-frame animations, follow hardening, new app icon
+
+### Avatar Frames — official artwork + signature animations
+- The Avatar Collection now uses the official "Avatar Borders Collection"
+  artwork (10 designed borders: Classic, Nature, Leaf, Bronze, Silver, Gold,
+  Achievement, Event, Rank, Premium) extracted from the designer sheet into
+  the app bundle.
+- EVERY border has its own signature animation:
+  * Classic — soft halo breathing
+  * Nature — gentle botanical sway (rotates like leaves in the wind)
+  * Leaf — living scale breathing + green aura
+  * Bronze / Silver — warm/cool metal shine sweeps + aura pulses
+  * Gold — golden shine sweep, warm aura, orbiting gold sparks
+  * Achievement — celebratory star pop + sparkle
+  * Event — counter-rotating gold/red festive arcs + sparks
+  * Rank — violet energy sweep + aura
+  * Premium — the full treatment: gold+red counter shimmer, aura, sparks
+- Dense lists (leaderboard, friends rows) render the artwork statically to
+  keep scrolling smooth; profile/picker/avatar headers animate.
+
+### Frame unlocks — day-based progression (spec)
+- NEW ACCOUNTS own ONLY the Classic (Common) border at signup.
+- Nature (Common) unlocks on Day 7 smoke-free.
+- Leaf (Uncommon) unlocks on Day 30 smoke-free.
+- Bronze / Silver / Gold are now Gold-purchase-only (250 / 600 / 1200 Gold;
+  the old level 3/5/8 free unlocks are removed).
+- Achievement (any achievement), Event (event champion) and Premium
+  (verified subscription) keep their earned unlock paths.
+- Rank border now requires Tree rank (Level 9) instead of being free.
+
+### Gold Ads for subscribers
+- The "Gold Ads" rewarded card (+200 Gold, limitless) is now visible to
+  PREMIUM subscribers too — it is an opt-in reward placement, and
+  subscribers may still want Gold. Interstitial/native placements remain
+  hidden for Premium (ad-free experience unchanged).
+
+### Follow — real fix for "Couldn't follow — check your connection"
+- Two-stage commit: the follows/{a}_{b} edge (the source of truth) is
+  written FIRST; the publicProfiles follower/following counters are updated
+  best-effort afterwards. A rejected counter write can no longer fail the
+  follow itself (this was killing every follow when any single write in the
+  old all-or-nothing batch was denied).
+- Error surfacing now distinguishes PERMISSION_DENIED ("still rolling out on
+  the server") from real network errors.
+- NOTE: the social graph still requires the v5 Firestore rules (follows
+  collection + counter updates) to be published from the console — the
+  rules file ships with this release and as firestore-rules-publish-v5.txt.
+
+### New app icon
+- Launcher icon replaced with the new nature artwork (leaves + sun + hills
+  + river): legacy square/round mipmaps, adaptive background layer, and a
+  preserved monochrome layer for themed icons.
+
 ## v1.0.6 (versionCode 7) — guided craving workouts with 5-second countdown
 
 ### Craving Coping — real workouts (fixes "instant confetti" bug)

@@ -50,66 +50,92 @@ class FollowRepository(
     /**
      * Follow [targetUid]. One-way relationship — does not create friendship.
      * Idempotent: re-following someone you already follow is a no-op.
+     *
+     * v1.0.7 HARDENING — two-stage commit:
+     *  1. The `follows/{me}_{target}` edge is written FIRST and is the sole
+     *     source of truth (isFollowing reads it). The follow succeeds as soon
+     *     as this lands.
+     *  2. The denormalized `publicProfiles` counters are updated best-effort.
+     *     A rejected counter write (older published rules, sparse profile
+     *     create edge cases) must NEVER fail the follow itself — counters are
+     *     cosmetic and recomputable from the follows collection.
      */
     suspend fun followUser(targetUid: String): Result<Unit> = runCatching {
         val me = currentUidOrError()
         require(targetUid.isNotBlank() && targetUid != me) { "Invalid follow target" }
 
         withTimeoutOrNull(TIMEOUT_MS) {
-            val ref = firestore.collection(FOLLOWS_COLLECTION).document(followId(me, targetUid))
-            firestore.runBatch { batch ->
-                batch.set(
-                    ref,
+            firestore.collection(FOLLOWS_COLLECTION).document(followId(me, targetUid))
+                .set(
                     mapOf(
                         "followerId" to me,
                         "followedId" to targetUid,
                         "createdAt" to FieldValue.serverTimestamp()
                     )
                 )
-                batch.set(
-                    firestore.collection(PUBLIC_PROFILES_COLLECTION).document(targetUid),
-                    mapOf("followerCount" to FieldValue.increment(1)),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
-                batch.set(
-                    firestore.collection(PUBLIC_PROFILES_COLLECTION).document(me),
-                    mapOf("followingCount" to FieldValue.increment(1)),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
-            }.await()
+                .await()
         } ?: throw IllegalStateException("Follow timed out — try again")
+
+        runCatching {
+            withTimeoutOrNull(TIMEOUT_MS) {
+                firestore.runBatch { batch ->
+                    batch.set(
+                        firestore.collection(PUBLIC_PROFILES_COLLECTION).document(targetUid),
+                        mapOf("followerCount" to FieldValue.increment(1)),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                    batch.set(
+                        firestore.collection(PUBLIC_PROFILES_COLLECTION).document(me),
+                        mapOf("followingCount" to FieldValue.increment(1)),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                }.await()
+            }
+        }.onFailure { e ->
+            Timber.w(e, "Follow counter update failed (non-fatal) — edge still recorded")
+        }
         Timber.i("FollowRepository: %s now follows %s", me, targetUid)
         Unit
     }
 
     /**
-     * Unfollow [targetUid]. Removes the one-way relationship and updates the
-     * denormalized counters atomically. Idempotent.
+     * Unfollow [targetUid]. Removes the one-way relationship; the
+     * denormalized counter updates are best-effort (see [followUser]).
+     * Idempotent.
      */
     suspend fun unfollowUser(targetUid: String): Result<Unit> = runCatching {
         val me = currentUidOrError()
         require(targetUid.isNotBlank()) { "Invalid unfollow target" }
 
-        withTimeoutOrNull(TIMEOUT_MS) {
+        val removed = withTimeoutOrNull(TIMEOUT_MS) {
             val ref = firestore.collection(FOLLOWS_COLLECTION).document(followId(me, targetUid))
             val existing = ref.get().await()
             if (!existing.exists()) {
-                return@withTimeoutOrNull // nothing to do — already not following
+                return@withTimeoutOrNull false // nothing to do — already not following
             }
-            firestore.runBatch { batch ->
-                batch.delete(ref)
-                batch.set(
-                    firestore.collection(PUBLIC_PROFILES_COLLECTION).document(targetUid),
-                    mapOf("followerCount" to FieldValue.increment(-1)),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
-                batch.set(
-                    firestore.collection(PUBLIC_PROFILES_COLLECTION).document(me),
-                    mapOf("followingCount" to FieldValue.increment(-1)),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
-            }.await()
+            ref.delete().await()
+            true
         } ?: throw IllegalStateException("Unfollow timed out — try again")
+        if (!removed) return@runCatching
+
+        runCatching {
+            withTimeoutOrNull(TIMEOUT_MS) {
+                firestore.runBatch { batch ->
+                    batch.set(
+                        firestore.collection(PUBLIC_PROFILES_COLLECTION).document(targetUid),
+                        mapOf("followerCount" to FieldValue.increment(-1)),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                    batch.set(
+                        firestore.collection(PUBLIC_PROFILES_COLLECTION).document(me),
+                        mapOf("followingCount" to FieldValue.increment(-1)),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                }.await()
+            }
+        }.onFailure { e ->
+            Timber.w(e, "Unfollow counter update failed (non-fatal) — edge still removed")
+        }
         Timber.i("FollowRepository: %s unfollowed %s", me, targetUid)
         Unit
     }

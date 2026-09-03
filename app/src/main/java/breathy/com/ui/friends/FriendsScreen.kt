@@ -898,7 +898,8 @@ private fun FollowUserCard(
                     breathy.com.data.models.User.computeLevel(profile.xp)
                 ),
                 size = 46.dp,
-                contentDescription = "${profile.nickname}'s avatar"
+                contentDescription = "${profile.nickname}'s avatar",
+                animated = false
             )
 
             Column(modifier = Modifier.weight(1f)) {
@@ -1210,7 +1211,8 @@ private fun FriendItem(
                         breathy.com.data.models.User.computeLevel(profile.xp)
                     ),
                     size = 48.dp,
-                    contentDescription = "${profile.nickname}'s avatar"
+                    contentDescription = "${profile.nickname}'s avatar",
+                    animated = false
                 )
                 // Online indicator dot (shows if user has daysSmokeFree > 0
                 // as a proxy for active status; real app uses Firestore presence)
@@ -1940,7 +1942,8 @@ private fun SearchResultItem(
                     breathy.com.data.models.User.computeLevel(profile.xp)
                 ),
                 size = 36.dp,
-                contentDescription = "${profile.nickname}'s avatar"
+                contentDescription = "${profile.nickname}'s avatar",
+                animated = false
             )
 
             Spacer(modifier = Modifier.width(10.dp))

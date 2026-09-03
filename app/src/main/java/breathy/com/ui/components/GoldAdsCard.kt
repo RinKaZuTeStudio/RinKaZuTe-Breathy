@@ -29,9 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import breathy.com.BreathyApplication
-import breathy.com.data.repository.PremiumRepository
 import breathy.com.ui.theme.DeepForest
 import breathy.com.ui.theme.GoldDeep
 import breathy.com.ui.theme.NaturalYellow
@@ -50,7 +48,8 @@ import breathy.com.utils.AdManager
  *   (onAdRewarded) fires — never for merely opening the ad. Duplicate
  *   callbacks for one show are guarded (AtomicBoolean) and the Gold-ledger
  *   dedup key (`goldads_{showToken}`) makes replays impossible.
- * - Verified Premium subscribers never see this card (ad-free experience).
+ * - Verified Premium subscribers see this card TOO (v1.0.7): Gold Ads is a
+ *   REWARD placement, not an interruption — subscribers may still want Gold.
  * - The ad reloads automatically after every completion/closed callback.
  */
 @Composable
@@ -59,11 +58,6 @@ fun GoldAdsCard(
 ) {
     val app = LocalContext.current.applicationContext as? BreathyApplication ?: return
     val adManager = app.appModule.adManager
-    val premiumRepository: PremiumRepository = app.appModule.premiumRepository
-    val premiumState by premiumRepository.state.collectAsStateWithLifecycle()
-
-    // Premium = zero ads: no card, no upsell, nothing.
-    if (premiumState.isPremium) return
 
     val activity = LocalContext.current as? ComponentActivity
     var note by remember { mutableStateOf<String?>(null) }

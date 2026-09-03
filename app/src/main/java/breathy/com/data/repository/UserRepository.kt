@@ -449,7 +449,8 @@ class UserRepository(
             level = user.level,
             hasAchievement = user.achievements.isNotEmpty(),
             hasEventWin = user.achievements.contains("event_champion"),
-            isPremium = isPremium
+            isPremium = isPremium,
+            daysSmokeFree = user.daysSmokeFree
         )
         if (!ownedByPurchase && !progressionUnlocked) {
             throw IllegalStateException("Frame '${frame.id}' is not unlocked for this user")

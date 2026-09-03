@@ -31,11 +31,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -71,19 +75,23 @@ import kotlin.math.sin
  * leaderboard, community posts, event participants, friends, chat.
  *
  * Renders the user's photo (or a botanical default) inside the selected
- * [AvatarFrame]. Frames are REAL DESIGNED ARTWORK — layered botanical
- * compositions (branches, leaves, laurels, petals, crests, ornamental
- * metal) with unique silhouettes per frame — never a plain colored ring.
+ * [AvatarFrame]. Frame artwork is the OFFICIAL "Avatar Borders Collection"
+ * (res/drawable-nodpi/frame_*.png) — 4K-designed wreaths, crests and rings.
  *
- * Animation tiers (elegant, never casino-flashy):
- * - COMMON / UNCOMMON  → static artwork
- * - RARE               → soft shimmer sweep
- * - EPIC               → shimmer + gentle glow pulse
- * - LEGENDARY          → + orbiting botanical light particles
- * - PREMIUM            → the full treatment: glow, light sweep, particles
+ * EVERY border has its own signature animation (v1.0.7):
+ * - CLASSIC      → soft halo breathing
+ * - NATURE       → gentle botanical sway (rotates ±2.4° like leaves in wind)
+ * - LEAF         → living scale breathing + green aura
+ * - BRONZE       → warm amber aura pulse + bronze shine sweep
+ * - SILVER       → cool metal shine sweep + pale aura
+ * - GOLD         → golden shine sweep, warm aura, orbiting gold sparks
+ * - ACHIEVEMENT  → celebratory star pop + sparkle
+ * - EVENT        → counter-rotating gold/red festive arcs + sparks
+ * - RANK         → violet energy sweep + aura
+ * - PREMIUM      → the full treatment: gold+red counter shimmer, aura, sparks
  *
- * When [frame] is [AvatarFrame.RANK], the artwork is derived from the
- * user's [RankTier] so the border always reflects real progression.
+ * Pass [animated] = false in dense lists (leaderboard) to keep scrolling
+ * buttery — the artwork stays, the motion pauses.
  */
 @Composable
 fun BreathyAvatar(
@@ -99,16 +107,30 @@ fun BreathyAvatar(
 ) {
     val effectiveFrame = frame ?: AvatarFrame.NONE
 
+    // Official frame artwork (Avatar Borders Collection sprite sheet)
+    val art: ImageBitmap? = when (effectiveFrame) {
+        AvatarFrame.NONE -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_classic)
+        AvatarFrame.NATURE -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_nature)
+        AvatarFrame.LEAF -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_leaf)
+        AvatarFrame.BRONZE -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_bronze)
+        AvatarFrame.SILVER -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_silver)
+        AvatarFrame.GOLD -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_gold)
+        AvatarFrame.ACHIEVEMENT -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_achievement)
+        AvatarFrame.EVENT -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_event)
+        AvatarFrame.RANK -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_rank)
+        AvatarFrame.PREMIUM -> ImageBitmap.imageResource(breathy.com.R.drawable.frame_premium)
+    }
+
     // ── Animation phase (only for RARE and above) ──────────────────────────
-    val isAnimated = animated && effectiveFrame.rarity.ordinal >= FrameRarity.RARE.ordinal
-    val phase: Float = if (isAnimated) {
+    val phase: Float = if (animated) {
         val transition = rememberInfiniteTransition(label = "frame_art_${effectiveFrame.id}")
         val duration = when (effectiveFrame.rarity) {
-            FrameRarity.RARE -> 6000
-            FrameRarity.EPIC -> 4600
-            FrameRarity.LEGENDARY -> 3800
+            FrameRarity.COMMON -> 5200
+            FrameRarity.UNCOMMON -> 5200
+            FrameRarity.RARE -> 4200
+            FrameRarity.EPIC -> 3800
+            FrameRarity.LEGENDARY -> 3400
             FrameRarity.PREMIUM -> 3200
-            else -> 6000
         }
         val p by transition.animateFloat(
             initialValue = 0f,
@@ -146,13 +168,13 @@ fun BreathyAvatar(
         androidx.compose.foundation.Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
-            drawFrameArtwork(effectiveFrame, rankTier, ringWidth.toPx(), phase)
+            drawFrameArtwork(effectiveFrame, rankTier, ringWidth.toPx(), phase, art)
         }
 
         // ── Inner avatar circle, inset inside the artwork ──────────────────
         Box(
             modifier = Modifier
-                .size(size - (ringWidth * 3.6f))
+                .size(size * 0.72f)
                 .clip(CircleShape)
                 .background(BreathyPalette.veryLightSage)
         ) {
@@ -248,6 +270,21 @@ private fun DrawScope.drawFrameArtwork(
     frame: AvatarFrame,
     rankTier: RankTier?,
     ringWidthPx: Float,
+    phase: Float,
+    art: ImageBitmap?
+) {
+    if (art == null) {
+        drawLegacyFrameArtwork(frame, rankTier, ringWidthPx, phase)
+        return
+    }
+    drawOfficialFrameArt(frame, ringWidthPx, phase, art)
+}
+
+/** Pre-v1.0.7 programmatic frames — kept as a defensive fallback. */
+private fun DrawScope.drawLegacyFrameArtwork(
+    frame: AvatarFrame,
+    rankTier: RankTier?,
+    ringWidthPx: Float,
     phase: Float
 ) {
     val center = Offset(size.width / 2f, size.height / 2f)
@@ -283,6 +320,187 @@ private fun DrawScope.drawFrameArtwork(
         AvatarFrame.RANK -> drawRankVineFrame(center, radius, ringWidthPx, rankTier)
 
         AvatarFrame.PREMIUM -> drawPremiumCrestFrame(center, radius, ringWidthPx, phase)
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Official frame art (Avatar Borders Collection) + signature animations
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Aura/glow color per frame — matched to each wreath's palette. */
+private val FrameAuraColors = mapOf(
+    AvatarFrame.NONE to Color(0xFF9BA88F),
+    AvatarFrame.NATURE to Color(0xFF8B9E6A),
+    AvatarFrame.LEAF to Color(0xFF6FA84E),
+    AvatarFrame.BRONZE to Color(0xFFC89058),
+    AvatarFrame.SILVER to Color(0xFFCBD5DF),
+    AvatarFrame.GOLD to Color(0xFFF0B93B),
+    AvatarFrame.ACHIEVEMENT to Color(0xFF5FA84E),
+    AvatarFrame.EVENT to Color(0xFFF0B93B),
+    AvatarFrame.RANK to Color(0xFF9B6BE0),
+    AvatarFrame.PREMIUM to Color(0xFFE86A5B)
+)
+
+/**
+ * Draw the official frame artwork with its SIGNATURE animation:
+ * aura breathing under the art, motion of the art itself (sway / breathe /
+ * pop), and light effects over it (shine sweeps, sparkles).
+ */
+private fun DrawScope.drawOfficialFrameArt(
+    frame: AvatarFrame,
+    ringWidthPx: Float,
+    phase: Float,
+    art: ImageBitmap
+) {
+    val center = Offset(size.width / 2f, size.height / 2f)
+    val ringRadius = size.minDimension / 2f * 0.86f
+    val tau = (2.0 * PI).toFloat()
+    val pulse = sin(phase * tau)
+    val aura = FrameAuraColors[frame] ?: Color(0xFF9BA88F)
+
+    // ── aura (under the artwork) ─────────────────────────────────────────
+    val auraMax = when (frame) {
+        AvatarFrame.NONE -> 0.14f
+        AvatarFrame.NATURE, AvatarFrame.LEAF -> 0.20f
+        AvatarFrame.BRONZE, AvatarFrame.SILVER -> 0.24f
+        AvatarFrame.RANK, AvatarFrame.ACHIEVEMENT -> 0.26f
+        else -> 0.32f // GOLD / EVENT / PREMIUM
+    }
+    drawGlow(center, ringRadius * 1.12f, aura, phase, maxAlpha = auraMax)
+
+    // ── artwork with per-frame motion ────────────────────────────────────
+    when (frame) {
+        // Nature: gentle botanical sway, like leaves in a breeze
+        AvatarFrame.NATURE -> rotate(degrees = 2.4f * pulse, pivot = center) {
+            drawArtScaled(art)
+        }
+        // Leaf: living scale breathing
+        AvatarFrame.LEAF -> {
+            val s = 1f + 0.018f * pulse
+            withTransform({ scale(s, s, center) }) { drawArtScaled(art) }
+        }
+        // Achievement: celebratory star pop once per cycle
+        AvatarFrame.ACHIEVEMENT -> {
+            val pop = maxOf(0f, sin(phase * tau))
+            val s = 1f + 0.035f * pop * pop * pop
+            withTransform({ scale(s, s, center) }) { drawArtScaled(art) }
+        }
+        else -> drawArtScaled(art)
+    }
+
+    // ── signature light effects (over the artwork) ───────────────────────
+    when (frame) {
+        AvatarFrame.BRONZE -> shineArc(
+            center, ringRadius, ringWidthPx, phase,
+            Color(0xFFE8C79A), alpha = 0.55f
+        )
+        AvatarFrame.SILVER -> shineArc(
+            center, ringRadius, ringWidthPx, phase,
+            Color(0xFFFFFFFF), alpha = 0.75f, sweep = 60f
+        )
+        AvatarFrame.GOLD -> {
+            shineArc(center, ringRadius, ringWidthPx, phase, Color(0xFFFFE08A), alpha = 0.85f, sweep = 75f)
+            drawSparkles(center, ringRadius, phase, 3, Color(0xFFFFD65E))
+        }
+        AvatarFrame.ACHIEVEMENT -> drawSparkles(
+            center, ringRadius, phase, 1, Color(0xFFFFE08A), big = true
+        )
+        AvatarFrame.EVENT -> {
+            shineArc(center, ringRadius, ringWidthPx, phase, Color(0xFFFFE08A), alpha = 0.8f, sweep = 70f)
+            shineArc(center, ringRadius, ringWidthPx, phase, Color(0xFFFF7A66), alpha = 0.7f, sweep = 55f, offset = 180f, dir = -1f)
+            drawSparkles(center, ringRadius, phase, 4, Color(0xFFFFE08A))
+        }
+        AvatarFrame.RANK -> {
+            shineArc(center, ringRadius, ringWidthPx, phase, Color(0xFFCBA8FF), alpha = 0.8f, sweep = 85f)
+            drawSparkles(center, ringRadius, phase, 2, Color(0xFFD9BCFF))
+        }
+        AvatarFrame.PREMIUM -> {
+            shineArc(center, ringRadius, ringWidthPx, phase, Color(0xFFFFE08A), alpha = 0.85f, sweep = 70f)
+            shineArc(center, ringRadius, ringWidthPx, phase, Color(0xFFFF6F61), alpha = 0.75f, sweep = 50f, offset = 140f, dir = -1f)
+            drawSparkles(center, ringRadius, phase, 4, Color(0xFFFFE08A))
+        }
+        else -> {}
+    }
+}
+
+/** Draw the artwork bitmap scaled to fill the canvas. */
+private fun DrawScope.drawArtScaled(art: ImageBitmap) {
+    drawImage(
+        image = art,
+        srcOffset = androidx.compose.ui.unit.IntOffset.Zero,
+        srcSize = androidx.compose.ui.unit.IntSize(art.width, art.height),
+        dstOffset = androidx.compose.ui.unit.IntOffset.Zero,
+        dstSize = androidx.compose.ui.unit.IntSize(
+            size.width.toInt().coerceAtLeast(1),
+            size.height.toInt().coerceAtLeast(1)
+        ),
+        filterQuality = FilterQuality.High
+    )
+}
+
+/** A soft light arc sweeping around the ring — the frame's "shine". */
+private fun DrawScope.shineArc(
+    center: Offset,
+    radius: Float,
+    widthPx: Float,
+    phase: Float,
+    color: Color,
+    alpha: Float,
+    sweep: Float = 70f,
+    offset: Float = 0f,
+    dir: Float = 1f
+) {
+    val start = -90f + dir * phase * 360f + offset
+    rotate(degrees = start, pivot = center) {
+        drawArc(
+            brush = Brush.sweepGradient(
+                colors = listOf(Color.Transparent, color.copy(alpha = alpha), Color.Transparent),
+                center = center
+            ),
+            startAngle = -sweep / 2f,
+            sweepAngle = sweep,
+            useCenter = false,
+            topLeft = Offset(center.x - radius, center.y - radius),
+            size = Size(radius * 2f, radius * 2f),
+            style = Stroke(width = (widthPx * 1.4f).coerceAtLeast(2f), cap = StrokeCap.Round)
+        )
+    }
+}
+
+/** Small twinkling glints orbiting the ring. */
+private fun DrawScope.drawSparkles(
+    center: Offset,
+    radius: Float,
+    phase: Float,
+    count: Int,
+    color: Color,
+    dir: Float = 1f,
+    big: Boolean = false
+) {
+    val baseR = size.minDimension * if (big) 0.026f else 0.016f
+    repeat(count) { i ->
+        val ang = (dir * phase * 360f) + i * (360f / count) - 90f
+        val rad = ang * PI.toFloat() / 180f
+        val pos = center + Offset(cos(rad), sin(rad)) * radius
+        val tw = 0.5f + 0.5f * sin((phase * 2f + i) * PI.toFloat()).toFloat()
+        drawCircle(
+            color = color.copy(alpha = 0.25f + 0.75f * tw),
+            radius = baseR * (0.7f + 0.7f * tw),
+            center = pos
+        )
+        val arm = baseR * 1.7f * (0.6f + 0.6f * tw)
+        drawLine(
+            color = color.copy(alpha = 0.45f * tw),
+            start = pos - Offset(arm, 0f),
+            end = pos + Offset(arm, 0f),
+            strokeWidth = 1.1f
+        )
+        drawLine(
+            color = color.copy(alpha = 0.45f * tw),
+            start = pos - Offset(0f, arm),
+            end = pos + Offset(0f, arm),
+            strokeWidth = 1.1f
+        )
     }
 }
 
