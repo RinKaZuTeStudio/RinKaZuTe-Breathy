@@ -302,8 +302,19 @@ class HomeViewModel(
 
     // ── Actions ───────────────────────────────────────────────────────────
 
+    /**
+     * In-flight guard for the daily reward claim. Rapidly tapping Claim must
+     * not fire concurrent claim requests; the Firestore transaction remains
+     * the authoritative idempotency barrier (lastDailyClaim same-day check +
+     * goldTransactions dedup key), this guard only prevents redundant calls.
+     */
+    @Volatile
+    private var isClaimingDailyReward = false
+
     fun claimDailyReward() {
         val uid = userId ?: return
+        if (isClaimingDailyReward) return
+        isClaimingDailyReward = true
         viewModelScope.launch {
             try {
                 val result = userRepository.claimDailyReward(uid)
@@ -321,6 +332,8 @@ class HomeViewModel(
                 }
             } catch (e: Exception) {
                 _events.emit(HomeSingleEvent.ShowError(e.message ?: "Failed to claim reward"))
+            } finally {
+                isClaimingDailyReward = false
             }
         }
     }

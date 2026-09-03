@@ -1,148 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- Breathy Sage Nature — LIGHT-ONLY palette (spec section 23)             -->
+    <!-- No dark mode exists anywhere in the app.                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
     <!-- Background Colors — Three-tier depth system                            -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-
-    <!-- Deepest layer — full-screen background, behind all surfaces -->
-    <color name="bg_primary">#0D1117</color>
-    <!-- Card backgrounds, bottom sheets, dialog surfaces -->
-    <color name="bg_surface">#161B22</color>
+    <!-- Deepest layer — full-screen background (warm off-white) -->
+    <color name="bg_primary">#F8FAF6</color>
+    <!-- Card backgrounds, bottom sheets, dialog surfaces (pure white) -->
+    <color name="bg_surface">#FFFFFF</color>
     <!-- Elevated sub-surfaces: input fields, nested cards, dividers -->
-    <color name="bg_surface_variant">#1C2128</color>
+    <color name="bg_surface_variant">#EAF3E5</color>
     <!-- Highest elevation surface — modal overlays, dropdown menus -->
-    <color name="bg_surface_elevated">#21262D</color>
+    <color name="bg_surface_elevated">#FFFFFF</color>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- Neon Accent Colors                                                     -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-
-    <!-- Primary Neon Green — progress bars, success states, CTA buttons -->
-    <color name="accent_primary">#00E676</color>
-    <!-- Primary pressed state — 10% lighter -->
-    <color name="accent_primary_pressed">#33EB91</color>
+    <!-- Natural Green — progress bars, success states, CTA buttons -->
+    <color name="accent_primary">#6F9B5E</color>
+    <!-- Primary pressed state — slightly deeper green -->
+    <color name="accent_primary_pressed">#5D874E</color>
     <!-- Primary at 15% opacity — container backgrounds -->
-    <color name="accent_primary_container">#2600E676</color>
-    <!-- Primary at 30% opacity — glow effects -->
-    <color name="accent_primary_glow">#4D00E676</color>
+    <color name="accent_primary_container">#266F9B5E</color>
+    <!-- Primary at 30% opacity — soft tint effects -->
+    <color name="accent_primary_glow">#4D6F9B5E</color>
 
-    <!-- Secondary Neon Red — warnings, cravings, urgency indicators -->
-    <color name="accent_secondary">#FF6B6B</color>
-    <!-- Secondary pressed state -->
-    <color name="accent_secondary_pressed">#FF8A8A</color>
-    <!-- Secondary container background -->
-    <color name="accent_secondary_container">#26FF6B6B</color>
+    <!-- Warm Earth (secondary) -->
+    <color name="accent_secondary">#A9825B</color>
+    <color name="accent_secondary_pressed">#8F6C4A</color>
+    <color name="accent_secondary_container">#26A9825B</color>
 
-    <!-- Info Blue — links, secondary actions, informational badges -->
-    <color name="accent_info">#4FC3F7</color>
-    <!-- Info pressed state -->
-    <color name="accent_info_pressed">#7ED4FA</color>
-    <!-- Info container background -->
-    <color name="accent_info_container">#264FC3F7</color>
+    <!-- Info — soft sky -->
+    <color name="accent_info">#6FA6B5</color>
+    <color name="accent_info_pressed">#5A8FA0</color>
+    <color name="accent_info_container">#266FA6B5</color>
 
-    <!-- Warning Yellow — caution banners, rate-limit notices -->
-    <color name="accent_warning">#FFD54F</color>
-    <!-- Warning pressed state -->
-    <color name="accent_warning_pressed">#FFE082</color>
-    <!-- Warning container background -->
-    <color name="accent_warning_container">#26FFD54F</color>
+    <!-- Warning — natural yellow -->
+    <color name="accent_warning">#F1D98A</color>
+    <color name="accent_warning_pressed">#E5CB72</color>
+    <color name="accent_warning_container">#26F1D98A</color>
 
-    <!-- Purple — premium features, achievement badges, XP -->
-    <color name="accent_purple">#AB47BC</color>
-    <!-- Purple pressed state -->
-    <color name="accent_purple_pressed">#CE93D8</color>
-    <!-- Purple container background -->
-    <color name="accent_purple_container">#26AB47BC</color>
+    <!-- Premium — deep forest green -->
+    <color name="accent_purple">#285C3A</color>
+    <color name="accent_purple_pressed">#1F4A2E</color>
+    <color name="accent_purple_container">#26285C3A</color>
 
-    <!-- Orange — cravings, urgency, warnings -->
-    <color name="accent_orange">#FF9100</color>
-    <!-- Orange pressed state -->
-    <color name="accent_orange_pressed">#FFB74D</color>
-    <!-- Orange container background -->
-    <color name="accent_orange_container">#26FF9100</color>
-    <!-- Orange glow at 25% for craving FAB -->
-    <color name="accent_orange_glow">#40FF9100</color>
+    <!-- Orange — cravings, urgency -->
+    <color name="accent_orange">#C97F6D</color>
+    <color name="accent_orange_pressed">#B06B59</color>
+    <color name="accent_orange_container">#26C97F6D</color>
+    <color name="accent_orange_glow">#40C97F6D</color>
 
-    <!-- Pink — likes, hearts, social affirmation -->
-    <color name="accent_pink">#FF4081</color>
-    <!-- Pink pressed state -->
-    <color name="accent_pink_pressed">#FF80AB</color>
-    <!-- Pink container background -->
-    <color name="accent_pink_container">#26FF4081</color>
+    <!-- Pink — likes, hearts -->
+    <color name="accent_pink">#C97F6D</color>
+    <color name="accent_pink_pressed">#B06B59</color>
+    <color name="accent_pink_container">#26C97F6D</color>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- Text Colors — Three-level emphasis model                               -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- Text Colors — Three-level emphasis model -->
+    <color name="text_primary">#183D28</color>
+    <color name="text_secondary">#5C6B5E</color>
+    <color name="text_disabled">#9AA79B</color>
+    <color name="text_inverse">#FFFFFF</color>
 
-    <!-- Headlines, body text, high-emphasis labels -->
-    <color name="text_primary">#E6EDF3</color>
-    <!-- Subtitles, helper text, metadata, timestamps -->
-    <color name="text_secondary">#8B949E</color>
-    <!-- Disabled states, placeholder text, inactive tabs -->
-    <color name="text_disabled">#484F58</color>
-    <!-- Inverse text — for use on light/accent backgrounds -->
-    <color name="text_inverse">#0D1117</color>
+    <!-- Semantic Colors -->
+    <color name="semantic_error">#C0574F</color>
+    <color name="semantic_error_container">#26C0574F</color>
+    <color name="semantic_success">#6F9B5E</color>
+    <color name="semantic_warning">#F1D98A</color>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- Semantic Colors                                                        -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- Achievement Colors -->
+    <color name="achievement_gold">#F1D98A</color>
+    <color name="achievement_silver">#D5E6CC</color>
+    <color name="achievement_bronze">#A9825B</color>
+    <color name="achievement_gold_container">#33F1D98A</color>
+    <color name="achievement_silver_container">#33D5E6CC</color>
+    <color name="achievement_bronze_container">#33A9825B</color>
 
-    <!-- Error states, form validation failures, destructive actions -->
-    <color name="semantic_error">#FF5252</color>
-    <!-- Error container background -->
-    <color name="semantic_error_container">#26FF5252</color>
-    <!-- Success toasts, completed milestones (same as accent_primary) -->
-    <color name="semantic_success">#00E676</color>
-    <!-- Warning banners, rate-limit notices, cautionary prompts -->
-    <color name="semantic_warning">#FFD54F</color>
+    <!-- Outlines and Dividers -->
+    <color name="outline">#AFC8A3</color>
+    <color name="outline_variant">#D5E6CC</color>
+    <color name="outline_neon">#4D6F9B5E</color>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- Achievement Colors                                                     -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- Scrim and Overlay -->
+    <color name="scrim">#99183D28</color>
+    <color name="overlay_dark">#CC183D28</color>
 
-    <color name="achievement_gold">#FFD700</color>
-    <color name="achievement_silver">#C0C0C0</color>
-    <color name="achievement_bronze">#CD7F32</color>
-    <!-- Achievement gold at 20% for badge backgrounds -->
-    <color name="achievement_gold_container">#33FFD700</color>
-    <!-- Achievement silver at 20% for badge backgrounds -->
-    <color name="achievement_silver_container">#33C0C0C0</color>
-    <!-- Achievement bronze at 20% for badge backgrounds -->
-    <color name="achievement_bronze_container">#33CD7F32</color>
+    <!-- Gradient Colors (referenced in drawables) -->
+    <color name="gradient_start_green">#6F9B5E</color>
+    <color name="gradient_end_blue">#6FA6B5</color>
+    <color name="gradient_start_purple">#285C3A</color>
+    <color name="gradient_end_purple_blue">#6FA6B5</color>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- Outlines and Dividers                                                  -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-
-    <!-- Card outlines, border strokes -->
-    <color name="outline">#21262D</color>
-    <!-- Subtle dividers, hairlines -->
-    <color name="outline_variant">#1C2128</color>
-    <!-- Neon border — thin accent-primary stroke for cards -->
-    <color name="outline_neon">#4D00E676</color>
-
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- Scrim and Overlay                                                      -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-
-    <!-- Modal scrim — 60% opacity primary background -->
-    <color name="scrim">#990D1117</color>
-    <!-- Dark overlay for image readability -->
-    <color name="overlay_dark">#CC0D1117</color>
-
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- Gradient Colors (referenced in drawables)                              -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-
-    <color name="gradient_start_green">#00E676</color>
-    <color name="gradient_end_blue">#4FC3F7</color>
-    <color name="gradient_start_purple">#AB47BC</color>
-    <color name="gradient_end_purple_blue">#4FC3F7</color>
-
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- White / Black utility                                                  -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-
+    <!-- White / Black utility -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <color name="transparent">#00000000</color>

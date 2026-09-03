@@ -181,7 +181,6 @@ fun ProfileScreen(
     val context = LocalContext.current
 
     // Dialog states
-    var showDeleteDialog by remember { mutableStateOf(false) }
     var showAccountPrivacy by remember { mutableStateOf(false) }
     var showEditNicknameDialog by remember { mutableStateOf(false) }
     var showEditQuitDateDialog by remember { mutableStateOf(false) }
@@ -361,49 +360,6 @@ fun ProfileScreen(
         }
     }
 
-    // ── Delete Account Confirmation Dialog ────────────────────────────────
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = {
-                Text(
-                    text = "Delete Account?",
-                    color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = "This action is permanent and cannot be undone. All your data, progress, " +
-                            "achievements, and stats will be permanently deleted.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        scope.launch { viewModel.deleteAccount() }
-                    }
-                ) {
-                    Text(
-                        text = "Delete",
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.error,
-            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-
     // ── Edit Nickname Dialog ──────────────────────────────────────────────
     if (showEditNicknameDialog) {
         var nicknameText by remember { mutableStateOf(uiState.user?.nickname ?: "") }
@@ -568,11 +524,7 @@ fun ProfileScreen(
     // ── Account & Privacy sheet (spec section 33) ────────────
     if (showAccountPrivacy) {
         AccountPrivacySheet(
-            onDismiss = { showAccountPrivacy = false },
-            onDeleteAccount = {
-                showAccountPrivacy = false
-                showDeleteDialog = true
-            }
+            onDismiss = { showAccountPrivacy = false }
         )
     }
 
@@ -1506,7 +1458,7 @@ private fun SubscriptionStatusSection(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Action Buttons — Sign out, Delete account
+//  Action Buttons — Sign out, Account & Privacy
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -1550,9 +1502,7 @@ private fun ActionButtonsSection(
             }
         }
 
-        // Account & Privacy — houses the account deletion flow (spec section 33).
-        // The destructive action is no longer a prominent button on the main
-        // settings screen; it lives in a discoverable privacy context.
+        // Account & Privacy — read-only information about account data.
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1582,7 +1532,7 @@ private fun ActionButtonsSection(
                         )
                     )
                     Text(
-                        text = "Manage your data, account deletion and privacy",
+                        text = "How your data is stored and protected",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1600,14 +1550,15 @@ private fun ActionButtonsSection(
 }
 
 /**
- * Account & Privacy sheet (spec section 33) — explains what happens on
- * deletion and hosts the actual delete-account entry point.
+ * Account & Privacy sheet — read-only explanation of how account data is
+ * stored and protected. Account deletion is NOT exposed in the app UI
+ * (spec: remove the Delete Account button; deletion stays a server-side,
+ * support-driven operation).
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun AccountPrivacySheet(
-    onDismiss: () -> Unit,
-    onDeleteAccount: () -> Unit
+    onDismiss: () -> Unit
 ) {
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1629,52 +1580,12 @@ private fun AccountPrivacySheet(
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = "Your recovery data (streaks, milestones, achievements) belongs to you. " +
-                    "Signing out keeps your data on this account. Deleting your account permanently " +
-                    "removes your profile, posts, friendships, chats and progress. This cannot be undone.",
+                    "Signing out keeps your data safe on this account. You can sign back in " +
+                    "at any time with the same Google account.",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.06f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                onClick = onDeleteAccount
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = "Delete account",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                        Text(
-                            text = "Permanent — removes all your data",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -1995,19 +1906,6 @@ class ProfileViewModel(
         Timber.i("Privacy toggled: %s", enabled)
     }
 
-    fun deleteAccount() {
-        viewModelScope.launch {
-            try {
-                authRepository.deleteAccount()
-                Timber.i("Account deleted")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to delete account")
-                _uiState.update { it.copy(errorMessage = "Failed to delete account. Please try again.") }
-            }
-        }
-    }
 }
 
 class ProfileViewModelFactory(

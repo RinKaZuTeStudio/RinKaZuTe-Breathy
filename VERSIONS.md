@@ -1,5 +1,44 @@
 # Breathy — Version History
 
+## v1.0.4 (versionCode 5) — daily-reward permissions fix, leaderboard highlight fix, light-only UI hardening
+
+**Signing:** same official release keystore (alias `breathy`, SHA-1
+`06:03:48:17:16:6B:F1:63:D7:15:D9:B9:56:E5:96:1D:B2:5F:2A:D4`, committed at
+`app/release.keystore`).
+
+### Daily Login Reward — permission_denied root cause fixed
+- `firestore.rules`: `users/{uid}` and `publicProfiles/{uid}` owner updates no
+  longer re-validate the FULL document state. Sparse pre-onboarding docs
+  (Google sign-in creates them without `quitDate`) and blank-nickname profiles
+  were denied EVERY owner update — the daily reward transaction failed with
+  "Missing or insufficient permissions". Ownership + immutable identity
+  anchors (email/createdAt) remain enforced; nothing is public.
+- `appConfig` match blocks moved INSIDE the /databases/{db}/documents scope
+  (they sat after the closing brace, so the catch-all denied them).
+- Auth: guaranteed non-empty nickname (name → Google display name → email
+  prefix → "Breathy User") so public profiles always validate.
+- ViewModel in-flight guard: rapid Claim taps cannot fire concurrent claims.
+  Idempotency: Firestore transaction + same-day `lastDailyClaim` check +
+  `goldTransactions/daily_checkin_{date}` dedup key.
+
+### Leaderboard current-user row (main + event)
+- Identical layout/size/spacing/avatar/border/rank for every row; elevation 0.
+- The ONLY difference: a slightly darker subtle sage background
+  (`#EFF3ED`, `CurrentUserRowBackground`) — no shadow, glow, floating card,
+  thick border or oversized outline. YOU chip kept, toned subtle.
+- Identification is strictly by Firebase Auth UID.
+
+### UI
+- Dark-mode remnants removed: XML theme `Theme.Material3.Light`, status/nav
+  bars light, colors.xml rewritten to the light Sage Nature palette (dark
+  GitHub-palette values caused a dark startup flash).
+- Delete Account button/dialog/state fully removed from Settings UI
+  (logout untouched).
+- Event rewards card: honest PAYOUT STATUS block ("PENDING PAYOUT") — never
+  claims a prize was paid before delivery.
+- Recovery Journey retained (stage-chaptered rail, 3 states) — no identical
+  card stacking.
+
 ## v1.0.3 (versionCode 4) — LevelPlay ads + payout setup + billing sync hardening
 
 **Released:** 2026-09

@@ -76,12 +76,25 @@ service cloud.firestore {
       allow create: if isOwner(userId)
                      && isNonEmptyString(request.resource.data.email)
                      && request.resource.data.createdAt is timestamp;
-      // UPDATE requires the full set of fields after onboarding is complete.
+      // UPDATE is owner-only. Identity anchors stay immutable (email/createdAt
+      // cannot be changed once present), while everything else (nickname,
+      // quitDate, coins, xp, avatarFrame, ownedFrames, payout email, daily
+      // reward state…) is owned data the signed-in user maintains.
+      //
+      // ROOT-CAUSE FIX (daily reward permission_denied): the previous rule
+      // re-validated the FULL document state (quitDate/nickname/createdAt) on
+      // EVERY update, which denied ALL legitimate owner writes for sparse
+      // pre-onboarding documents (Google sign-in creates the doc without
+      // quitDate) and for profiles with blank nicknames — the daily reward
+      // transaction (coins/xp/lastDailyClaim + goldTransactions ledger entry)
+      // failed with "Missing or insufficient permissions".
+      // Ownership of the private document IS the security boundary; the
+      // catch-all deny + immutable delete still apply.
       allow update: if isOwner(userId)
-                     && request.resource.data.email is string
-                     && isNonEmptyString(request.resource.data.nickname)
-                     && request.resource.data.quitDate is timestamp
-                     && request.resource.data.createdAt is timestamp;
+                     && (!('email' in resource.data)
+                         || resource.data.email == request.resource.data.email)
+                     && (!('createdAt' in resource.data)
+                         || resource.data.createdAt == request.resource.data.createdAt);
       allow delete: if false;   // Deletion only via Cloud Functions / admin SDK
 
       // ── goldTransactions sub-collection ────────────────────────────
@@ -123,10 +136,13 @@ service cloud.firestore {
       allow create: if isOwner(userId)
                      && isNonEmptyString(request.resource.data.nickname)
                      && isNonNegative(request.resource.data.xp);
-      allow update: if isOwner(userId)
-                     && isNonEmptyString(request.resource.data.nickname)
-                     && isNonNegative(request.resource.data.daysSmokeFree)
-                     && isNonNegative(request.resource.data.xp);
+      // OWNER update is owner-only. ROOT-CAUSE FIX (daily reward
+      // permission_denied): the previous rule re-validated the FULL profile
+      // state (nickname/daysSmokeFree/xp) on every update, which denied the
+      // daily-reward transaction's xp mirror (and profile edits) whenever any
+      // legacy/sparse field was missing. Ownership is the security boundary;
+      // all fields remain owner-maintained and publicly READ-only.
+      allow update: if isOwner(userId);
       // FOLLOW SYSTEM: any authenticated user may maintain the denormalized
       // follow counters on someone else's profile — but ONLY those fields
       // (FieldValue.increment writes; no profile data may be touched).
@@ -372,6 +388,22 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    // ── App config (one-time initialization flags) ──────────────────────
+    // Readable by any signed-in user. Writes: none — except the ONE-TIME
+    // initial-reset marker which can be CREATED exactly once by any user
+    // (updates/deletes are denied forever, making the reset immutable).
+    // NOTE: these match blocks MUST live inside /databases/{database}/documents
+    // — previously they sat AFTER the closing brace, so their paths never
+    // matched real documents and reads were denied by the catch-all.
+    match /appConfig/{docId} {
+      allow read: if isAuthenticated();
+    }
+    match /appConfig/initialReset_v1 {
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['resetAt', 'reason']);
+      allow update, delete: if false;
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     //  Catch-all: deny everything else
     // ═══════════════════════════════════════════════════════════════════
@@ -382,16 +414,3 @@ service cloud.firestore {
 
   }
 }
-
-    // ── App config (one-time initialization flags) ──────────────────────
-    // Readable by any signed-in user. Writes: none — except the ONE-TIME
-    // initial-reset marker which can be CREATED exactly once by any user
-    // (updates/deletes are denied forever, making the reset immutable).
-    match /appConfig/{docId} {
-      allow read: if isAuthenticated();
-    }
-    match /appConfig/initialReset_v1 {
-      allow create: if isAuthenticated()
-        && request.resource.data.keys().hasOnly(['resetAt', 'reason']);
-      allow update, delete: if false;
-    }

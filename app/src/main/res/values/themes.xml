@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base Application Theme (Material 3 — Dark) -->
-    <style name="Theme.Breathy" parent="Theme.Material3.Dark.NoActionBar">
+    <!-- Base Application Theme (Material 3 — Light, Brethy Sage Nature) -->
+    <style name="Theme.Breathy" parent="Theme.Material3.Light.NoActionBar">
         <item name="android:statusBarColor">@color/transparent</item>
         <item name="android:navigationBarColor">@color/bg_surface</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowBackground">@color/bg_primary</item>
         <item name="android:colorBackgroundCacheHint">@null</item>

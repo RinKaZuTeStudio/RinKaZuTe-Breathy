@@ -126,7 +126,13 @@ class AuthRepository(
                 try {
                     val newUser = User(
                         email = email,
-                        nickname = nickname.ifBlank { firebaseUser.displayName ?: "" },
+                        // Guaranteed non-empty nickname: provided name → Google
+                        // display name → email prefix. An empty nickname would make
+                        // the public-profile CREATE rule reject the profile, which
+                        // then cascades into permission errors on daily rewards.
+                        nickname = nickname.ifBlank { firebaseUser.displayName ?: "" }
+                            .ifBlank { firebaseUser.email?.substringBefore('@') ?: "" }
+                            .ifBlank { "Breathy User" },
                         createdAt = com.google.firebase.Timestamp.now()
                     )
                     // Build a sparse map WITHOUT quitDate/quitType so the
@@ -147,7 +153,9 @@ class AuthRepository(
 
                     // Create initial public profile (without quitDate)
                     val publicProfile = mapOf(
-                        "nickname" to (nickname.ifBlank { firebaseUser.displayName ?: "" }),
+                        "nickname" to (nickname.ifBlank { firebaseUser.displayName ?: "" }
+                            .ifBlank { firebaseUser.email?.substringBefore('@') ?: "" }
+                            .ifBlank { "Breathy User" }),
                         "photoURL" to (firebaseUser.photoUrl?.toString()),
                         "daysSmokeFree" to 0,
                         "xp" to 0
@@ -212,7 +220,9 @@ class AuthRepository(
                         // Sparse map WITHOUT quitDate/quitType
                         val sparseMap = mutableMapOf<String, Any?>(
                             "email" to (firebaseUser.email ?: ""),
-                            "nickname" to (firebaseUser.displayName ?: ""),
+                            "nickname" to ((firebaseUser.displayName ?: "")
+                                .ifBlank { firebaseUser.email?.substringBefore('@') ?: "" }
+                                .ifBlank { "Breathy User" }),
                             "photoURL" to (firebaseUser.photoUrl?.toString()),
                             "createdAt" to com.google.firebase.Timestamp.now(),
                             "xp" to 0,
@@ -224,7 +234,9 @@ class AuthRepository(
                             .await()
 
                         val publicProfile = mapOf(
-                            "nickname" to (firebaseUser.displayName ?: ""),
+                            "nickname" to ((firebaseUser.displayName ?: "")
+                                .ifBlank { firebaseUser.email?.substringBefore('@') ?: "" }
+                                .ifBlank { "Breathy User" }),
                             "photoURL" to (firebaseUser.photoUrl?.toString()),
                             "daysSmokeFree" to 0,
                             "xp" to 0

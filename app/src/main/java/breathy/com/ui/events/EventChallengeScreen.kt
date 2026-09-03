@@ -45,6 +45,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -998,21 +999,23 @@ private fun EventLeaderboardRow(
                 contentDescription = "Rank ${entry.rank}: ${profile?.nickname ?: "Unknown"}, ${entry.participant.totalApprovedDays} days approved"
                 role = Role.Button
             },
+        // CURRENT-USER HIGHLIGHT (spec sections 10/12): every row shares the
+        // same layout, size, elevation (0) and border. The current user —
+        // resolved by Firebase Auth UID — differs ONLY by the same subtle
+        // darker Breathy background used on the main leaderboard.
+        // No shadow, no floating effect, no glow.
         colors = CardDefaults.cardColors(
             containerColor = when {
-                isCurrentUser -> AccentPrimary.copy(alpha = 0.10f)
+                isCurrentUser -> breathy.com.ui.leaderboard.CurrentUserRowBackground
                 entry.rank <= 3 -> AccentPrimary.copy(alpha = 0.06f)
                 else -> themeBgSurface
             }
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isCurrentUser) 2.dp else 0.dp
-        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(
             1.dp,
             when {
-                isCurrentUser -> AccentPrimary.copy(alpha = 0.5f)
                 entry.rank <= 3 -> AccentPrimary.copy(alpha = 0.2f)
                 else -> SoftSage.copy(alpha = 0.5f)
             }
@@ -1884,6 +1887,48 @@ private fun EventRewardsInfoCard() {
                 Text(
                     text = line,
                     style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // ── Payout status (spec section 21) — honest, never claims a
+            // prize was paid before it was actually delivered.
+            HorizontalDivider(color = SoftSage.copy(alpha = 0.5f), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "PAYOUT STATUS",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = themeTextSecondary,
+                    letterSpacing = 2.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(NaturalYellow.copy(alpha = 0.18f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "PENDING PAYOUT",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = AccentSecondary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "All prizes are pending until the event is finalized and " +
+                        "check-in reviews complete. Gift cards are then delivered to " +
+                        "the winner's saved PayPal email.",
+                    style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary),
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

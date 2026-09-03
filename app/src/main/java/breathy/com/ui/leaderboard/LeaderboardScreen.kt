@@ -343,6 +343,11 @@ class LeaderboardViewModelFactory(
     }
 }
 
+// Slightly darker, subtle Breathy background used ONLY to distinguish the
+// current user's leaderboard row (identical layout — no shadow/glow/border).
+// A soft sage-tinted step darker than the white row surface.
+val CurrentUserRowBackground = androidx.compose.ui.graphics.Color(0xFFEFF3ED)
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  LeaderboardScreen — Global XP leaderboard
 //
@@ -351,7 +356,9 @@ class LeaderboardViewModelFactory(
 //  ─ YOUR POSITION / YOUR SCORE hero panel (always visible)
 //  ─ Drawn top-3 podium with medal artwork and pedestal blocks
 //  ─ Strong-hierarchy ranked cards for positions 4+
-//  ─ Current user highlighted everywhere (sage glow + YOU chip)
+//  ─ Current user identified by Firebase Auth UID; their row uses the
+//    SAME layout as every other row — the ONLY difference is a slightly
+//    darker, subtle Breathy background (no shadow/glow/border effects)
 //  Data is calculated from REAL accounts only — zero fake entries.
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -912,8 +919,13 @@ private fun LeaderboardRow(
     isCurrentUser: Boolean,
     onProfileClick: (String) -> Unit
 ) {
+    // CURRENT-USER HIGHLIGHT (spec section 10):
+    // The row layout, size, spacing, avatar size, rank layout and borders are
+    // IDENTICAL to every other row. The ONLY visual difference is a slightly
+    // darker, subtle Breathy background — no shadow, no elevation, no glow,
+    // no thick border, no floating-card effect.
     val cardColor = if (isCurrentUser) {
-        AccentPrimary.copy(alpha = 0.10f)
+        CurrentUserRowBackground   // slightly darker Breathy background
     } else {
         MaterialTheme.colorScheme.surface
     }
@@ -926,13 +938,9 @@ private fun LeaderboardRow(
                 role = androidx.compose.ui.semantics.Role.Button
             },
         colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isCurrentUser) 2.dp else 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(18.dp),
-        border = if (isCurrentUser) {
-            androidx.compose.foundation.BorderStroke(1.5.dp, AccentPrimary.copy(alpha = 0.45f))
-        } else {
-            androidx.compose.foundation.BorderStroke(1.dp, SoftSage.copy(alpha = 0.5f))
-        },
+        border = androidx.compose.foundation.BorderStroke(1.dp, SoftSage.copy(alpha = 0.5f)),
         onClick = { onProfileClick(entry.userId) }
     ) {
         Row(
@@ -942,15 +950,12 @@ private fun LeaderboardRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Rank number in a soft circle
+            // Rank number in a soft circle — identical for every row
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (isCurrentUser) AccentPrimary.copy(alpha = 0.16f)
-                        else VeryLightSage
-                    ),
+                    .background(VeryLightSage),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -959,7 +964,7 @@ private fun LeaderboardRow(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isCurrentUser) DeepForest else themeTextSecondary
+                        color = themeTextSecondary
                     )
                 )
             }
@@ -981,27 +986,29 @@ private fun LeaderboardRow(
                     Text(
                         text = entry.nickname,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = if (isCurrentUser) DeepForest else themeTextPrimary,
-                            fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.SemiBold
+                            color = themeTextPrimary,
+                            fontWeight = FontWeight.SemiBold
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (isCurrentUser) {
+                        // Subtle, integrated YOU indicator (spec: keep it small
+                        // and inside the row; identity comes from the darker bg).
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(AccentPrimary)
-                                .padding(horizontal = 6.dp, vertical = 1.dp)
+                                .background(AccentPrimary.copy(alpha = 0.14f))
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = "YOU",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = PureWhite,
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 9.sp,
+                                    color = DeepForest,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 8.sp,
                                     letterSpacing = 1.sp
                                 )
                             )
@@ -1027,14 +1034,11 @@ private fun LeaderboardRow(
                 )
             }
 
-            // XP pill
+            // XP pill — identical styling for every row
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (isCurrentUser) AccentPrimary.copy(alpha = 0.14f)
-                        else VeryLightSage
-                    )
+                    .background(VeryLightSage)
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Text(
@@ -1043,7 +1047,7 @@ private fun LeaderboardRow(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isCurrentUser) DeepForest else AccentSecondary
+                        color = AccentSecondary
                     )
                 )
             }
