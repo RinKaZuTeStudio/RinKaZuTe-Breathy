@@ -1866,7 +1866,13 @@ private fun EventRewardsInfoCard() {
                 )
             )
             val rewardLines = listOf(
-                "🏆 Reward type: exclusive in-app rewards (Gold, the Event avatar frame, and community recognition).",
+                "🏆 Reward type: PayPal gift cards + Gold + the exclusive Event Avatar Frame + Champion Badge.",
+                "🥇 1st place: $50 PayPal Gift Card + 10,000 Gold + Event Avatar Frame + Champion Badge.",
+                "🥈 2nd place: $50 PayPal Gift Card + 6,000 Gold + Event Avatar Frame.",
+                "🥉 3rd place: $50 PayPal Gift Card + 3,000 Gold + Event Avatar Frame.",
+                "🏅 4th–5th place: $30 PayPal Gift Card + 1,500 Gold each.",
+                "⭐ 6th–10th place: $15 PayPal Gift Card + 1,000 Gold each.",
+                "💳 Payout: the monetary prize is a PayPal gift card, delivered to the PayPal email saved in Settings → Payment / Payout Setup.",
                 "👥 Winners: the top performers on the event leaderboard.",
                 "✅ Requirement: approved daily check-ins during the event window determine your score.",
                 "⏱️ Distribution: rewards are granted after the event ends and all check-ins are reviewed.",
@@ -1899,7 +1905,7 @@ private fun EventRulesCard(event: Event) {
         "🏅 Leaderboard: ranked by approved days; ties broken by earliest achievement of the score.",
         "🛡️ Anti-cheat: submissions are human-reviewed. Automated, reused, or manipulated content is rejected.",
         "🚫 Disqualification: cheating, multiple accounts, or abusive behavior. Forfeits all event rewards.",
-        "🎁 Rewards: distributed to eligible winners within days after review completes, as in-app Gold and cosmetic items. No cash value.",
+        "🎁 Rewards: distributed to eligible winners within days after review completes — PayPal gift cards (1st–3rd: $50, 4th–5th: $30, 6th–10th: $15) plus Gold, the Event Avatar Frame, and the Champion Badge. Gift cards are delivered to the winner's saved PayPal email (Settings → Payment / Payout Setup).",
         "🤝 Prohibited: harassment, inappropriate content, or any attempt to game the challenge.",
         "🔒 Privacy: check-in videos are reviewed by moderators for verification and are not shared publicly without your action. You keep ownership of your content."
     )

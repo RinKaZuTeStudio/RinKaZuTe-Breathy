@@ -20,6 +20,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -229,15 +230,49 @@ class AppModule(
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * AdMob manager — handles app-open and interstitial ad loading/display.
-     * Automatically exempt users with a verified Premium subscription.
+     * LevelPlay ad manager — the ONLY ad system in the app (AdMob fully
+     * removed). Handles rewarded ("Gold Ads" → +200 Gold), native, and
+     * frequency-capped interstitial ads. Automatically exempts users with a
+     * verified Premium subscription (zero ads loaded or shown).
      */
     val adManager: AdManager by lazy {
-        Timber.d("Initializing AdManager")
+        Timber.d("Initializing AdManager (Unity LevelPlay)")
         AdManager(applicationContext).also { adManager ->
             // Keep ad behavior in lock-step with the verified premium entitlement:
             // verified premium → zero ads (not loaded, not shown).
             adManager.attachPremiumState(premiumRepository.state)
+
+            // ── Gold Ads rewarded security path ─────────────────────────────
+            // Invoked ONLY from the LevelPlay completion callback
+            // (onAdRewarded) — never on ad open/click. The show token powers
+            // the Gold-ledger dedup key, so retries/duplicate callbacks can
+            // never double-credit a single completed ad.
+            val goldScope = kotlinx.coroutines.CoroutineScope(
+                kotlinx.coroutines.SupervisorJob() +
+                    kotlinx.coroutines.Dispatchers.Main.immediate
+            )
+            adManager.rewardGrantCallback = { token ->
+                goldScope.launch {
+                    val result = goldRepository.earn(
+                        amount = AdManager.REWARDED_GOLD_AMOUNT,
+                        source = "gold_ads",
+                        description = "Gold Ads — rewarded ad completed",
+                        dedupKey = "goldads_$token"
+                    )
+                    result.onSuccess { (balance, credited) ->
+                        if (credited) {
+                            Timber.i(
+                                "Gold Ads: +%d Gold granted (balance=%d)",
+                                AdManager.REWARDED_GOLD_AMOUNT, balance
+                            )
+                        } else {
+                            Timber.w("Gold Ads: duplicate completion ignored (dedup)")
+                        }
+                    }.onFailure { e ->
+                        Timber.e(e, "Gold Ads: failed to credit reward")
+                    }
+                }
+            }
         }
     }
 

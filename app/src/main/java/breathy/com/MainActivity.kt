@@ -28,7 +28,8 @@ import timber.log.Timber
  * Single-activity host for the Breathy application.
  *
  * Responsibilities:
- * - Initializes AdMob SDK off the main thread
+ * - Initializes the Unity LevelPlay ad SDK (the only ad system)
+ * - Re-verifies the Google Play Premium entitlement on start + foreground
  * - Handles Google Sign-In via [GoogleSignInClient]
  * - Requests POST_NOTIFICATIONS permission on Android 13+
  * - Handles deep links from push notifications and URI-based intents
@@ -76,7 +77,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize AdMob SDK via AdManager (avoids double initialization)
+        // ── LevelPlay ads (the ONLY ad system — AdMob fully removed) ────────
         appModule.adManager.initialize()
 
         // ── Premium entitlement re-check ─────────────────────────────────────
@@ -95,9 +96,6 @@ class MainActivity : ComponentActivity() {
 
         // Handle deep link from intent extras (e.g., from push notifications)
         handleDeepLinkFromIntent(intent)
-
-        // Mark first launch complete so onResume can show app-open ads
-        isFirstLaunch = false
 
         setContent {
             BreathyTheme {
@@ -119,19 +117,18 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
 
-        // Show app-open ad only when coming back from background (not on first launch)
-        // The AdManager handles frequency capping and premium exemption
-        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-        if (currentUser != null) {
-            // Only show on resume, not on initial create (onCreate handles that)
-            if (!isFirstLaunch) {
-                appModule.adManager.showAppOpenAd(this) {}
-            }
+        // ── Premium entitlement re-check on EVERY foreground return ────────
+        // The source of truth is the verified Google Play purchase state.
+        // When the user comes back from subscribing (or cancelling) in Google
+        // Play, the app must reflect the REAL entitlement immediately — never
+        // a cached flag. This closes the "subscribed in Play but the app still
+        // shows Subscribe" synchronization bug.
+        try {
+            appModule.premiumRepository.recheckEntitlement()
+        } catch (e: Exception) {
+            Timber.e(e, "Premium entitlement re-check on resume failed")
         }
     }
-
-    /** Track whether this is the first launch to avoid showing app-open ad twice */
-    private var isFirstLaunch = true
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

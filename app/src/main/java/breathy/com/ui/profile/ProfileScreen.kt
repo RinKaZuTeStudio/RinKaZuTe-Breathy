@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
@@ -160,6 +161,7 @@ fun ProfileScreen(
     onNavigateToSubscription: () -> Unit = {},
     onNavigateToFriends: () -> Unit = {},
     onNavigateToGoldHistory: () -> Unit = {},
+    onNavigateToPayoutSetup: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: ProfileViewModel = run {
         val app = LocalContext.current.applicationContext as BreathyApplication
@@ -312,6 +314,7 @@ fun ProfileScreen(
                         onNotificationsToggle = { viewModel.toggleNotifications(it) },
                         onPrivacyToggle = { viewModel.togglePrivacy(it) },
                         onNavigateToFriends = onNavigateToFriends,
+                        onNavigateToPayoutSetup = onNavigateToPayoutSetup,
                         onOpenAccountPrivacy = { showAccountPrivacy = true }
                     )
                 }
@@ -1214,6 +1217,7 @@ private fun SettingsSection(
     onNotificationsToggle: (Boolean) -> Unit,
     onPrivacyToggle: (Boolean) -> Unit,
     onNavigateToFriends: () -> Unit = {},
+    onNavigateToPayoutSetup: () -> Unit = {},
     onOpenAccountPrivacy: () -> Unit = {}
 ) {
     Card(
@@ -1323,6 +1327,54 @@ private fun SettingsSection(
                         )
                     )
                 }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
+
+            // Payment / Payout Setup — PayPal email for prize delivery
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToPayoutSetup() }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Payment,
+                        contentDescription = "Payment",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Payment / Payout Setup",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                        Text(
+                            text = "PayPal email for prize payouts",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Open payment settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

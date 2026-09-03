@@ -159,7 +159,7 @@ class EventRepository(
         return Event(
             id = FEATURED_EVENT_ID,
             title = "100 Pushup Challenge",
-            description = "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the event leaderboard, and earn Gold rewards and exclusive cosmetic prizes. Top finishers win the legendary Event avatar frame.",
+            description = "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the event leaderboard, and win PayPal gift cards, Gold rewards, and exclusive cosmetic prizes. Top finishers also win the legendary Event Avatar Frame.",
             eventType = "pushup_challenge",
             active = false,
             startDate = start,
@@ -167,16 +167,16 @@ class EventRepository(
             dailyRequired = 10,
             targetPushups = 100,
             prizes = mapOf(
-                "1st" to "10,000 Gold + Event avatar frame + Champion badge",
-                "2nd" to "6,000 Gold + Event avatar frame",
-                "3rd" to "3,000 Gold + Event avatar frame",
-                "4th" to "1,500 Gold",
-                "5th" to "1,500 Gold",
-                "6th" to "1,000 Gold",
-                "7th" to "1,000 Gold",
-                "8th" to "1,000 Gold",
-                "9th" to "1,000 Gold",
-                "10th" to "1,000 Gold"
+                "1st" to "$50 PayPal Gift Card + 10,000 Gold + Event Avatar Frame + Champion Badge",
+                "2nd" to "$50 PayPal Gift Card + 6,000 Gold + Event Avatar Frame",
+                "3rd" to "$50 PayPal Gift Card + 3,000 Gold + Event Avatar Frame",
+                "4th" to "$30 PayPal Gift Card + 1,500 Gold",
+                "5th" to "$30 PayPal Gift Card + 1,500 Gold",
+                "6th" to "$15 PayPal Gift Card + 1,000 Gold",
+                "7th" to "$15 PayPal Gift Card + 1,000 Gold",
+                "8th" to "$15 PayPal Gift Card + 1,000 Gold",
+                "9th" to "$15 PayPal Gift Card + 1,000 Gold",
+                "10th" to "$15 PayPal Gift Card + 1,000 Gold"
             ),
             status = "upcoming"
         )
@@ -619,12 +619,12 @@ class EventRepository(
                 }.timeInMillis / 1000, 0
             )
 
-            // NOTE (spec section 25): cash rewards stay DISABLED until a compliant
-            // payout system exists. All configured rewards are non-cash — Gold,
-            // cosmetics, badges. These values are the real centralized config.
+            // Reward config (spec section J): Gold + cosmetic rewards PLUS the
+            // PayPal gift-card tiers. Prize delivery uses the winner's saved
+            // PayPal email (Settings → Payment / Payout Setup).
             val eventData = mapOf(
                 "title" to "100 Pushup Challenge",
-                "description" to "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the event leaderboard, and earn Gold rewards and exclusive cosmetic prizes. Top finishers win the legendary Event avatar frame.",
+                "description" to "Join our 3-month pushup challenge! Use AI pose detection to count your pushups, climb the event leaderboard, and win PayPal gift cards, Gold rewards, and exclusive cosmetic prizes. Top finishers also win the legendary Event Avatar Frame.",
                 "type" to "pushup_challenge",
                 "eventType" to "pushup_challenge",
                 "active" to true,
@@ -633,16 +633,16 @@ class EventRepository(
                 "dailyRequired" to 10,
                 "targetPushups" to 100,
                 "prizes" to mapOf(
-                    "1st" to "10,000 Gold + Event avatar frame + Champion badge",
-                    "2nd" to "6,000 Gold + Event avatar frame",
-                    "3rd" to "3,000 Gold + Event avatar frame",
-                    "4th" to "1,500 Gold",
-                    "5th" to "1,500 Gold",
-                    "6th" to "1,000 Gold",
-                    "7th" to "1,000 Gold",
-                    "8th" to "1,000 Gold",
-                    "9th" to "1,000 Gold",
-                    "10th" to "1,000 Gold"
+                    "1st" to "$50 PayPal Gift Card + 10,000 Gold + Event Avatar Frame + Champion Badge",
+                    "2nd" to "$50 PayPal Gift Card + 6,000 Gold + Event Avatar Frame",
+                    "3rd" to "$50 PayPal Gift Card + 3,000 Gold + Event Avatar Frame",
+                    "4th" to "$30 PayPal Gift Card + 1,500 Gold",
+                    "5th" to "$30 PayPal Gift Card + 1,500 Gold",
+                    "6th" to "$15 PayPal Gift Card + 1,000 Gold",
+                    "7th" to "$15 PayPal Gift Card + 1,000 Gold",
+                    "8th" to "$15 PayPal Gift Card + 1,000 Gold",
+                    "9th" to "$15 PayPal Gift Card + 1,000 Gold",
+                    "10th" to "$15 PayPal Gift Card + 1,000 Gold"
                 ),
                 "createdAt" to FieldValue.serverTimestamp()
             )

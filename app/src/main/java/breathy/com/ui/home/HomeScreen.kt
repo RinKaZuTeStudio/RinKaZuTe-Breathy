@@ -346,6 +346,14 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
+                    // ── Sponsored (native ad, LevelPlay "Ad1") ─────────────
+                    // One placement between content cards; hidden entirely for
+                    // verified Premium subscribers. Never blocks any action.
+                    breathy.com.ui.components.BreathyNativeAdCard(
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // ── Featured Event (canonical artwork, spec §21) ────────
                     FeaturedEventCard(
                         onClick = onNavigateToEvents,

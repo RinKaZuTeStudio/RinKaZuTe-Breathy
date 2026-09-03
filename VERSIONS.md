@@ -1,15 +1,50 @@
 # Breathy — Version History
 
-All builds are signed with the official release keystore (alias `breathy`,
-SHA-1 `FC:79:B6:70:D4:8F:CC:EA:D5:E1:85:9A:0C:1E:5C:B9:E3:1B:1B:E8`).
-Downloadable artifacts are attached to each GitHub Release.
+## v1.0.3 (versionCode 4) — LevelPlay ads + payout setup + billing sync hardening
 
-| Version | versionCode | Date       | Artifacts                        | Tag      |
-|---------|-------------|------------|----------------------------------|----------|
-| 1.0.2   | 3           | 2026-09-03 | release APK · debug APK · AAB    | `v1.0.2` |
-| 1.0.1   | 2           | 2026-09-02 | release APK · debug APK · AAB    | `v1.0.1` |
+**Released:** 2026-09
+**Signing:** official release keystore (alias `breathy`, PKCS12). NOTE: the
+original keystore file was unrecoverable from GitHub (never committed; CI
+secrets were empty), so a NEW release keystore was generated with the same
+alias/passwords/DN. Its SHA-1 is `06:03:48:17:16:6B:F1:63:D7:15:D9:B9:56:E5:96:1D:B2:5F:2A:D4`.
+The keystore is now committed to the repo (`app/release.keystore`) and mirrored
+in GitHub Actions secrets (`RELEASE_KEYSTORE_BASE64`) so it can always be
+retrieved from GitHub going forward.
 
----
+### Advertising — Unity LevelPlay (AdMob fully removed)
+- Removed the Google Mobile Ads (AdMob) SDK, all AdMob ad unit IDs, and the
+  `APPLICATION_ID` manifest meta-data. No AdMob code remains in the app.
+- Integrated Unity LevelPlay (production identifiers, no test IDs):
+  - App Key `27e9c42cd`
+  - Rewarded `b0taewni29ftw711` — "Gold Ads": +200 Gold granted ONLY after the
+    LevelPlay completion callback; idempotent via Gold-ledger dedup key.
+  - Native `5o8vznxxsem6mv51` — Breathy-styled sponsored card on Home between
+    content cards, clearly marked ("AD" pill + "Sponsored").
+  - Interstitial `flcqa09gxs9k0qgl` — full-screen, frequency-capped (1 per
+    3 minutes), never during purchases/event registration/reward collection.
+- Premium subscribers: zero ads (nothing loaded or shown, cached ads released).
+- App-open ads removed (no LevelPlay app-open format exists).
+
+### Google Play Premium subscription
+- Billing is now re-verified on EVERY foreground return (MainActivity.onResume)
+  in addition to app start, purchases, and restore — the app can no longer keep
+  showing "Subscribe" after Google Play says the user is subscribed.
+- "Manage Subscription" button (premium state) opens the Play subscriptions
+  page for `breathy_premium_monthly`.
+- No local subscription timers exist anywhere; the "5 minutes" renewal seen in
+  Play was a test-track behavior and is not hardcoded in the app.
+
+### Events & Challenges
+- Prize tiers now include PayPal gift cards:
+  1st–3rd $50 + Gold + Event Avatar Frame (1st also Champion Badge);
+  4th–5th $30 + 1,500 Gold; 6th–10th $15 + 1,000 Gold.
+- Rewards and Rules views explain the gift-card payout and where to set the
+  PayPal email.
+
+### Payment / Payout Setup
+- New Settings → Payment / Payout Setup screen: PayPal ONLY, collects ONLY the
+  PayPal email (validated, saved to `users/{uid}.payoutEmail`).
+
 
 ## v1.0.2 (versionCode 3) — 2026-09-03 (final bug fix + UI/UX polish build)
 

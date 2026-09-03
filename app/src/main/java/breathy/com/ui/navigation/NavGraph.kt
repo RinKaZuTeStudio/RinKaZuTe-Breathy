@@ -105,6 +105,7 @@ object BreathyRoutes {
     const val NOTIFICATIONS = "notifications"
     const val GOLD_HISTORY = "goldHistory"
     const val SUBSCRIPTION = "subscription"
+    const val PAYOUT_SETUP = "payoutSetup"
 
     // ── Helper functions for parameterized routes ───────────────────────────
 
@@ -542,6 +543,7 @@ fun BreathyNavHost(
                     onNavigateToSubscription = { navigateToWithAd(BreathyRoutes.SUBSCRIPTION) },
                     onNavigateToFriends = { navigateToWithAd(BreathyRoutes.FRIENDS) },
                     onNavigateToGoldHistory = { navigateToWithAd(BreathyRoutes.GOLD_HISTORY) },
+                    onNavigateToPayoutSetup = { navigateTo(BreathyRoutes.PAYOUT_SETUP) },
                     onSignOut = { signOutAndNavigateToAuth() }
                 )
             }
@@ -570,6 +572,13 @@ fun BreathyNavHost(
             // ── Subscription ────────────────────────────────────────────
             composable(BreathyRoutes.SUBSCRIPTION) {
                 SubscriptionScreen(
+                    onBack = { navigateBack() }
+                )
+            }
+
+            // ── Payment / Payout Setup (PayPal email only) ──────────────
+            composable(BreathyRoutes.PAYOUT_SETUP) {
+                breathy.com.ui.settings.PayoutSetupScreen(
                     onBack = { navigateBack() }
                 )
             }

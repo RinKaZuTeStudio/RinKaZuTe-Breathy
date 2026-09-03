@@ -307,6 +307,46 @@ fun SubscriptionScreen(
 
                 Spacer(Modifier.height(16.dp))
 
+                // Renewal/expiration info — honest, from the verified state.
+                if (premiumState.status ==
+                    breathy.com.data.repository.SubscriptionStatus.ACTIVE
+                ) {
+                    Text(
+                        text = "Renews automatically every month via Google Play.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BreathyPalette.textSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Manage Subscription — opens the Google Play subscriptions
+                // page for this app (cancel / change payment method / resume).
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            val intent = android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(
+                                    "https://play.google.com/store/account/subscriptions" +
+                                        "?sku=${breathy.com.data.repository.PremiumRepository.PRODUCT_ID_PREMIUM}" +
+                                        "&package=breathy.com"
+                                )
+                            )
+                            activity?.startActivity(intent)
+                        } catch (e: Exception) {
+                            Timber.w(e, "Could not open Google Play subscriptions")
+                        }
+                    },
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Manage Subscription")
+                }
+
+                Spacer(Modifier.height(10.dp))
+
                 OutlinedButton(
                     onClick = {
                         viewModel.restore { found ->

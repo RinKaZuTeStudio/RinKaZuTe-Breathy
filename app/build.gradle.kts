@@ -18,8 +18,8 @@ android {
         applicationId = "breathy.com"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -145,8 +145,8 @@ dependencies {
     implementation(libs.billing)
     implementation(libs.billing.ktx)
 
-    // ── AdMob ──────────────────────────────────────────────────────────────
-    implementation(libs.admob)
+    // ── Unity LevelPlay (mediation SDK) ───────────────────────────────────
+    implementation(libs.levelplay)
 
     // ── Google Sign-In ──────────────────────────────────────────────────────
     implementation(libs.play.services.auth)

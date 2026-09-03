@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -38,7 +40,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +68,7 @@ import breathy.com.data.models.GoldTxType
 import breathy.com.ui.components.BreathyEmptyState
 import breathy.com.ui.theme.DarkBotanical
 import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.GoldDeep
 import breathy.com.ui.theme.NaturalYellow
 import breathy.com.ui.theme.PureWhite
 import breathy.com.ui.theme.SoftSage
@@ -186,6 +191,9 @@ fun GoldHistoryScreen(
         ) {
             // ── Balance card ────────────────────────────────────────────
             GoldBalanceCard(balance = uiState.balance)
+
+            // ── Gold Ads (rewarded, LevelPlay) ──────────────────────────
+            GoldAdsRewardedCard()
 
             // ── Transactions ────────────────────────────────────────────
             if (!uiState.isLoading && uiState.transactions.isEmpty()) {
@@ -330,6 +338,126 @@ private fun GoldTransactionRow(tx: GoldTransaction) {
                     color = accent
                 )
             )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Gold Ads — LevelPlay rewarded placement ("Gold Ads" → +200 Gold)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Rewarded-ad entry card for free users. The +200 Gold reward is granted
+ * ONLY after the LevelPlay completion callback confirms the ad was actually
+ * completed (see [AdManager.rewardGrantCallback] wired in AppModule) — never
+ * merely for opening the ad. Verified Premium subscribers never see this card
+ * (ad-free experience).
+ */
+@Composable
+private fun GoldAdsRewardedCard(
+    adManager: breathy.com.utils.AdManager? = run {
+        val app = LocalContext.current.applicationContext as? BreathyApplication
+        app?.appModule?.adManager
+    },
+    premiumRepository: breathy.com.data.repository.PremiumRepository? = run {
+        val app = LocalContext.current.applicationContext as? BreathyApplication
+        app?.appModule?.premiumRepository
+    }
+) {
+    if (adManager == null || premiumRepository == null) return
+    val premiumState by premiumRepository.state.collectAsStateWithLifecycle()
+
+    // Premium = zero ads: no card, no upsell, nothing.
+    if (premiumState.isPremium) return
+
+    val activity = LocalContext.current as? androidx.activity.ComponentActivity
+    var note by remember { mutableStateOf<String?>(null) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, SoftSage)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.LocalFireDepartment,
+                    contentDescription = null,
+                    tint = NaturalYellow,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Gold Ads",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = themeTextPrimary
+                    )
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "+200 🪙",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = GoldDeep
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Watch a short sponsored video and earn 200 Gold. " +
+                    "The Gold is credited the moment the video is completed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = themeTextSecondary
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = {
+                    note = null
+                    val act = activity
+                    if (act == null) {
+                        note = "Ad unavailable right now."
+                    } else {
+                        val started = adManager.showRewardedAd(act)
+                        if (!started) {
+                            note = "The ad is still preparing — try again in a few seconds."
+                        }
+                    }
+                },
+                enabled = true,
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DeepForest,
+                    contentColor = PureWhite
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Watch Ad · Earn +200 Gold",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            note?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = themeTextSecondary
+                )
+            }
         }
     }
 }

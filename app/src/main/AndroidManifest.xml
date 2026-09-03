@@ -45,17 +45,8 @@
             </intent-filter>
         </service>
 
-        <!-- AdMob App ID -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-9434446627275871~3054699475" />
-
-        <!-- Resolve manifest merger conflict between play-services-ads-lite
-             and play-services-measurement-api for AD_SERVICES_CONFIG -->
-        <property
-            android:name="android.adservices.AD_SERVICES_CONFIG"
-            android:resource="@xml/gma_ad_services_config"
-            tools:replace="android:resource" />
+        <!-- Unity LevelPlay is initialized in code (LevelPlay.init) — no
+             manifest meta-data required. AdMob has been fully removed. -->
 
         <!-- Firebase -->
         <meta-data

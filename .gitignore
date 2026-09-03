@@ -15,6 +15,6 @@ local.properties
 build/
 .kotlin/
 .gradle/
-keystore.properties
-*.keystore
+keystore.properties.bak
+*.local.keystore
 !app/debug.keystore

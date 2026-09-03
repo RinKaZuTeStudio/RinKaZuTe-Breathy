@@ -3,14 +3,19 @@ package breathy.com.utils
 import android.app.Activity
 import android.content.Context
 import breathy.com.data.repository.PremiumRepository
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.appopen.AppOpenAd
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.ironsource.mediationsdk.logger.IronSourceError
+import com.unity3d.mediation.LevelPlay
+import com.unity3d.mediation.LevelPlayAdError
+import com.unity3d.mediation.LevelPlayAdInfo
+import com.unity3d.mediation.LevelPlayConfiguration
+import com.unity3d.mediation.LevelPlayInitError
+import com.unity3d.mediation.LevelPlayInitListener
+import com.unity3d.mediation.LevelPlayInitRequest
+import com.unity3d.mediation.interstitial.LevelPlayInterstitialAd
+import com.unity3d.mediation.interstitial.LevelPlayInterstitialAdListener
+import com.unity3d.mediation.rewarded.LevelPlayReward
+import com.unity3d.mediation.rewarded.LevelPlayRewardedAd
+import com.unity3d.mediation.rewarded.LevelPlayRewardedAdListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,144 +26,135 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Date
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Manages AdMob app-open and interstitial ads for Breathy.
+ * Manages Unity LevelPlay advertising for Breathy — the ONLY ad system in the
+ * app. AdMob has been fully removed (no SDK, no ad unit IDs, no manifest
+ * entries).
  *
- * Ad Configuration:
- * - **App ID**: `ca-app-pub-9434446627275871~3054699475`
- * - **Open App Ad Unit**: `ca-app-pub-9434446627275871/9005175949`
- * - **Interstitial Ad Unit**: `ca-app-pub-9434446627275871/7446506098`
+ * LevelPlay production identifiers (source of truth — never replace with
+ * test or invented IDs):
+ * - **App Key**:      `27e9c42cd`
+ * - **Rewarded**:     `b0taewni29ftw711` (placement "Gold Ads" → +200 Gold)
+ * - **Native**:       `5o8vznxxsem6mv51` (placement "Ad1")
+ * - **Interstitial**: `flcqa09gxs9k0qgl` (placement "Ad2")
  *
- * App-open ads are shown on cold start; interstitial ads are shown
- * between screens with a frequency cap of max 1 per 3 minutes.
- * Premium subscribers are automatically exempt from all ads.
+ * Behaviour rules:
+ * - Free users: real production ads only (rewarded, native, interstitial).
+ * - Verified Premium subscribers: ZERO ads — nothing is loaded or shown, and
+ *   cached ads are released the moment the entitlement becomes active.
+ * - The +200 Gold reward is granted ONLY after the LevelPlay completion
+ *   callback ([LevelPlayRewardedAdListener.onAdRewarded]) confirms the user
+ *   actually finished the ad. The grant handler is wired in [DI AppModule]
+ *   through [rewardGrantCallback] and is idempotent per completed ad via a
+ *   unique show token (duplicates can never double-credit).
+ * - Interstitial frequency cap: max 1 per 3 minutes; never shown during
+ *   purchase/subscription/event-registration flows (call sites are fixed).
  *
- * Thread safety: All mutable state is accessed from the main thread
- * (Google Mobile Ads SDK requirement). [AtomicBoolean] is used for
- * loading flags that may be read from background threads.
+ * Thread safety: LevelPlay public APIs are main-thread APIs. Mutable show
+ * state is confined to the main thread; loading flags use [AtomicBoolean].
  */
 class AdManager(
     private val context: Context
 ) {
 
     companion object {
-        // ── AdMob IDs ──────────────────────────────────────────────────────
-        /** AdMob App ID (configured in AndroidManifest) — production account. */
-        private const val ADMOB_APP_ID = "ca-app-pub-9434446627275871~3054699475"
+        // ── Unity LevelPlay production identifiers ────────────────────────
+        /** LevelPlay App Key (Unity LevelPlay platform → production). */
+        const val LEVELPLAY_APP_KEY = "27e9c42cd"
 
-        /** Production app-open ad unit ID. */
-        private const val APP_OPEN_AD_UNIT_ID_PROD = "ca-app-pub-9434446627275871/9005175949"
+        /** Rewarded ad unit — "Gold Ads": +200 Gold on verified completion. */
+        const val REWARDED_AD_UNIT_ID = "b0taewni29ftw711"
 
-        /** Production interstitial ad unit ID. */
-        private const val INTERSTITIAL_AD_UNIT_ID_PROD = "ca-app-pub-9434446627275871/7446506098"
+        /** Native ad unit — rendered as a Breathy-styled sponsored card. */
+        const val NATIVE_AD_UNIT_ID = "5o8vznxxsem6mv51"
 
-        // REAL PRODUCTION ADS ONLY — spec mandate. Google's official test ad
-        // units are intentionally NOT used anywhere (debug or release): the
-        // production units are the verified, working ad units for this app.
-        private val APP_OPEN_AD_UNIT_ID: String = APP_OPEN_AD_UNIT_ID_PROD
-        private val INTERSTITIAL_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID_PROD
+        /** Full-screen interstitial ad unit — frequency capped. */
+        const val INTERSTITIAL_AD_UNIT_ID = "flcqa09gxs9k0qgl"
+
+        /** Gold granted for a completed "Gold Ads" rewarded placement. */
+        const val REWARDED_GOLD_AMOUNT = 200
 
         // ── Timing ─────────────────────────────────────────────────────────
-        /** Maximum age of a cached app-open ad before it's considered stale (4 hours). */
-        private const val AD_CACHE_DURATION_MS = 4L * 60L * 60L * 1000L
-
-        /** Minimum interval between interstitial ad shows (3 minutes). */
-        private const val INTERSTITIAL_FREQUENCY_CAP_MS = 3L * 60L * 1000L
+        /** Minimum interval between interstitial shows (3 minutes). */
+        const val INTERSTITIAL_FREQUENCY_CAP_MS = 3L * 60L * 1000L
 
         /** Delay before the first ad-load retry after a load failure (15s). */
         private const val AD_RETRY_INITIAL_MS = 15_000L
 
         /** Maximum delay between ad-load retries (2 minutes). */
         private const val AD_RETRY_MAX_MS = 120_000L
-
-        // ── Loading States ─────────────────────────────────────────────────
-        /** Maximum time to wait for an ad to load before giving up (5 seconds). */
-        private const val AD_LOAD_TIMEOUT_MS = 5_000L
     }
 
     /**
-     * Callback interface for ad lifecycle events.
+     * Callback interface for ad lifecycle events (optional diagnostics).
      */
     interface AdEventListener {
-        /** Called when an ad is successfully loaded and ready to show. */
         fun onAdLoaded(adType: AdType) {}
-
-        /** Called when an ad fails to load. The app should NOT crash. */
         fun onAdLoadFailed(adType: AdType, error: String) {}
-
-        /** Called when an ad is displayed to the user. */
         fun onAdShown(adType: AdType) {}
-
-        /** Called when an ad is dismissed by the user. */
         fun onAdDismissed(adType: AdType) {}
-
-        /** Called when an ad fails to show after being loaded. */
         fun onAdShowFailed(adType: AdType, error: String) {}
-
-        /** Called when the user clicks on an ad. */
-        fun onAdClicked(adType: AdType) {}
-
-        /** Called when an ad impression is recorded. */
-        fun onAdImpression(adType: AdType) {}
     }
 
-    /**
-     * Types of ads supported by Breathy.
-     */
+    /** Types of ads supported by Breathy via LevelPlay. */
     enum class AdType {
-        APP_OPEN,
-        INTERSTITIAL
+        REWARDED,
+        INTERSTITIAL,
+        NATIVE
     }
 
-    /**
-     * Current loading state for each ad type.
-     */
-    enum class AdLoadingState {
-        /** No ad is loaded or loading. */
-        IDLE,
-        /** An ad is currently being fetched from AdMob. */
-        LOADING,
-        /** An ad is loaded and ready to be shown. */
-        LOADED,
-        /** The ad is currently being displayed. */
-        SHOWING
-    }
+    // ── Ad references ──────────────────────────────────────────────────────────
 
-    // ── Ad References ──────────────────────────────────────────────────────────
+    private var rewardedAd: LevelPlayRewardedAd? = null
+    private var interstitialAd: LevelPlayInterstitialAd? = null
 
-    private var appOpenAd: AppOpenAd? = null
-    private var interstitialAd: InterstitialAd? = null
+    // ── Loading state ──────────────────────────────────────────────────────────
 
-    // ── Loading State ──────────────────────────────────────────────────────────
-
-    private val isAppOpenAdLoading = AtomicBoolean(false)
+    private val isRewardedLoading = AtomicBoolean(false)
     private val isInterstitialLoading = AtomicBoolean(false)
+    private val isInitializing = AtomicBoolean(false)
 
-    private var appOpenAdLoadTime: Long = 0L
-    private var appOpenLoadingState: AdLoadingState = AdLoadingState.IDLE
-    private var interstitialLoadingState: AdLoadingState = AdLoadingState.IDLE
+    /** True once [LevelPlay.init] succeeded — loads (re)start from here. */
+    private val isSdkReady = AtomicBoolean(false)
 
-    // ── Frequency Capping ──────────────────────────────────────────────────────
+    private var retryJobs: MutableList<Job> = mutableListOf()
+
+    /** Unique token for the currently shown rewarded ad (gold dedup key). */
+    private var rewardShowToken: String? = null
+
+    /** Guards against duplicate grant callbacks for one completed ad. */
+    private val rewardGrantedForThisShow = AtomicBoolean(false)
+
+    // ── Frequency capping ──────────────────────────────────────────────────────
 
     private var lastInterstitialShowTime: Long = 0L
 
-    // ── Premium Flag ───────────────────────────────────────────────────────────
+    // ── Premium flag ───────────────────────────────────────────────────────────
 
     /** When `true`, no ads are loaded or shown (verified Premium entitlement). */
     @Volatile
     var isPremiumUser: Boolean = false
         private set
 
-    // ── Premium Entitlement Observation ────────────────────────────────────
-
     private val premiumScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var retryJobs: MutableList<Job> = mutableListOf()
 
     /**
-     * Keep ad behavior in sync with the verified Premium entitlement.
-     * Observes the app-wide [PremiumRepository.PremiumState]:
+     * Called with a unique token when a rewarded ad COMPLETES. The owner
+     * (AppModule) grants exactly [REWARDED_GOLD_AMOUNT] Gold using the token
+     * as the Gold-ledger dedup key — idempotent under retries/replays.
+     */
+    var rewardGrantCallback: ((token: String) -> Unit)? = null
+
+    /** Optional listener for ad lifecycle events. */
+    var eventListener: AdEventListener? = null
+
+    // ── Premium entitlement observation ────────────────────────────────────────
+
+    /**
+     * Keep ad behaviour in sync with the verified Premium entitlement:
      * - premium → immediately release cached ads and stop loading (zero ads)
      * - premium lost (expired/cancelled) → resume the free-user ad strategy
      */
@@ -172,7 +168,7 @@ class AdManager(
                     release()
                 } else if (!premium.isPremium && wasPremium) {
                     Timber.d("AdManager: Premium no longer active — resuming free-user ad strategy")
-                    loadAppOpenAd()
+                    loadRewardedAd()
                     loadInterstitialAd()
                 }
             }
@@ -189,375 +185,286 @@ class AdManager(
         retryJobs.removeAll { !it.isActive }
     }
 
-    // ── Event Listener ─────────────────────────────────────────────────────────
-
-    /** Optional listener for ad lifecycle events. */
-    var eventListener: AdEventListener? = null
-
     // ═══════════════════════════════════════════════════════════════════════════
     //  Initialization
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Initialize the Mobile Ads SDK. Should be called once during app startup,
-     * ideally in [android.app.Application.onCreate].
-     *
-     * Initialization is performed on a background thread so it doesn't block
-     * the main thread. Ad loading should only begin after initialization
-     * completes.
+     * Initialize the Unity LevelPlay SDK. Should be called once during app
+     * startup (MainActivity.onCreate). Premium subscribers never load ads.
      */
     fun initialize() {
+        if (!isInitializing.compareAndSet(false, true)) return
         try {
-            MobileAds.initialize(context) { initializationStatus ->
-                val statusMap = initializationStatus.adapterStatusMap
-                val readyCount = statusMap.count { it.value.initializationState.name == "READY" }
-                Timber.d(
-                    "Mobile Ads SDK initialized: %d/%d adapters ready",
-                    readyCount, statusMap.size
+            val request = LevelPlayInitRequest.Builder(LEVELPLAY_APP_KEY).build()
+            LevelPlay.init(context, request, object : LevelPlayInitListener {
+                override fun onInitSuccess(configuration: LevelPlayConfiguration) {
+                    isInitializing.set(false)
+                    if (!isSdkReady.compareAndSet(false, true)) return
+                    Timber.i("LevelPlay initialized (appKey=%s)", LEVELPLAY_APP_KEY)
+                    // Pre-load the free-user ad formats after SDK init.
+                    loadRewardedAd()
+                    loadInterstitialAd()
+                }
+
+                override fun onInitFailed(error: LevelPlayInitError) {
+                    isInitializing.set(false)
+                    Timber.w(
+                        "LevelPlay init failed: code=%s message=%s — will retry",
+                        error.errorCode, error.errorMessage
+                    )
+                    premiumScope.launch {
+                        delay(AD_RETRY_INITIAL_MS)
+                        initialize()
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            isInitializing.set(false)
+            Timber.e(e, "Failed to initialize LevelPlay SDK")
+            eventListener?.onAdLoadFailed(AdType.INTERSTITIAL, "SDK init failed: ${e.message}")
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  Rewarded ad — "Gold Ads" (+200 Gold on verified completion)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Load the rewarded ad. Safe to call repeatedly; skipped for Premium.
+     */
+    fun loadRewardedAd() {
+        if (isPremiumUser) return
+        if (!isSdkReady.get()) return
+        if (!isRewardedLoading.compareAndSet(false, true)) return
+        val ad = rewardedAd ?: LevelPlayRewardedAd(REWARDED_AD_UNIT_ID).also {
+            it.setListener(rewardedListener)
+            rewardedAd = it
+        }
+        if (ad.isAdReady) {
+            isRewardedLoading.set(false)
+            return
+        }
+        try {
+            ad.loadAd()
+        } catch (e: Exception) {
+            isRewardedLoading.set(false)
+            Timber.e(e, "Exception requesting rewarded ad load")
+            scheduleLoadRetry { loadRewardedAd() }
+        }
+    }
+
+    private val rewardedListener = object : LevelPlayRewardedAdListener {
+        override fun onAdLoaded(adInfo: LevelPlayAdInfo) {
+            isRewardedLoading.set(false)
+            Timber.d("LevelPlay rewarded ad loaded")
+            eventListener?.onAdLoaded(AdType.REWARDED)
+        }
+
+        override fun onAdLoadFailed(error: LevelPlayAdError) {
+            isRewardedLoading.set(false)
+            Timber.w("LevelPlay rewarded ad failed to load: %s — will retry", error.errorMessage)
+            eventListener?.onAdLoadFailed(AdType.REWARDED, error.errorMessage)
+            scheduleLoadRetry { loadRewardedAd() }
+        }
+
+        override fun onAdDisplayed(adInfo: LevelPlayAdInfo) {
+            eventListener?.onAdShown(AdType.REWARDED)
+        }
+
+        override fun onAdRewarded(reward: LevelPlayReward, adInfo: LevelPlayAdInfo) {
+            // THE ONLY GOLD GRANT PATH — fires when the user actually completed
+            // the ad. Guarded so a duplicated callback cannot double-credit.
+            val token = rewardShowToken
+            if (token == null) {
+                Timber.w("LevelPlay rewarded callback without show token — ignoring")
+                return
+            }
+            if (rewardGrantedForThisShow.compareAndSet(false, true)) {
+                Timber.i(
+                    "LevelPlay rewarded ad COMPLETED (reward=%s amount=%d) — granting +%d Gold (token=%s…)",
+                    reward.name, reward.amount, REWARDED_GOLD_AMOUNT, token.take(8)
                 )
-                // Pre-load both ad types after SDK initialization
-                loadAppOpenAd()
-                loadInterstitialAd()
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to initialize Mobile Ads SDK")
-            eventListener?.onAdLoadFailed(AdType.APP_OPEN, "SDK init failed: ${e.message}")
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    //  App-Open Ad
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Get the current loading state for the app-open ad.
-     */
-    fun getAppOpenLoadingState(): AdLoadingState = appOpenLoadingState
-
-    /**
-     * Pre-load an app-open ad. Should be called during app startup
-     * so the ad is ready when the user reaches the home screen.
-     *
-     * If the ad is already loading or a valid cached ad exists, this
-     * is a no-op.
-     */
-    fun loadAppOpenAd() {
-        if (isPremiumUser) {
-            Timber.d("Skipping app-open ad load: premium user")
-            return
-        }
-        if (!isAppOpenAdLoading.compareAndSet(false, true)) {
-            Timber.d("App-open ad already loading, skipping")
-            return
-        }
-        if (isAppOpenAdAvailable()) {
-            isAppOpenAdLoading.set(false)
-            Timber.d("App-open ad already cached and valid, skipping load")
-            return
-        }
-
-        appOpenLoadingState = AdLoadingState.LOADING
-        Timber.d("Loading app-open ad: unit=%s", APP_OPEN_AD_UNIT_ID)
-
-        try {
-            AppOpenAd.load(
-                context,
-                APP_OPEN_AD_UNIT_ID,
-                AdRequest.Builder().build(),
-                object : AppOpenAd.AppOpenAdLoadCallback() {
-                    override fun onAdLoaded(ad: AppOpenAd) {
-                        appOpenAd = ad
-                        appOpenAdLoadTime = Date().time
-                        isAppOpenAdLoading.set(false)
-                        appOpenLoadingState = AdLoadingState.LOADED
-                        Timber.d("App-open ad loaded successfully")
-                        eventListener?.onAdLoaded(AdType.APP_OPEN)
-                    }
-
-                    override fun onAdFailedToLoad(error: LoadAdError) {
-                        appOpenAd = null
-                        isAppOpenAdLoading.set(false)
-                        appOpenLoadingState = AdLoadingState.IDLE
-                        Timber.w("App-open ad failed to load: code=%d, message=%s — will retry", error.code, error.message)
-                        eventListener?.onAdLoadFailed(AdType.APP_OPEN, "Code ${error.code}: ${error.message}")
-                        scheduleLoadRetry { loadAppOpenAd() }
-                    }
+                try {
+                    rewardGrantCallback?.invoke(token)
+                } catch (e: Exception) {
+                    Timber.e(e, "Gold grant for rewarded ad failed")
                 }
-            )
-        } catch (e: Exception) {
-            isAppOpenAdLoading.set(false)
-            appOpenLoadingState = AdLoadingState.IDLE
-            Timber.e(e, "Exception loading app-open ad — ad load failures don't crash")
-            eventListener?.onAdLoadFailed(AdType.APP_OPEN, "Exception: ${e.message}")
+            }
         }
+
+        override fun onAdDisplayFailed(error: LevelPlayAdError, adInfo: LevelPlayAdInfo) {
+            Timber.w("LevelPlay rewarded ad failed to display: %s", error.errorMessage)
+            eventListener?.onAdShowFailed(AdType.REWARDED, error.errorMessage)
+        }
+
+        override fun onAdClicked(adInfo: LevelPlayAdInfo) {}
+
+        override fun onAdClosed(adInfo: LevelPlayAdInfo) {
+            Timber.d("LevelPlay rewarded ad closed")
+            eventListener?.onAdDismissed(AdType.REWARDED)
+            // Pre-load the next reward opportunity.
+            loadRewardedAd()
+        }
+
+        override fun onAdInfoChanged(adInfo: LevelPlayAdInfo) {}
     }
 
     /**
-     * Show the app-open ad if one is available. Calls [onAdDismissed]
-     * whether the ad was shown or skipped (error, not loaded, premium, etc.),
-     * so the caller can always proceed to the next screen.
+     * Show the rewarded ad ("Gold Ads"). Gold is granted ONLY through
+     * [rewardGrantCallback] when LevelPlay confirms completion.
      *
-     * @param activity     The current activity (required by the AdMob SDK).
-     * @param onAdDismissed Callback invoked when the ad flow is complete
-     *                       (ad dismissed, failed to show, or skipped).
+     * @return true when the ad was actually shown (or is about to show).
      */
-    fun showAppOpenAd(activity: Activity, onAdDismissed: () -> Unit) {
+    fun showRewardedAd(activity: Activity): Boolean {
         if (isPremiumUser) {
-            Timber.d("Skipping app-open ad show: premium user")
-            onAdDismissed()
-            return
+            Timber.d("Rewarded ad skipped: premium user (ad-free)")
+            return false
         }
-
-        if (!isAppOpenAdAvailable()) {
-            Timber.d("App-open ad not available, proceeding without ad")
-            onAdDismissed()
-            return
+        val ad = rewardedAd
+        if (ad == null || !ad.isAdReady) {
+            Timber.d("Rewarded ad not ready — requesting load")
+            loadRewardedAd()
+            return false
         }
-
-        appOpenLoadingState = AdLoadingState.SHOWING
-
-        appOpenAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-            override fun onAdDismissedFullScreenContent() {
-                appOpenAd = null
-                appOpenLoadingState = AdLoadingState.IDLE
-                loadAppOpenAd() // Pre-load next ad
-                Timber.d("App-open ad dismissed")
-                eventListener?.onAdDismissed(AdType.APP_OPEN)
-                onAdDismissed()
-            }
-
-            override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                appOpenAd = null
-                appOpenLoadingState = AdLoadingState.IDLE
-                loadAppOpenAd()
-                Timber.w("App-open ad failed to show: code=%d, message=%s", error.code, error.message)
-                eventListener?.onAdShowFailed(AdType.APP_OPEN, "Code ${error.code}: ${error.message}")
-                onAdDismissed()
-            }
-
-            override fun onAdShowedFullScreenContent() {
-                Timber.d("App-open ad showed successfully")
-                eventListener?.onAdShown(AdType.APP_OPEN)
-            }
-
-            override fun onAdClicked() {
-                eventListener?.onAdClicked(AdType.APP_OPEN)
-            }
-
-            override fun onAdImpression() {
-                eventListener?.onAdImpression(AdType.APP_OPEN)
-            }
-        }
-
-        try {
-            appOpenAd?.show(activity) ?: run {
-                appOpenLoadingState = AdLoadingState.IDLE
-                onAdDismissed()
-            }
+        rewardShowToken = UUID.randomUUID().toString().replace("-", "")
+        rewardGrantedForThisShow.set(false)
+        return try {
+            ad.showAd(activity)
+            true
         } catch (e: Exception) {
-            appOpenAd = null
-            appOpenLoadingState = AdLoadingState.IDLE
-            Timber.e(e, "Exception showing app-open ad — ad show failures don't crash")
-            eventListener?.onAdShowFailed(AdType.APP_OPEN, "Exception: ${e.message}")
-            onAdDismissed()
+            Timber.e(e, "Exception showing rewarded ad — never crash on ad errors")
+            false
         }
     }
 
-    /**
-     * Check if the cached app-open ad is still valid.
-     * Ads expire after [AD_CACHE_DURATION_MS] to avoid showing stale creative.
-     */
-    private fun isAppOpenAdAvailable(): Boolean {
-        return appOpenAd != null && (Date().time - appOpenAdLoadTime) < AD_CACHE_DURATION_MS
-    }
-
     // ═══════════════════════════════════════════════════════════════════════════
-    //  Interstitial Ad
+    //  Interstitial ad — full-screen, frequency capped
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Get the current loading state for the interstitial ad.
-     */
-    fun getInterstitialLoadingState(): AdLoadingState = interstitialLoadingState
-
-    /**
-     * Load an interstitial ad. Should be called well before the moment
-     * you intend to show it (e.g., when a user starts a story post).
-     *
-     * If the ad is already loading or a valid cached ad exists, this
-     * is a no-op.
-     */
+    /** Load an interstitial ad. Safe to call repeatedly; skipped for Premium. */
     fun loadInterstitialAd() {
-        if (isPremiumUser) {
-            Timber.d("Skipping interstitial ad load: premium user")
-            return
+        if (isPremiumUser) return
+        if (!isSdkReady.get()) return
+        if (!isInterstitialLoading.compareAndSet(false, true)) return
+        val ad = interstitialAd ?: LevelPlayInterstitialAd(INTERSTITIAL_AD_UNIT_ID).also {
+            it.setListener(interstitialListener)
+            interstitialAd = it
         }
-        if (!isInterstitialLoading.compareAndSet(false, true)) {
-            Timber.d("Interstitial ad already loading, skipping")
-            return
-        }
-        if (interstitialAd != null) {
+        if (ad.isAdReady) {
             isInterstitialLoading.set(false)
-            Timber.d("Interstitial ad already loaded, skipping")
             return
         }
-
-        interstitialLoadingState = AdLoadingState.LOADING
-        Timber.d("Loading interstitial ad: unit=%s", INTERSTITIAL_AD_UNIT_ID)
-
         try {
-            InterstitialAd.load(
-                context,
-                INTERSTITIAL_AD_UNIT_ID,
-                AdRequest.Builder().build(),
-                object : InterstitialAdLoadCallback() {
-                    override fun onAdLoaded(ad: InterstitialAd) {
-                        interstitialAd = ad
-                        isInterstitialLoading.set(false)
-                        interstitialLoadingState = AdLoadingState.LOADED
-                        Timber.d("Interstitial ad loaded successfully")
-                        eventListener?.onAdLoaded(AdType.INTERSTITIAL)
-                    }
-
-                    override fun onAdFailedToLoad(error: LoadAdError) {
-                        interstitialAd = null
-                        isInterstitialLoading.set(false)
-                        interstitialLoadingState = AdLoadingState.IDLE
-                        Timber.w(
-                            "Interstitial ad failed to load: code=%d, message=%s — will retry",
-                            error.code, error.message
-                        )
-                        eventListener?.onAdLoadFailed(
-                            AdType.INTERSTITIAL,
-                            "Code ${error.code}: ${error.message}"
-                        )
-                        scheduleLoadRetry { loadInterstitialAd() }
-                    }
-                }
-            )
+            ad.loadAd()
         } catch (e: Exception) {
             isInterstitialLoading.set(false)
-            interstitialLoadingState = AdLoadingState.IDLE
-            Timber.e(e, "Exception loading interstitial ad — ad load failures don't crash")
-            eventListener?.onAdLoadFailed(AdType.INTERSTITIAL, "Exception: ${e.message}")
+            Timber.e(e, "Exception requesting interstitial ad load")
+            scheduleLoadRetry { loadInterstitialAd() }
         }
+    }
+
+    private val interstitialListener = object : LevelPlayInterstitialAdListener {
+        override fun onAdLoaded(adInfo: LevelPlayAdInfo) {
+            isInterstitialLoading.set(false)
+            Timber.d("LevelPlay interstitial ad loaded")
+            eventListener?.onAdLoaded(AdType.INTERSTITIAL)
+        }
+
+        override fun onAdLoadFailed(error: LevelPlayAdError) {
+            isInterstitialLoading.set(false)
+            Timber.w("LevelPlay interstitial failed to load: %s — will retry", error.errorMessage)
+            eventListener?.onAdLoadFailed(AdType.INTERSTITIAL, error.errorMessage)
+            scheduleLoadRetry { loadInterstitialAd() }
+        }
+
+        override fun onAdDisplayed(adInfo: LevelPlayAdInfo) {
+            lastInterstitialShowTime = Date().time
+            eventListener?.onAdShown(AdType.INTERSTITIAL)
+        }
+
+        override fun onAdDisplayFailed(error: LevelPlayAdError, adInfo: LevelPlayAdInfo) {
+            Timber.w("LevelPlay interstitial failed to show: %s", error.errorMessage)
+            eventListener?.onAdShowFailed(AdType.INTERSTITIAL, error.errorMessage)
+            // Never block the caller's navigation when the show fails.
+            val continuation = interstitialDismissed
+            interstitialDismissed = null
+            continuation?.invoke()
+        }
+
+        override fun onAdClicked(adInfo: LevelPlayAdInfo) {}
+
+        override fun onAdClosed(adInfo: LevelPlayAdInfo) {
+            Timber.d("LevelPlay interstitial closed")
+            eventListener?.onAdDismissed(AdType.INTERSTITIAL)
+            // Resume the caller's navigation now that the ad flow finished.
+            val continuation = interstitialDismissed
+            interstitialDismissed = null
+            continuation?.invoke()
+            loadInterstitialAd() // Pre-load next ad
+        }
+
+        override fun onAdInfoChanged(adInfo: LevelPlayAdInfo) {}
     }
 
     /**
      * Show an interstitial ad if available and the frequency cap is met.
-     * Calls [onAdDismissed] whether the ad was shown or skipped.
+     * Calls [onAdDismissed] whether the ad was shown or skipped, so callers
+     * can always continue navigation.
      *
-     * Frequency capping: Maximum 1 interstitial ad per 3 minutes.
-     * This prevents ad fatigue and maintains a good user experience.
-     *
-     * @param activity     The current activity (required by the AdMob SDK).
-     * @param onAdDismissed Callback invoked when the ad flow is complete.
+     * Frequency capping: maximum 1 interstitial per 3 minutes; never for
+     * verified Premium users.
      */
     fun showInterstitialAd(activity: Activity, onAdDismissed: () -> Unit) {
         if (isPremiumUser) {
-            Timber.d("Skipping interstitial ad show: premium user")
+            Timber.d("Skipping interstitial show: premium user")
             onAdDismissed()
             return
         }
 
-        // ── Frequency Cap Check ────────────────────────────────────────────
         val now = Date().time
-        val elapsedSinceLastShow = now - lastInterstitialShowTime
-        if (elapsedSinceLastShow < INTERSTITIAL_FREQUENCY_CAP_MS) {
-            val remainingSeconds = (INTERSTITIAL_FREQUENCY_CAP_MS - elapsedSinceLastShow) / 1000
+        val elapsed = now - lastInterstitialShowTime
+        if (elapsed < INTERSTITIAL_FREQUENCY_CAP_MS) {
             Timber.d(
-                "Interstitial ad frequency cap: %ds remaining until next show",
-                remainingSeconds
+                "Interstitial frequency cap: %ds remaining",
+                (INTERSTITIAL_FREQUENCY_CAP_MS - elapsed) / 1000
             )
             onAdDismissed()
             return
         }
 
-        if (interstitialAd == null) {
-            Timber.d("Interstitial ad not available, proceeding without ad")
-            loadInterstitialAd() // Trigger a load for next time
+        val ad = interstitialAd
+        if (ad == null || !ad.isAdReady) {
+            Timber.d("Interstitial not available, proceeding without ad")
+            loadInterstitialAd()
             onAdDismissed()
             return
         }
 
-        interstitialLoadingState = AdLoadingState.SHOWING
-
-        interstitialAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-            override fun onAdDismissedFullScreenContent() {
-                interstitialAd = null
-                interstitialLoadingState = AdLoadingState.IDLE
-                loadInterstitialAd() // Pre-load next ad
-                Timber.d("Interstitial ad dismissed")
-                eventListener?.onAdDismissed(AdType.INTERSTITIAL)
-                onAdDismissed()
-            }
-
-            override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                interstitialAd = null
-                interstitialLoadingState = AdLoadingState.IDLE
-                loadInterstitialAd()
-                Timber.w(
-                    "Interstitial ad failed to show: code=%d, message=%s",
-                    error.code, error.message
-                )
-                eventListener?.onAdShowFailed(
-                    AdType.INTERSTITIAL,
-                    "Code ${error.code}: ${error.message}"
-                )
-                onAdDismissed()
-            }
-
-            override fun onAdShowedFullScreenContent() {
-                lastInterstitialShowTime = Date().time
-                Timber.d("Interstitial ad showed successfully")
-                eventListener?.onAdShown(AdType.INTERSTITIAL)
-            }
-
-            override fun onAdClicked() {
-                eventListener?.onAdClicked(AdType.INTERSTITIAL)
-            }
-
-            override fun onAdImpression() {
-                eventListener?.onAdImpression(AdType.INTERSTITIAL)
-            }
-        }
-
         try {
-            interstitialAd?.show(activity) ?: run {
-                interstitialLoadingState = AdLoadingState.IDLE
-                onAdDismissed()
-            }
+            interstitialDismissed = onAdDismissed
+            ad.showAd(activity)
         } catch (e: Exception) {
-            interstitialAd = null
-            interstitialLoadingState = AdLoadingState.IDLE
-            Timber.e(e, "Exception showing interstitial ad — ad show failures don't crash")
-            eventListener?.onAdShowFailed(AdType.INTERSTITIAL, "Exception: ${e.message}")
+            Timber.e(e, "Exception showing interstitial — never crash on ad errors")
+            interstitialDismissed = null
             onAdDismissed()
         }
     }
 
-    /**
-     * Check if the interstitial ad can be shown right now (loaded + frequency cap met).
-     *
-     * @return `true` if the interstitial ad is loaded and the 3-minute
-     *         frequency cap has elapsed since the last show.
-     */
+    /** Pending navigation continuation for the showing interstitial (main thread only). */
+    private var interstitialDismissed: (() -> Unit)? = null
+
+    /** Whether an interstitial can be shown right now (ready + cap elapsed). */
     fun canShowInterstitial(): Boolean {
         if (isPremiumUser) return false
-        if (interstitialAd == null) return false
-        val elapsed = Date().time - lastInterstitialShowTime
-        return elapsed >= INTERSTITIAL_FREQUENCY_CAP_MS
+        val ad = interstitialAd ?: return false
+        if (!ad.isAdReady) return false
+        return Date().time - lastInterstitialShowTime >= INTERSTITIAL_FREQUENCY_CAP_MS
     }
 
-    /**
-     * Get the remaining time in seconds until the interstitial frequency
-     * cap allows the next ad to be shown.
-     *
-     * @return Seconds remaining, or 0 if an ad can be shown now.
-     */
+    /** Seconds remaining until the interstitial cap allows the next show. */
     fun getInterstitialCooldownSeconds(): Long {
-        val elapsed = Date().time - lastInterstitialShowTime
-        val remaining = INTERSTITIAL_FREQUENCY_CAP_MS - elapsed
+        val remaining = INTERSTITIAL_FREQUENCY_CAP_MS - (Date().time - lastInterstitialShowTime)
         return if (remaining > 0) remaining / 1000 else 0L
     }
 
@@ -566,15 +473,14 @@ class AdManager(
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Release all ad references. Call this when the user becomes a premium
-     * subscriber or when the ad manager is no longer needed.
+     * Release all ad references. Called when the user becomes a verified
+     * Premium subscriber (ad-free mode) or on teardown.
      */
     fun release() {
-        appOpenAd = null
+        rewardedAd = null
         interstitialAd = null
-        appOpenLoadingState = AdLoadingState.IDLE
-        interstitialLoadingState = AdLoadingState.IDLE
-        isAppOpenAdLoading.set(false)
+        interstitialDismissed = null
+        isRewardedLoading.set(false)
         isInterstitialLoading.set(false)
         retryJobs.forEach { it.cancel() }
         retryJobs.clear()
