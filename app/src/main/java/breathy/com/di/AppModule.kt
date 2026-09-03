@@ -78,6 +78,14 @@ class AppModule(
         CloudinaryUploader(applicationContext)
     }
 
+    /**
+     * Disk-persistent onboarding state — the offline-proof completion flag
+     * and the pending-profile retry queue (v1.0.8 onboarding fix).
+     */
+    val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore by lazy {
+        breathy.com.utils.OnboardingLocalStore(applicationContext)
+    }
+
     /** Firebase Storage instance — used as fallback for profile image uploads. */
     val firebaseStorage: FirebaseStorage by lazy {
         Timber.d("Initializing FirebaseStorage")

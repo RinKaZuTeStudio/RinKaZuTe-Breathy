@@ -1,6 +1,6 @@
 {
   "firestore": {
-    "database": "(default)",
+    "database": "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },

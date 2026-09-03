@@ -137,7 +137,8 @@ sealed class AuthNavigationEvent {
 
 class AuthViewModel(
     private val authRepository: AuthRepository,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore
 ) : ViewModel() {
 
     companion object {
@@ -330,7 +331,36 @@ class AuthViewModel(
         _uiState.update { it.copy(navigationEvent = null) }
     }
 
+    /**
+     * Decide where a signed-in account goes: Home (profile complete), Age
+     * completion, or Onboarding.
+     *
+     * v1.0.8 FIX — the old logic asked the SERVER for the profile and fell
+     * back to Onboarding on ANY read failure/timeout, so a returning user on
+     * a slow network was thrown back into account setup on every cold start
+     * ("close the app and rejoin → asks me to create the account again").
+     * The decision now runs on three layers, offline-proof first:
+     *
+     *  1. LOCAL FLAG (OnboardingLocalStore, disk-persistent): written the
+     *     moment onboarding completes → straight to Home, zero network.
+     *  2. FIRESTORE (server → cache): for accounts created before the flag
+     *     existed, and to detect the sparse pre-onboarding document.
+     *  3. PENDING QUEUE: if Firestore says sparse but a local pending
+     *     profile exists, the write never landed — retry it now and go Home.
+     *     Only a truly sparse account with NO local state goes to Onboarding.
+     */
     private fun checkUserProfileAndNavigate(userId: String) {
+        // ── Layer 1: local completion flag — instant, offline-proof ────────
+        if (onboardingLocalStore.isCompleted(userId)) {
+            Timber.i("$TAG: uid=%s has LOCAL onboarding flag — navigating to Home (no network needed)", userId)
+            _uiState.update { it.copy(isLoading = false) }
+            retryPendingProfileUpload(userId)
+            _uiState.update {
+                it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+            }
+            return
+        }
+
         viewModelScope.launch {
             try {
                 // Try SERVER source first, fall back to CACHE if rules deny access.
@@ -355,45 +385,110 @@ class AuthViewModel(
 
                 _uiState.update { it.copy(isLoading = false) }
 
-                if (document != null && document.exists()
+                val profileComplete = document != null && document.exists()
                     && document.contains("quitDate")
                     && document.contains("quitType")
                     && document.contains("nickname")
                     && (document.getString("nickname")?.isNotBlank() == true)
-                ) {
-                    // Profile complete except AGE? Existing accounts created before
-                    // the age requirement get a ONE-TIME completion step (never an
-                    // infinite loop — once saved, the check passes).
-                    val hasAge = (document.getLong("age") ?: 0L) > 0
-                    if (!hasAge) {
-                        Timber.i("$TAG: User uid=%s missing age — navigating to age completion", userId)
-                        _uiState.update {
-                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToAgeCompletion)
+
+                when {
+                    // ── Firestore confirms onboarding done ─────────────────
+                    profileComplete -> {
+                        // Backfill the local flag so future launches skip the network
+                        onboardingLocalStore.markCompleted(userId)
+                        retryPendingProfileUpload(userId)
+
+                        // Profile complete except AGE? Existing accounts created
+                        // before the age requirement get a ONE-TIME completion
+                        // step (never an infinite loop — once saved, the check passes).
+                        val hasAge = (document.getLong("age") ?: 0L) > 0
+                        if (!hasAge) {
+                            Timber.i("$TAG: User uid=%s missing age — navigating to age completion", userId)
+                            _uiState.update {
+                                it.copy(navigationEvent = AuthNavigationEvent.NavigateToAgeCompletion)
+                            }
+                        } else {
+                            Timber.i("$TAG: User uid=%s has completed onboarding — navigating to Home", userId)
+                            _uiState.update {
+                                it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                            }
                         }
-                        return@launch
                     }
-                    // User has completed onboarding (has quitDate + quitType + nickname + age)
-                    Timber.i("$TAG: User uid=%s has completed onboarding — navigating to Home", userId)
-                    _uiState.update {
-                        it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+
+                    // ── Sparse doc, but a pending local write exists: the
+                    //    original save never landed — retry it and go Home ─
+                    onboardingLocalStore.readPendingProfile(userId) != null -> {
+                        Timber.i("$TAG: uid=%s sparse on server but LOCAL pending profile exists — retrying upload, navigating to Home", userId)
+                        retryPendingProfileUpload(userId)
+                        onboardingLocalStore.markCompleted(userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                        }
                     }
-                } else {
-                    // New user or incomplete profile — go to onboarding
-                    Timber.i("$TAG: User uid=%s needs onboarding — navigating to Onboarding", userId)
-                    _uiState.update {
-                        it.copy(navigationEvent = AuthNavigationEvent.NavigateToOnboarding)
+
+                    // ── Truly new / incomplete account ─────────────────────
+                    else -> {
+                        Timber.i("$TAG: User uid=%s needs onboarding — navigating to Onboarding", userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToOnboarding)
+                        }
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "$TAG: Failed to verify user profile for uid=%s — navigating to onboarding as fallback", userId)
-                // Firestore read failed (likely rules not deployed), but auth succeeded.
-                // Navigate to onboarding as a safe fallback instead of blocking the user.
+                // Firestore read failed entirely (offline, no cache). A user
+                // with ANY local onboarding state must NEVER be re-onboarded.
+                val hasLocal = onboardingLocalStore.isCompleted(userId) ||
+                        onboardingLocalStore.readPendingProfile(userId) != null
+                Timber.e(e, "$TAG: Profile read failed for uid=%s — local state=%s", userId, hasLocal)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        navigationEvent = AuthNavigationEvent.NavigateToOnboarding
+                        navigationEvent = if (hasLocal) AuthNavigationEvent.NavigateToHome
+                        else AuthNavigationEvent.NavigateToOnboarding
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * If onboarding's Firestore write failed earlier (rules propagation,
+     * offline), the full payload was queued locally. Retry it in the
+     * background until it lands, then clear the queue. Fire-and-forget —
+     * never blocks navigation.
+     */
+    private fun retryPendingProfileUpload(userId: String) {
+        val pending = onboardingLocalStore.readPendingProfile(userId) ?: return
+        viewModelScope.launch {
+            try {
+                val (userMap, publicMap) = onboardingLocalStore.buildFirestoreMaps(pending)
+                repeat(3) { attempt ->
+                    try {
+                        withTimeoutOrNull(10_000L) {
+                            val batch = firestore.batch()
+                            batch.set(firestore.collection("users").document(userId), userMap)
+                            batch.set(
+                                firestore.collection("publicProfiles").document(userId),
+                                publicMap,
+                                com.google.firebase.firestore.SetOptions.merge()
+                            )
+                            batch.commit().await()
+                        } ?: throw java.util.concurrent.TimeoutException()
+                        Timber.i("$TAG: pending onboarding profile uploaded for uid=%s (attempt %d)", userId, attempt + 1)
+                        onboardingLocalStore.clearPendingProfile(userId)
+                        return@launch
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.w(e, "$TAG: pending upload attempt %d failed for uid=%s", attempt + 1, userId)
+                    }
+                    kotlinx.coroutines.delay(5_000L * (attempt + 1))
+                }
+                Timber.w("$TAG: pending profile upload still failing for uid=%s — will retry next launch", userId)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "$TAG: pending profile retry crashed for uid=%s", userId)
             }
         }
     }
@@ -456,14 +551,15 @@ class AuthViewModel(
 
 class AuthViewModelFactory(
     private val authRepository: AuthRepository,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(AuthViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
-        return AuthViewModel(authRepository, firestore) as T
+        return AuthViewModel(authRepository, firestore, onboardingLocalStore) as T
     }
 }
 
@@ -493,7 +589,7 @@ fun AuthScreen(
     viewModel: AuthViewModel = run {
         val context = LocalContext.current
         val appModule = (context.applicationContext as BreathyApplication).appModule
-        viewModel(factory = AuthViewModelFactory(appModule.authRepository, appModule.firestore))
+        viewModel(factory = AuthViewModelFactory(appModule.authRepository, appModule.firestore, appModule.onboardingLocalStore))
     }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

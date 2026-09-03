@@ -1,5 +1,45 @@
 # Breathy — Version History
 
+## v1.0.8 (versionCode 9) — 2026-09-04
+
+### Fixed
+- **NEW ACCOUNT ONBOARDING LOOP (device-reported)**: closing and reopening the app on a
+  freshly created account asked for the create-account information AGAIN. Root cause: the
+  onboarding Firestore write was best-effort and its retries died with the app process, so
+  the profile stayed sparse and sign-in routed back to Onboarding on any read
+  failure/timeout. Fix: disk-persistent `OnboardingLocalStore` — completion flag written at
+  onboarding time (instant, offline-proof routing to Home) + a pending-profile retry queue
+  that re-uploads the full payload on every launch until the server accepts it. Local flag
+  is backfilled from Firestore for existing accounts.
+- **FOLLOW BUTTON (round 3)**: root cause confirmed as SERVER-SIDE — the app uses the
+  NAMED Firestore database `ai-studio-breathy-34bd5ba5-…`, and the v5 rules were published
+  to `(default)` (Firebase Console defaults to it; `firebase.json` also targeted it). The
+  named DB still ran the old rules, so `follows` writes were denied. `firebase.json` now
+  targets the named DB; the follow edge write auto-retries once (rules-propagation window);
+  the error toast now names the REAL cause (permission-denied vs connection vs error code).
+- **SUBSCRIPTION NOT RECOGNIZED**: same root cause — `subscriptions/{uid}` binding reads were
+  denied by the stale named-DB rules → entitlement resolved fail-closed. Added a deferred
+  (45s) automatic entitlement re-check after an UNKNOWN binding so premium activates without
+  an app restart once the rules land.
+- Premium frame art z-order: borders are now a TRUE FOREGROUND OVERLAY — drawn in front of
+  the character image (photo first, wreath on top); avatar circle resized 0.72 → 0.66 to sit
+  inside the wreath holes.
+
+### Changed
+- **OFFICIAL AVATAR BORDERS v2**: replaced the sprite-sheet-extracted frames with the
+  designer's cropped borders (docs/*.jpg pushed by the studio) — ring-only crops, 512×512
+  RGBA, transparent background AND transparent center hole, alpha-feathered edges.
+- **CHANGE-AVATAR PICKER** now shows the same information as the collection photos: name,
+  rarity pill with matching icon and color (● Common, leaf Uncommon, star Rare, gem Epic,
+  trophy Legendary, crown Premium — filled red pill for Premium), plus unlock status.
+- New accounts start with the Classic frame (public profile no longer pre-grants Nature —
+  it unlocks Day 7).
+
+### Artifacts
+- Breathy-debug-v1.0.8.apk / Breathy-release-v1.0.8-signed.apk / Breathy-release-v1.0.8.aab
+- SHA-1 unchanged: 06:03:48:17:16:6B:F1:63:D7:15:D9:B9:56:E5:96:1D:B2:5F:2A:D4
+
+
 ## v1.0.7 (versionCode 8) — new avatar borders, day-based unlocks, per-frame animations, follow hardening, new app icon
 
 ### Avatar Frames — official artwork + signature animations

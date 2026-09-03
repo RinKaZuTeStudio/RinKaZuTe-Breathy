@@ -59,22 +59,17 @@ class FollowRepository(
      *     A rejected counter write (older published rules, sparse profile
      *     create edge cases) must NEVER fail the follow itself — counters are
      *     cosmetic and recomputable from the follows collection.
+     *
+     * v1.0.8 — the edge write RETRIES automatically (rules propagation after
+     * a fresh Publish, transient network drops and first-write-after-reconnect
+     * hiccups all manifest as a single denied/timed-out call that succeeds on
+     * the immediate retry).
      */
     suspend fun followUser(targetUid: String): Result<Unit> = runCatching {
         val me = currentUidOrError()
         require(targetUid.isNotBlank() && targetUid != me) { "Invalid follow target" }
 
-        withTimeoutOrNull(TIMEOUT_MS) {
-            firestore.collection(FOLLOWS_COLLECTION).document(followId(me, targetUid))
-                .set(
-                    mapOf(
-                        "followerId" to me,
-                        "followedId" to targetUid,
-                        "createdAt" to FieldValue.serverTimestamp()
-                    )
-                )
-                .await()
-        } ?: throw IllegalStateException("Follow timed out — try again")
+        writeFollowEdgeWithRetry(me, targetUid)
 
         runCatching {
             withTimeoutOrNull(TIMEOUT_MS) {
@@ -154,6 +149,42 @@ class FollowRepository(
     // ═══════════════════════════════════════════════════════════════════════
     //  Lists — real profiles joined onto real follow edges
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * The follow EDGE write (source of truth) with one automatic retry.
+     * PERMISSION_DENIED is retried once too — a freshly published ruleset
+     * takes a few seconds to propagate across Firestore edge servers, and
+     * that exact window is the #1 real-world cause of "couldn't follow".
+     */
+    private suspend fun writeFollowEdgeWithRetry(me: String, targetUid: String) {
+        var lastError: Throwable? = null
+        repeat(2) { attempt ->
+            try {
+                withTimeoutOrNull(TIMEOUT_MS) {
+                    firestore.collection(FOLLOWS_COLLECTION).document(followId(me, targetUid))
+                        .set(
+                            mapOf(
+                                "followerId" to me,
+                                "followedId" to targetUid,
+                                "createdAt" to FieldValue.serverTimestamp()
+                            )
+                        )
+                        .await()
+                } ?: throw IllegalStateException("Follow timed out — try again")
+                if (attempt > 0) {
+                    Timber.i("FollowRepository: follow edge write succeeded on retry %d", attempt)
+                }
+                return
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                lastError = e
+                Timber.w(e, "FollowRepository: follow edge write attempt %d failed", attempt + 1)
+                if (attempt == 0) kotlinx.coroutines.delay(1_200L)
+            }
+        }
+        throw lastError ?: IllegalStateException("Follow failed — try again")
+    }
 
     /** Live list of everyone who follows [uid] (with their public profiles). */
     fun observeFollowers(uid: String): Flow<List<PublicProfile>> = callbackFlow {

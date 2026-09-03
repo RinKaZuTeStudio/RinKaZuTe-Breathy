@@ -158,6 +158,9 @@ class PremiumRepository(
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    /** Guards the single deferred entitlement re-check after UNKNOWN binding. */
+    private val pendingUnknownRetry = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private val _state = MutableStateFlow(PremiumState())
     val state: StateFlow<PremiumState> = _state.asStateFlow()
 
@@ -516,6 +519,22 @@ class PremiumRepository(
                             isAutoRenewing = null,
                             entitlementUid = uid
                         )
+                    }
+                    // v1.0.8: an UNKNOWN read is usually transient (network
+                    // blip, or security rules freshly published and still
+                    // propagating). Schedule ONE deferred re-check so a user
+                    // who subscribes/opens the app mid-propagation gets the
+                    // entitlement without restarting the app.
+                    if (pendingUnknownRetry.compareAndSet(false, true)) {
+                        scope.launch {
+                            kotlinx.coroutines.delay(45_000L)
+                            pendingUnknownRetry.set(false)
+                            val still = auth.currentUser?.uid
+                            if (still == uid && !_state.value.isPremium) {
+                                Timber.i("PremiumRepo: deferred re-check of entitlement after UNKNOWN binding")
+                                runCatching { resolvePurchaseEntitlement(purchase) }
+                            }
+                        }
                     }
                     return
                 }

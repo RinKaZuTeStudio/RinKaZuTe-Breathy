@@ -2171,24 +2171,53 @@ private fun FrameCard(
             overflow = TextOverflow.Ellipsis
         )
 
-        // Rarity badge
+        // Rarity badge — styled EXACTLY like the official Avatar Borders
+        // Collection art: outlined pill, rarity color, icon + label.
+        // (Common · grey dot | Uncommon · green leaf | Rare · blue star |
+        //  Epic · purple gem | Legendary · gold trophy | Premium · red crown)
         val rarityColor = when (frame.rarity) {
             breathy.com.data.models.FrameRarity.COMMON -> TextSecondary
             breathy.com.data.models.FrameRarity.UNCOMMON -> NaturalGreen
             breathy.com.data.models.FrameRarity.RARE -> AccentInfo
-            breathy.com.data.models.FrameRarity.EPIC -> DeepForest
+            breathy.com.data.models.FrameRarity.EPIC -> Color(0xFF9B6BE0)
             breathy.com.data.models.FrameRarity.LEGENDARY -> GoldDeep
-            breathy.com.data.models.FrameRarity.PREMIUM -> DarkBotanical
+            breathy.com.data.models.FrameRarity.PREMIUM -> Color(0xFFD9455A)
         }
-        Text(
-            text = frame.rarity.label.uppercase(),
-            style = MaterialTheme.typography.labelSmall.copy(
+        val rarityIcon = when (frame.rarity) {
+            breathy.com.data.models.FrameRarity.COMMON -> "●"
+            breathy.com.data.models.FrameRarity.UNCOMMON -> "🍃"
+            breathy.com.data.models.FrameRarity.RARE -> "⭐"
+            breathy.com.data.models.FrameRarity.EPIC -> "💎"
+            breathy.com.data.models.FrameRarity.LEGENDARY -> "🏆"
+            breathy.com.data.models.FrameRarity.PREMIUM -> "👑"
+        }
+        val isPremiumRarity = frame.rarity == breathy.com.data.models.FrameRarity.PREMIUM
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .then(
+                    if (isPremiumRarity) Modifier.background(rarityColor)
+                    else Modifier.border(1.dp, rarityColor.copy(alpha = 0.55f), RoundedCornerShape(50))
+                )
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = rarityIcon,
                 fontSize = 8.sp,
-                letterSpacing = 1.sp,
-                fontWeight = FontWeight.Black
-            ),
-            color = rarityColor
-        )
+                lineHeight = 10.sp
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Text(
+                text = frame.rarity.label.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 8.sp,
+                    letterSpacing = 1.sp,
+                    fontWeight = FontWeight.Black
+                ),
+                color = if (isPremiumRarity) Color.White else rarityColor
+            )
+        }
 
         Text(
             text = when {

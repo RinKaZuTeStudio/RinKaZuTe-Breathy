@@ -1001,19 +1001,28 @@ class PublicProfileViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        // Distinguish a rules/rollout problem from a network
-                        // problem — "check your connection" was misleading when
-                        // the real cause was PERMISSION_DENIED.
-                        val denied = e is com.google.firebase.firestore.FirebaseFirestoreException &&
-                            e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED
-                        _uiState.value = _uiState.value.copy(
-                            isFollowBusy = false,
-                            error = if (denied) {
-                                "Follow is still rolling out on the server for your account — please try again soon."
-                            } else {
+                        // v1.0.8 — tell the user the REAL cause instead of a
+                        // generic "check your connection":
+                        //  · PERMISSION_DENIED → server rules reject the write
+                        //    (rules update not published to the app's Firestore
+                        //    database yet — publishing is server-side, instant)
+                        //  · UNAVAILABLE / timeout → genuine network problem
+                        //  · anything else → show the error code for diagnosis
+                        val code = (e as? com.google.firebase.firestore.FirebaseFirestoreException)?.code
+                        val message = when {
+                            code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+                                "Follow is blocked by the server rules — the updated security rules haven't been published to the app's Firestore database yet. It usually works right after the rules update."
+                            code == com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE ||
+                                e.message?.contains("timed out", ignoreCase = true) == true ->
                                 "Couldn't " + (if (following) "unfollow" else "follow") +
                                     " — check your connection and try again."
-                            }
+                            else ->
+                                "Couldn't " + (if (following) "unfollow" else "follow") +
+                                    " (" + (code?.name ?: e.javaClass.simpleName) + "). Please try again."
+                        }
+                        _uiState.value = _uiState.value.copy(
+                            isFollowBusy = false,
+                            error = message
                         )
                     }
                 }

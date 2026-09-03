@@ -164,17 +164,17 @@ fun BreathyAvatar(
             .then(semanticsModifier),
         contentAlignment = Alignment.Center
     ) {
-        // ── Frame artwork layer — drawn botanical composition ──────────────
+        // ── Aura layer (UNDER the photo) — soft colored breathing glow ────
         androidx.compose.foundation.Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
-            drawFrameArtwork(effectiveFrame, rankTier, ringWidth.toPx(), phase, art)
+            drawFrameAura(effectiveFrame, phase)
         }
 
-        // ── Inner avatar circle, inset inside the artwork ──────────────────
+        // ── Inner avatar circle FIRST — the frame renders IN FRONT of it ──
         Box(
             modifier = Modifier
-                .size(size * 0.72f)
+                .size(size * 0.66f)
                 .clip(CircleShape)
                 .background(BreathyPalette.veryLightSage)
         ) {
@@ -202,6 +202,15 @@ fun BreathyAvatar(
                     )
                 }
             }
+        }
+
+        // ── FOREGROUND overlay: frame artwork IN FRONT of the photo ────────
+        // Drawn LAST so the wreath/ring overlaps the avatar edge — the
+        // character sits INSIDE the border (transparent hole shows the face).
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            drawFrameArtwork(effectiveFrame, rankTier, ringWidth.toPx(), phase, art)
         }
     }
 }
@@ -342,9 +351,28 @@ private val FrameAuraColors = mapOf(
 )
 
 /**
+ * Soft colored aura glow drawn UNDER the photo — the breathing backdrop that
+ * makes the foreground frame art pop. Runs on its own canvas layer.
+ */
+private fun DrawScope.drawFrameAura(frame: AvatarFrame, phase: Float) {
+    val center = Offset(size.width / 2f, size.height / 2f)
+    val ringRadius = size.minDimension / 2f * 0.86f
+    val aura = FrameAuraColors[frame] ?: Color(0xFF9BA88F)
+    val auraMax = when (frame) {
+        AvatarFrame.NONE -> 0.14f
+        AvatarFrame.NATURE, AvatarFrame.LEAF -> 0.20f
+        AvatarFrame.BRONZE, AvatarFrame.SILVER -> 0.24f
+        AvatarFrame.RANK, AvatarFrame.ACHIEVEMENT -> 0.26f
+        else -> 0.32f // GOLD / EVENT / PREMIUM
+    }
+    drawGlow(center, ringRadius * 1.12f, aura, phase, maxAlpha = auraMax)
+}
+
+/**
  * Draw the official frame artwork with its SIGNATURE animation:
- * aura breathing under the art, motion of the art itself (sway / breathe /
- * pop), and light effects over it (shine sweeps, sparkles).
+ * motion of the art itself (sway / breathe / pop) and light effects over it
+ * (shine sweeps, sparkles). Rendered as the FOREGROUND overlay — in front
+ * of the avatar photo.
  */
 private fun DrawScope.drawOfficialFrameArt(
     frame: AvatarFrame,
@@ -356,17 +384,6 @@ private fun DrawScope.drawOfficialFrameArt(
     val ringRadius = size.minDimension / 2f * 0.86f
     val tau = (2.0 * PI).toFloat()
     val pulse = sin(phase * tau)
-    val aura = FrameAuraColors[frame] ?: Color(0xFF9BA88F)
-
-    // ── aura (under the artwork) ─────────────────────────────────────────
-    val auraMax = when (frame) {
-        AvatarFrame.NONE -> 0.14f
-        AvatarFrame.NATURE, AvatarFrame.LEAF -> 0.20f
-        AvatarFrame.BRONZE, AvatarFrame.SILVER -> 0.24f
-        AvatarFrame.RANK, AvatarFrame.ACHIEVEMENT -> 0.26f
-        else -> 0.32f // GOLD / EVENT / PREMIUM
-    }
-    drawGlow(center, ringRadius * 1.12f, aura, phase, maxAlpha = auraMax)
 
     // ── artwork with per-frame motion ────────────────────────────────────
     when (frame) {

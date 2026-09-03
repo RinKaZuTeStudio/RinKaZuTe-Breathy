@@ -172,7 +172,8 @@ class OnboardingViewModel(
     private val firestore: FirebaseFirestore,
     private val firebaseAuth: FirebaseAuth,
     private val cloudinaryUploader: breathy.com.utils.CloudinaryUploader,
-    private val userRepository: breathy.com.data.repository.UserRepository
+    private val userRepository: breathy.com.data.repository.UserRepository,
+    private val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore
 ) : ViewModel() {
 
     companion object {
@@ -393,6 +394,27 @@ class OnboardingViewModel(
                     quitDate = quitTimestamp
                 )
 
+                // v1.0.8 FIX: persist completion LOCALLY before anything else.
+                // Even if the Firestore write fails, the next launch routes
+                // this account straight to Home (never re-onboards) and the
+                // pending-profile queue retries the upload in the background.
+                onboardingLocalStore.markCompleted(userId)
+                onboardingLocalStore.clearPendingProfile(userId)
+                onboardingLocalStore.savePendingProfile(
+                    userId,
+                    breathy.com.utils.OnboardingLocalStore.PendingProfile(
+                        email = userProfile.email,
+                        nickname = userProfile.nickname,
+                        age = userProfile.age ?: state.age ?: 0,
+                        quitDateMillis = state.quitDate,
+                        quitType = userProfile.quitType.value,
+                        cigarettesPerDay = userProfile.cigarettesPerDay,
+                        pricePerPack = userProfile.pricePerPack,
+                        cigarettesPerPack = userProfile.cigarettesPerPack,
+                        photoURL = userProfile.photoURL
+                    )
+                )
+
                 // Use a write batch for atomicity (best-effort with timeout)
                 // Use toFirestoreMap() for explicit field mapping to avoid
                 // enum-serialization issues with Firestore's POJO converter.
@@ -463,7 +485,8 @@ class OnboardingViewModel(
                 "daysSmokeFree" to publicProfile.daysSmokeFree,
                 "xp" to publicProfile.xp,
                 "quitDate" to publicProfile.quitDate,
-                "avatarFrame" to breathy.com.data.models.AvatarFrame.NATURE.id,
+                // v1.0.8: new accounts start with CLASSIC — Nature unlocks Day 7
+                "avatarFrame" to breathy.com.data.models.AvatarFrame.NONE.id,
                 "premium" to false,
                 // Stamp activity time at creation: profiles created after the
                 // initial-reset cutoff count as real leaderboard users.
@@ -481,10 +504,12 @@ class OnboardingViewModel(
                 true
             }
             if (result == null) {
-                Timber.w("$TAG: Firestore write timed out during onboarding — continuing")
+                Timber.w("$TAG: Firestore write timed out during onboarding — continuing (pending copy kept locally)")
                 false
             } else {
                 Timber.i("$TAG: Onboarding profile saved for uid=%s", userId)
+                // Remote write landed — the local pending copy is no longer needed
+                onboardingLocalStore.clearPendingProfile(userId)
                 true
             }
         } catch (e: CancellationException) {
@@ -531,14 +556,15 @@ class OnboardingViewModelFactory(
     private val firestore: FirebaseFirestore,
     private val firebaseAuth: FirebaseAuth,
     private val cloudinaryUploader: breathy.com.utils.CloudinaryUploader,
-    private val userRepository: breathy.com.data.repository.UserRepository
+    private val userRepository: breathy.com.data.repository.UserRepository,
+    private val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(OnboardingViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
-        return OnboardingViewModel(firestore, firebaseAuth, cloudinaryUploader, userRepository) as T
+        return OnboardingViewModel(firestore, firebaseAuth, cloudinaryUploader, userRepository, onboardingLocalStore) as T
     }
 }
 
@@ -601,7 +627,7 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = run {
         val context = LocalContext.current
         val appModule = (context.applicationContext as BreathyApplication).appModule
-        viewModel(factory = OnboardingViewModelFactory(appModule.firestore, appModule.firebaseAuth, appModule.cloudinaryUploader, appModule.userRepository))
+        viewModel(factory = OnboardingViewModelFactory(appModule.firestore, appModule.firebaseAuth, appModule.cloudinaryUploader, appModule.userRepository, appModule.onboardingLocalStore))
     }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
