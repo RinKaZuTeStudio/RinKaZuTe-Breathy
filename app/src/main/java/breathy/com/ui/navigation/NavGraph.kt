@@ -540,7 +540,9 @@ fun BreathyNavHost(
             composable(BreathyRoutes.PROFILE) {
                 ProfileScreen(
                     onNavigateToAchievements = { navigateToWithAd(BreathyRoutes.ACHIEVEMENTS) },
-                    onNavigateToSubscription = { navigateToWithAd(BreathyRoutes.SUBSCRIPTION) },
+                    // Subscription page navigates WITHOUT an interstitial — ads must never
+                    // interrupt a purchase flow (Google Play policy).
+                    onNavigateToSubscription = { navigateTo(BreathyRoutes.SUBSCRIPTION) },
                     onNavigateToFriends = { navigateToWithAd(BreathyRoutes.FRIENDS) },
                     onNavigateToGoldHistory = { navigateToWithAd(BreathyRoutes.GOLD_HISTORY) },
                     onNavigateToPayoutSetup = { navigateTo(BreathyRoutes.PAYOUT_SETUP) },

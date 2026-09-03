@@ -463,30 +463,65 @@ class PremiumRepository(
         val previous = _state.value
         val sameAccount = previous.entitlementUid == uid
 
-        val binding = readTokenBinding(uid, purchase.purchaseToken)
-        val bound = when (binding) {
-            true -> true
-            false -> false
-            null -> sameAccount && previous.isPremium // Firestore unreachable — trust same-account cache
+        when (val binding = readTokenBinding(uid, purchase.purchaseToken)) {
+            TokenBinding.MATCH -> {
+                // Token recorded for THIS account — grant below.
+            }
+            TokenBinding.MISSING -> {
+                // FIX: no mirror document yet (the Firestore mirror write may
+                // have failed at purchase time, or the app was reinstalled).
+                // Google Play — the source of truth — reports the purchase as
+                // ACTIVE for the signed-in account, and the CURRENT account is
+                // the one completing the purchase/restore flow, so grant and
+                // write the binding now. A DIFFERENT account logging in later
+                // hits MATCH-for-A / MISMATCH-for-B and stays isolated.
+                Timber.i(
+                    "PremiumRepo: no mirror document for %s yet — binding active Play purchase to the current account",
+                    uid
+                )
+                persistEntitlement(purchase)
+            }
+            TokenBinding.MISMATCH -> {
+                Timber.w(
+                    "PremiumRepo: premium purchase exists on Google Play but is bound to a DIFFERENT app account — premium denied for %s",
+                    uid
+                )
+                _state.update {
+                    it.copy(
+                        isPremium = false,
+                        isChecking = false,
+                        isPurchasing = false,
+                        status = SubscriptionStatus.NONE,
+                        isAutoRenewing = null,
+                        entitlementUid = uid
+                    )
+                }
+                return
+            }
+            TokenBinding.UNKNOWN -> {
+                // Firestore unreachable — keep the same-account in-memory
+                // decision (never strip a paying user on a network blip;
+                // never grant to a fresh account on a network blip).
+                if (!(sameAccount && previous.isPremium)) {
+                    Timber.w(
+                        "PremiumRepo: binding unknown (Firestore unreachable) — no in-memory premium for %s",
+                        uid
+                    )
+                    _state.update {
+                        it.copy(
+                            isPremium = false,
+                            isChecking = false,
+                            isPurchasing = false,
+                            status = SubscriptionStatus.NONE,
+                            isAutoRenewing = null,
+                            entitlementUid = uid
+                        )
+                    }
+                    return
+                }
+            }
         }
 
-        if (!bound) {
-            Timber.w(
-                "PremiumRepo: premium purchase exists on Google Play but is NOT bound to account %s — premium denied",
-                uid
-            )
-            _state.update {
-                it.copy(
-                    isPremium = false,
-                    isChecking = false,
-                    isPurchasing = false,
-                    status = SubscriptionStatus.NONE,
-                    isAutoRenewing = null,
-                    entitlementUid = uid
-                )
-            }
-            return
-        }
 
         val autoRenewing = purchase.isAutoRenewing
         val status = if (autoRenewing) SubscriptionStatus.ACTIVE
@@ -519,32 +554,41 @@ class PremiumRepository(
         }
     }
 
+    /** Result of reading the purchase-token mirror for the current account. */
+    private enum class TokenBinding {
+        /** Mirror exists and holds this purchase token — entitlement bound here. */
+        MATCH,
+        /** Mirror exists but holds a DIFFERENT purchase token — another app account owns it. */
+        MISMATCH,
+        /** No mirror document yet — bind the active Play purchase on first claim. */
+        MISSING,
+        /** Firestore unreachable — decision must fall back to in-memory state. */
+        UNKNOWN
+    }
+
     /**
      * Read the purchase-token binding for [uid] from Firestore.
-     * Returns:
-     * - `true`  → token bound to this account;
-     * - `false` → token belongs to a different account (or this account has
-     *   no purchase record at all);
-     * - `null`  → Firestore unreachable / timed out (binding UNKNOWN).
      */
-    private suspend fun readTokenBinding(uid: String, purchaseToken: String): Boolean? {
+    private suspend fun readTokenBinding(uid: String, purchaseToken: String): TokenBinding {
         return try {
             val doc = withTimeoutOrNull(8_000L) {
                 firestore.collection(SUBSCRIPTIONS_COLLECTION).document(uid).get().await()
             }
             when {
-                doc == null -> null // timeout — unknown
-                !doc.exists() -> false // this account has never recorded a purchase
+                doc == null -> TokenBinding.UNKNOWN // timeout — unknown
+                !doc.exists() -> TokenBinding.MISSING // never recorded a purchase
                 else -> {
                     val mirrored = doc.getString("purchaseToken")
-                    !mirrored.isNullOrBlank() && mirrored == purchaseToken
+                    if (mirrored.isNullOrBlank()) TokenBinding.MISSING
+                    else if (mirrored == purchaseToken) TokenBinding.MATCH
+                    else TokenBinding.MISMATCH
                 }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Timber.w(e, "PremiumRepo: failed to read token binding for %s", uid)
-            null
+            TokenBinding.UNKNOWN
         }
     }
 

@@ -1,5 +1,41 @@
 # Breathy — Version History
 
+## v1.0.5 (versionCode 6) — subscription UX, premium frame delivery, ads & rewards, follow errors
+
+### Subscription / Premium
+- PremiumRepository binding fix: when Google Play reports an ACTIVE
+  `breathy_premium_monthly` purchase but no Firestore mirror document exists
+  yet (mirror write failed at purchase time, or app reinstall), the CURRENT
+  account now receives Premium and the binding is written — instead of being
+  denied. Different-account isolation preserved (MISMATCH still denies).
+- Subscription page: status headline is now "SUBSCRIBED ✓"; benefits expanded
+  (ad-free, exclusive events, auto-equipped Premium frame, badge across the
+  app, funds development). Subscribe CTA hidden for subscribers; Manage
+  Subscription + renewal info shown.
+- Premium avatar frame is AUTO-EQUIPPED the moment the entitlement first
+  activates (false→true transition) — subscribers visibly receive it without
+  digging through the collection. Manual frame choice afterwards is respected.
+- Navigating to the subscription page no longer shows an interstitial first
+  (Google Play policy: no ads interrupting purchase flows).
+
+### Ads (free users)
+- Interstitial frequency cap reduced 3 min → 90 s; tab switches and detail
+  navigation already show LevelPlay interstitials (never on launch, never in
+  purchase/registration/reward flows). Premium: zero ads, unchanged.
+- Rewarded "Gold Ads" (+200 Gold per completed ad) is now LIMITLESS and
+  available in TWO places: Home and Gold History. Reload after every show;
+  grant only on verified completion; per-show dedup key prevents double
+  credit. New shared composable ui/components/GoldAdsCard.kt.
+
+### Follow
+- Follow failures are now surfaced with an inline error banner on the profile
+  (previously silent — looked like a dead button). Root cause of most
+  failures was the missing `follows` Firestore rules (v5 ruleset delivered
+  separately — publish it to make follow/unfollow work).
+
+### Misc
+- Premium popup remains strictly gated to non-premium users.
+
 ## v1.0.4 (versionCode 5) — daily-reward permissions fix, leaderboard highlight fix, light-only UI hardening
 
 **Signing:** same official release keystore (alias `breathy`, SHA-1

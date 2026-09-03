@@ -346,6 +346,13 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
+                    // ── Gold Ads (rewarded, limitless +200 Gold) ──────────
+                    // Hidden entirely for verified Premium subscribers.
+                    breathy.com.ui.components.GoldAdsCard(
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // ── Sponsored (native ad, LevelPlay "Ad1") ─────────────
                     // One placement between content cards; hidden entirely for
                     // verified Premium subscribers. Never blocks any action.

@@ -1702,12 +1702,41 @@ class ProfileViewModel(
         }
     }
 
+    /** Tracks the previous premium flag so a false→true transition (the
+     *  moment the user actually subscribes/restores) can be detected. */
+    private var wasPremium: Boolean? = null
+
     /** Mirror the verified premium entitlement into profile UI state. */
     private fun observePremium() {
         premiumRepository?.let { repo ->
             viewModelScope.launch {
                 repo.state.collect { premium ->
                     _uiState.update { it.copy(isPremium = premium.isPremium) }
+
+                    // PREMIUM AVATAR FRAME DELIVERY (user report: "didn't
+                    // receive the premium avatar border after subscribing").
+                    // On the false→true transition — i.e. the moment the
+                    // subscription becomes ACTIVE — auto-equip the Premium
+                    // frame so the subscriber visibly receives it without
+                    // hunting through the collection. Already-premium users
+                    // on later app starts keep whatever frame they chose.
+                    val first = wasPremium == null
+                    val transitioned = !first && !wasPremium!! && premium.isPremium
+                    wasPremium = premium.isPremium
+                    if (transitioned && premium.isPremium) {
+                        val uid = auth.currentUser?.uid
+                        val currentFrame = _uiState.value.user?.avatarFrame
+                        if (uid != null &&
+                            breathy.com.data.models.AvatarFrame.fromId(currentFrame)
+                                != breathy.com.data.models.AvatarFrame.PREMIUM
+                        ) {
+                            updateAvatarFrame(breathy.com.data.models.AvatarFrame.PREMIUM)
+                            _uiState.update {
+                                it.copy(errorMessage = null)
+                            }
+                            Timber.i("Profile: Premium frame auto-equipped for %s", uid)
+                        }
+                    }
                 }
             }
         }

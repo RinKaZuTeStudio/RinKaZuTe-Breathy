@@ -209,11 +209,23 @@ fun SubscriptionScreen(
                 ) {
                     PremiumBenefitRow(
                         title = "Ad-free experience",
-                        description = "No interruptions. Just you and your progress."
+                        description = "No interstitials, no banners — zero ads everywhere."
                     )
                     PremiumBenefitRow(
-                        title = "Exclusive events",
-                        description = "Premium-only challenges, first access to every event."
+                        title = "Exclusive events & challenges",
+                        description = "Premium-only competitions with real prize pools."
+                    )
+                    PremiumBenefitRow(
+                        title = "Premium avatar frame",
+                        description = "The ornate Premium border — unlocked and equipped automatically."
+                    )
+                    PremiumBenefitRow(
+                        title = "Premium badge everywhere",
+                        description = "Stand out on the leaderboard, community and your profile."
+                    )
+                    PremiumBenefitRow(
+                        title = "Support Breathy's journey",
+                        description = "Your subscription funds new features and events."
                     )
                 }
             }
@@ -250,7 +262,7 @@ fun SubscriptionScreen(
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = "ACTIVE",
+                            text = "SUBSCRIBED ✓",
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.ExtraBold
                             ),
@@ -274,8 +286,10 @@ fun SubscriptionScreen(
                         Spacer(Modifier.height(10.dp))
                         val benefits = listOf(
                             "Ad-free experience",
-                            "Exclusive events",
-                            "Premium avatar frame"
+                            "Exclusive events & challenges",
+                            "Premium avatar frame — auto-equipped",
+                            "Premium badge on leaderboard & community",
+                            "You're funding Breathy's development — thank you!"
                         )
                         benefits.forEach { benefit ->
                             Row(verticalAlignment = Alignment.CenterVertically) {

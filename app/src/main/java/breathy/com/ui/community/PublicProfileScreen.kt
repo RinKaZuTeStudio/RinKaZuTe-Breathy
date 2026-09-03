@@ -247,6 +247,40 @@ fun PublicProfileScreen(
                     )
                 }
 
+                // ── Transient error banner (e.g. failed follow attempt) ──
+                uiState.error?.let { err ->
+                    item(key = "profile_error_banner") {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = err,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.error
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                androidx.compose.material3.TextButton(
+                                    onClick = { viewModel.dismissError() }
+                                ) {
+                                    Text("OK", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Safety: report / block (spec section 30) ─────────────
                 if (uiState.friendStatus != FriendStatus.SELF) {
                     item {
@@ -954,6 +988,7 @@ class PublicProfileViewModel(
                     _uiState.value = _uiState.value.copy(
                         isFollowing = !following,
                         isFollowBusy = false,
+                        error = null,
                         // Optimistically refresh the denormalized counter
                         profile = _uiState.value.profile?.let { p ->
                             p.copy(
@@ -966,7 +1001,14 @@ class PublicProfileViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        _uiState.value = _uiState.value.copy(isFollowBusy = false)
+                        // SURFACE the failure — the Follow button must never
+                        // appear dead. (Most common cause: Firestore rules
+                        // denying the follow batch, e.g. rules not published.)
+                        _uiState.value = _uiState.value.copy(
+                            isFollowBusy = false,
+                            error = "Couldn't " + if (following) "unfollow" else "follow" +
+                                " — check your connection and try again."
+                        )
                     }
                 }
             )
@@ -975,6 +1017,11 @@ class PublicProfileViewModel(
 
     fun retry() {
         loadProfile()
+    }
+
+    /** Clear a transient (non-fatal) error, e.g. a failed follow attempt. */
+    fun dismissError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 }
 

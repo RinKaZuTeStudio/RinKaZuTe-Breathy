@@ -78,8 +78,10 @@ class AdManager(
         const val REWARDED_GOLD_AMOUNT = 200
 
         // ── Timing ─────────────────────────────────────────────────────────
-        /** Minimum interval between interstitial shows (3 minutes). */
-        const val INTERSTITIAL_FREQUENCY_CAP_MS = 3L * 60L * 1000L
+        /** Minimum interval between interstitial shows (90 seconds) — free
+         *  users encounter ads regularly while navigating, without the
+         *  experience becoming hostile (policy-safe minimum spacing). */
+        const val INTERSTITIAL_FREQUENCY_CAP_MS = 90L * 1000L
 
         /** Delay before the first ad-load retry after a load failure (15s). */
         private const val AD_RETRY_INITIAL_MS = 15_000L
