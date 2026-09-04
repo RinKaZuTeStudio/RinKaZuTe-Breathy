@@ -281,6 +281,62 @@ class AppModule(
                     }
                 }
             }
+
+            // ── Profile-Pic rewarded security path (v1.0.9) ──────────────────
+            // Invoked ONLY from the LevelPlay completion callback of the
+            // dedicated "Profile Pic" ad unit (sdogk85zaxbkjym5). Records ONE
+            // watch toward the 5-ad SUNRISE picture unlock; the Firestore
+            // transaction dedups per show token so replays never over-count.
+            adManager.profilePicGrantCallback = { token ->
+                val uid = firebaseAuth.currentUser?.uid
+                if (uid == null) {
+                    Timber.w("Profile Pic ad: completed but no signed-in account — watch not recorded")
+                } else {
+                    goldScope.launch {
+                        userRepository.grantProfilePictureAdWatch(uid, token)
+                            .onSuccess { count ->
+                                Timber.i("Profile Pic ad: watch recorded (%d/5)", count)
+                            }
+                            .onFailure { e ->
+                                Timber.e(e, "Profile Pic ad: failed to record watch")
+                            }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * v1.0.9 PREMIUM PERK — every verified subscriber receives +500 Gold per
+     * ISO week. The grant runs on every premium-state activation with a
+     * week-scoped dedup key (`premium_weekly_YYYY-Www`), so it is idempotent:
+     * safe to call on every app start / account switch, credited exactly once
+     * per week, no local state needed.
+     */
+    private fun attachPremiumWeeklyGold(
+        stateFlow: kotlinx.coroutines.flow.StateFlow<PremiumRepository.PremiumState>
+    ) {
+        val scope = kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate
+        )
+        scope.launch {
+            stateFlow.collect { premium ->
+                if (!premium.isPremium) return@collect
+                val uid = firebaseAuth.currentUser?.uid ?: return@collect
+                val result = goldRepository.earn(
+                    amount = GoldRepository.PREMIUM_WEEKLY_GOLD,
+                    source = "premium_weekly",
+                    description = "Premium weekly bonus — +500 Gold",
+                    dedupKey = GoldRepository.premiumWeeklyKey()
+                )
+                result.onSuccess { (balance, credited) ->
+                    if (credited) {
+                        Timber.i("Premium weekly bonus: +500 Gold granted (balance=%d)", balance)
+                    }
+                }.onFailure { e ->
+                    Timber.w(e, "Premium weekly bonus grant failed (will retry next launch)")
+                }
+            }
         }
     }
 
@@ -295,7 +351,11 @@ class AppModule(
             context = applicationContext,
             auth = firebaseAuth,
             firestore = firestore
-        )
+        ).also { repo ->
+            // v1.0.9: start observing the entitlement so subscribers receive
+            // their +500 Gold weekly bonus (idempotent, week-scoped dedup).
+            attachPremiumWeeklyGold(repo.state)
+        }
     }
 
     /**

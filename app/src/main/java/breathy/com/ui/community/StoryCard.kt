@@ -32,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -126,6 +127,10 @@ fun StoryCard(
                 // Avatar with the author's REAL equipped frame — renders live
                 // (frame changes propagate without restart, spec section 40)
                 val app = LocalContext.current.applicationContext as breathy.com.BreathyApplication
+                // v1.0.9 — author profile (live) for the premium glow + unified picture.
+                val authorProfile by remember(story.userId) {
+                    app.appModule.userRepository.observePublicProfile(story.userId)
+                }.collectAsState(initial = null)
                 Box(
                     modifier = Modifier
                         .clickable(onClick = onAvatarClick)
@@ -146,11 +151,13 @@ fun StoryCard(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    // Nickname
-                    Text(
+                    // Nickname — neon glow for verified Premium authors (v1.0.9)
+                    breathy.com.ui.components.PremiumGlowText(
                         text = story.nickname,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        enabled = authorProfile?.premium == true,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = themeTextPrimary
                     )
 

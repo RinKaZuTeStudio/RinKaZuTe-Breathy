@@ -158,9 +158,6 @@ class PremiumRepository(
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    /** Guards the single deferred entitlement re-check after UNKNOWN binding. */
-    private val pendingUnknownRetry = java.util.concurrent.atomic.AtomicBoolean(false)
-
     private val _state = MutableStateFlow(PremiumState())
     val state: StateFlow<PremiumState> = _state.asStateFlow()
 
@@ -364,6 +361,14 @@ class PremiumRepository(
             .build()
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productParams))
+            .apply {
+                // v1.0.9: bind this purchase to the CURRENT app account via
+                // Play's obfuscatedAccountId. Play echoes it back on every
+                // purchase query (purchase.accountIdentifiers), so premium can
+                // NEVER leak to a different app account on this device —
+                // verified by Google Play, no Firestore dependency.
+                auth.currentUser?.uid?.let { uid -> setObfuscatedAccountId(uid) }
+            }
             .build()
 
         val result = client.launchBillingFlow(activity, flowParams)
@@ -448,14 +453,25 @@ class PremiumRepository(
      * Resolve whether a verified Play purchase grants premium to the CURRENT
      * signed-in app account.
      *
-     * Binding rule: the purchase token must be recorded under THIS account
-     * (`subscriptions/{uid}.purchaseToken`, written at purchase time by
-     * [persistEntitlement]). A purchase bound to a different app account on
-     * this device NEVER leaks into the current account.
+     * v1.0.9 ROOT-CAUSE FIX — the grant decision is now derived from GOOGLE
+     * PLAY ONLY, never from the Firestore mirror:
      *
-     * Unreachable Firestore policy: keep the previous in-memory decision for
-     * the SAME account (don't strip a paying user on a network blip);
-     * fail-closed (deny) for a NEW account so no state can leak through.
+     * - Purchases started by THIS app write the signed-in uid into Play's
+     *   `obfuscatedAccountId` (see [launchPurchase]); Play echoes it back in
+     *   `purchase.accountIdentifiers` on EVERY query. A purchase bound to a
+     *   DIFFERENT app account is therefore denied by Play itself — with zero
+     *   Firestore round-trips.
+     * - Everything else (legacy purchases made before this fix, test
+     *   purchases, blank identifiers) GRANTS for the current account. The
+     *   old logic gated the grant behind an 8s Firestore mirror read that
+     *   routinely timed out on a cold app (UNKNOWN → deny → the subscribed
+     *   account never turned premium), while a NEW account could hit the
+     *   MISSING branch and CLAIM the purchase. Both failure modes are gone:
+     *   no Firestore read sits in the grant path anymore.
+     * - The Firestore mirror (`subscriptions/{uid}`) is still written
+     *   best-effort AFTER the in-memory grant, purely so other surfaces
+     *   (leaderboard badge, public profile) can display premium while
+     *   Google Play is unreachable.
      */
     private suspend fun resolvePurchaseEntitlement(purchase: Purchase) {
         val uid = auth.currentUser?.uid
@@ -463,90 +479,37 @@ class PremiumRepository(
             Timber.w("PremiumRepo: verified purchase but no signed-in app account — not granting premium")
             return
         }
-        val previous = _state.value
-        val sameAccount = previous.entitlementUid == uid
 
-        when (val binding = readTokenBinding(uid, purchase.purchaseToken)) {
-            TokenBinding.MATCH -> {
-                // Token recorded for THIS account — grant below.
-            }
-            TokenBinding.MISSING -> {
-                // FIX: no mirror document yet (the Firestore mirror write may
-                // have failed at purchase time, or the app was reinstalled).
-                // Google Play — the source of truth — reports the purchase as
-                // ACTIVE for the signed-in account, and the CURRENT account is
-                // the one completing the purchase/restore flow, so grant and
-                // write the binding now. A DIFFERENT account logging in later
-                // hits MATCH-for-A / MISMATCH-for-B and stays isolated.
-                Timber.i(
-                    "PremiumRepo: no mirror document for %s yet — binding active Play purchase to the current account",
-                    uid
+        // ── Play-verified account binding ─────────────────────────────────
+        val obfuscatedAccount = try {
+            purchase.accountIdentifiers?.obfuscatedAccountId
+        } catch (e: Exception) {
+            null
+        }
+        if (!obfuscatedAccount.isNullOrBlank() && obfuscatedAccount != uid) {
+            Timber.w(
+                "PremiumRepo: premium purchase exists on Google Play but is bound to a DIFFERENT app account (Play obfuscatedAccountId) — premium denied for %s",
+                uid
+            )
+            _state.update {
+                it.copy(
+                    isPremium = false,
+                    isChecking = false,
+                    isPurchasing = false,
+                    status = SubscriptionStatus.NONE,
+                    isAutoRenewing = null,
+                    entitlementUid = uid
                 )
-                persistEntitlement(purchase)
             }
-            TokenBinding.MISMATCH -> {
-                Timber.w(
-                    "PremiumRepo: premium purchase exists on Google Play but is bound to a DIFFERENT app account — premium denied for %s",
-                    uid
-                )
-                _state.update {
-                    it.copy(
-                        isPremium = false,
-                        isChecking = false,
-                        isPurchasing = false,
-                        status = SubscriptionStatus.NONE,
-                        isAutoRenewing = null,
-                        entitlementUid = uid
-                    )
-                }
-                return
-            }
-            TokenBinding.UNKNOWN -> {
-                // Firestore unreachable — keep the same-account in-memory
-                // decision (never strip a paying user on a network blip;
-                // never grant to a fresh account on a network blip).
-                if (!(sameAccount && previous.isPremium)) {
-                    Timber.w(
-                        "PremiumRepo: binding unknown (Firestore unreachable) — no in-memory premium for %s",
-                        uid
-                    )
-                    _state.update {
-                        it.copy(
-                            isPremium = false,
-                            isChecking = false,
-                            isPurchasing = false,
-                            status = SubscriptionStatus.NONE,
-                            isAutoRenewing = null,
-                            entitlementUid = uid
-                        )
-                    }
-                    // v1.0.8: an UNKNOWN read is usually transient (network
-                    // blip, or security rules freshly published and still
-                    // propagating). Schedule ONE deferred re-check so a user
-                    // who subscribes/opens the app mid-propagation gets the
-                    // entitlement without restarting the app.
-                    if (pendingUnknownRetry.compareAndSet(false, true)) {
-                        scope.launch {
-                            kotlinx.coroutines.delay(45_000L)
-                            pendingUnknownRetry.set(false)
-                            val still = auth.currentUser?.uid
-                            if (still == uid && !_state.value.isPremium) {
-                                Timber.i("PremiumRepo: deferred re-check of entitlement after UNKNOWN binding")
-                                runCatching { resolvePurchaseEntitlement(purchase) }
-                            }
-                        }
-                    }
-                    return
-                }
-            }
+            return
         }
 
-
+        // ── GRANT — Google Play is the source of truth ────────────────────
         val autoRenewing = purchase.isAutoRenewing
         val status = if (autoRenewing) SubscriptionStatus.ACTIVE
         else SubscriptionStatus.CANCELED_BUT_STILL_ENTITLED
         Timber.i(
-            "PremiumRepo: verified premium purchase (token=%s…) autoRenewing=%s → %s",
+            "PremiumRepo: verified premium purchase (token=%s…) autoRenewing=%s → %s (granted from Play, no mirror gating)",
             purchase.purchaseToken.take(8), autoRenewing, status
         )
         persistEntitlement(purchase)
@@ -570,44 +533,6 @@ class PremiumRepository(
                         autoRenewing = autoRenewing
                     )
             )
-        }
-    }
-
-    /** Result of reading the purchase-token mirror for the current account. */
-    private enum class TokenBinding {
-        /** Mirror exists and holds this purchase token — entitlement bound here. */
-        MATCH,
-        /** Mirror exists but holds a DIFFERENT purchase token — another app account owns it. */
-        MISMATCH,
-        /** No mirror document yet — bind the active Play purchase on first claim. */
-        MISSING,
-        /** Firestore unreachable — decision must fall back to in-memory state. */
-        UNKNOWN
-    }
-
-    /**
-     * Read the purchase-token binding for [uid] from Firestore.
-     */
-    private suspend fun readTokenBinding(uid: String, purchaseToken: String): TokenBinding {
-        return try {
-            val doc = withTimeoutOrNull(8_000L) {
-                firestore.collection(SUBSCRIPTIONS_COLLECTION).document(uid).get().await()
-            }
-            when {
-                doc == null -> TokenBinding.UNKNOWN // timeout — unknown
-                !doc.exists() -> TokenBinding.MISSING // never recorded a purchase
-                else -> {
-                    val mirrored = doc.getString("purchaseToken")
-                    if (mirrored.isNullOrBlank()) TokenBinding.MISSING
-                    else if (mirrored == purchaseToken) TokenBinding.MATCH
-                    else TokenBinding.MISMATCH
-                }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Timber.w(e, "PremiumRepo: failed to read token binding for %s", uid)
-            TokenBinding.UNKNOWN
         }
     }
 

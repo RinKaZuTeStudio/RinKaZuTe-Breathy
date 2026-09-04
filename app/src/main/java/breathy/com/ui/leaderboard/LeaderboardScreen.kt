@@ -146,19 +146,19 @@ data class LeaderboardEntry(
     val userId: String = "",
     val nickname: String = "",
     val photoURL: String? = null,
+    /** XP for the SELECTED period (lifetime / this week / this month). */
     val xp: Int = 0,
     val daysSmokeFree: Int = 0,
     val rank: Int = 0,
     val avatarFrame: breathy.com.data.models.AvatarFrame = breathy.com.data.models.AvatarFrame.NONE,
     val isPremium: Boolean = false,
-    val level: Int = 1
+    val level: Int = 1,
+    /** v1.0.9 unified profile picture id — renders on every row. */
+    val profilePicture: String? = null
 )
 
-enum class LeaderboardPeriod(val label: String) {
-    WEEKLY("Weekly"),
-    MONTHLY("Monthly"),
-    ALL_TIME("All Time")
-}
+// v1.0.9: LeaderboardPeriod moved to breathy.com.data.models (shared with UserRepository).
+typealias LeaderboardPeriod = breathy.com.data.models.LeaderboardPeriod
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ViewModel
@@ -201,6 +201,9 @@ class LeaderboardViewModel(
     private val _uiState = MutableStateFlow(LeaderboardUiState())
     val uiState: StateFlow<LeaderboardUiState> = _uiState.asStateFlow()
 
+    /** Active period collection — cancelled & restarted on period switch. */
+    private var periodJob: kotlinx.coroutines.Job? = null
+
     init {
         loadLeaderboard()
     }
@@ -211,18 +214,33 @@ class LeaderboardViewModel(
             return
         }
 
-        viewModelScope.launch {
+        periodJob?.cancel()
+        periodJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                val flow = userRepository.observePublicProfilesOrderedByXp(LEADERBOARD_LIMIT)
+                // v1.0.9 — REAL period-aware query: Weekly / Monthly rank by the
+                // auto-resetting weeklyXp / monthlyXp mirrors; All-Time by xp.
+                val period = _uiState.value.selectedPeriod
+                val flow = userRepository.observePublicProfilesForPeriod(LEADERBOARD_LIMIT, period)
+                val currentWeekKey = UserRepository.weeklyXpPeriodKey()
+                val currentMonthKey = UserRepository.monthlyXpPeriodKey()
 
                 flow.collect { profilePairs ->
                     // Apply the one-time initial reset filter: only profiles
                     // active after the cutoff count as real leaderboard users.
+                    // Weekly/Monthly additionally drop stale-period profiles.
                     val realProfiles = profilePairs.filter { (_, profile) ->
                         val lastActivity = profile.updatedAt?.toDate()?.time ?: 0L
-                        lastActivity >= LEADERBOARD_RESET_CUTOFF
+                        val activeAfterCutoff = lastActivity >= LEADERBOARD_RESET_CUTOFF
+                        val inCurrentPeriod = when (period) {
+                            breathy.com.data.models.LeaderboardPeriod.WEEKLY ->
+                                profile.weeklyXpPeriod == currentWeekKey
+                            breathy.com.data.models.LeaderboardPeriod.MONTHLY ->
+                                profile.monthlyXpPeriod == currentMonthKey
+                            breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> true
+                        }
+                        activeAfterCutoff && inCurrentPeriod
                     }
                     val entries = realProfiles.mapIndexed { index, pair ->
                         val (userId, profile) = pair
@@ -230,12 +248,17 @@ class LeaderboardViewModel(
                             userId = userId,
                             nickname = profile.nickname,
                             photoURL = profile.photoURL,
-                            xp = profile.xp,
+                            xp = when (period) {
+                                breathy.com.data.models.LeaderboardPeriod.WEEKLY -> profile.weeklyXp
+                                breathy.com.data.models.LeaderboardPeriod.MONTHLY -> profile.monthlyXp
+                                breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> profile.xp
+                            },
                             daysSmokeFree = profile.daysSmokeFree,
                             rank = index + 1,
                             avatarFrame = breathy.com.data.models.AvatarFrame.fromId(profile.avatarFrame),
                             isPremium = profile.premium,
-                            level = breathy.com.data.models.User.computeLevel(profile.xp)
+                            level = breathy.com.data.models.User.computeLevel(profile.xp),
+                            profilePicture = profile.profilePicture
                         )
                     }
 
@@ -298,12 +321,17 @@ class LeaderboardViewModel(
                 userId = uid,
                 nickname = userProfile.nickname,
                 photoURL = userProfile.photoURL,
-                xp = userProfile.xp,
+                xp = when (_uiState.value.selectedPeriod) {
+                    breathy.com.data.models.LeaderboardPeriod.WEEKLY -> userProfile.weeklyXp
+                    breathy.com.data.models.LeaderboardPeriod.MONTHLY -> userProfile.monthlyXp
+                    breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> userProfile.xp
+                },
                 daysSmokeFree = userProfile.daysSmokeFree,
                 rank = trueRank,
                 avatarFrame = breathy.com.data.models.AvatarFrame.fromId(userProfile.avatarFrame),
                 isPremium = userProfile.premium,
-                level = breathy.com.data.models.User.computeLevel(userProfile.xp)
+                level = breathy.com.data.models.User.computeLevel(userProfile.xp),
+                profilePicture = userProfile.profilePicture
             )
             _uiState.update {
                 it.copy(currentUserEntry = entry, currentUserRank = entry.rank)
@@ -323,9 +351,10 @@ class LeaderboardViewModel(
     }
 
     fun selectPeriod(period: LeaderboardPeriod) {
+        if (_uiState.value.selectedPeriod == period) return
         _uiState.update { it.copy(selectedPeriod = period) }
-        // In production, this would filter the query by time range
-        // For now, we reload the same data
+        // v1.0.9 — restart the live query for the new period (Weekly ranks by
+        // weeklyXp, Monthly by monthlyXp, All-Time by lifetime xp).
         loadLeaderboard()
     }
 }
@@ -493,6 +522,13 @@ fun LeaderboardScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // ── YOUR POSITION / YOUR SCORE hero panel ──────────
+                        item(key = "period_tabs") {
+                            PeriodTabsRow(
+                                selected = uiState.selectedPeriod,
+                                onSelect = { viewModel.selectPeriod(it) }
+                            )
+                        }
+
                         item(key = "your_position") {
                             AnimatedVisibility(
                                 visible = headerVisible,
@@ -533,7 +569,11 @@ fun LeaderboardScreen(
                         if (uiState.entries.size > 3) {
                             item(key = "others_header") {
                                 Text(
-                                    text = "ALL RANKINGS",
+                                    text = when (uiState.selectedPeriod) {
+                                        breathy.com.data.models.LeaderboardPeriod.WEEKLY -> "WEEKLY RANKINGS"
+                                        breathy.com.data.models.LeaderboardPeriod.MONTHLY -> "MONTHLY RANKINGS"
+                                        breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> "ALL RANKINGS"
+                                    },
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = themeTextSecondary,
                                         letterSpacing = 2.sp,
@@ -848,17 +888,21 @@ private fun PodiumColumn(
             rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
             size = avatarSize,
             contentDescription = "${entry.nickname}'s avatar",
-            animated = false
+            animated = false,
+            profilePictureId = entry.profilePicture,
+            isPremiumUser = entry.isPremium
         )
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Text(
+        // v1.0.9 — premium subscribers' names glow neon across the app.
+        breathy.com.ui.components.PremiumGlowText(
             text = entry.nickname,
+            enabled = entry.isPremium,
             style = MaterialTheme.typography.labelMedium.copy(
-                color = DarkBotanical,
                 fontWeight = FontWeight.Bold
             ),
+            color = DarkBotanical,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -977,7 +1021,9 @@ private fun LeaderboardRow(
                 rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
                 size = 44.dp,
                 contentDescription = "${entry.nickname}'s avatar",
-                animated = false
+                animated = false,
+                profilePictureId = entry.profilePicture,
+                isPremiumUser = entry.isPremium
             )
 
             // Nickname and days
@@ -985,12 +1031,14 @@ private fun LeaderboardRow(
                 modifier = Modifier.weight(1f)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
+                    // v1.0.9 — premium subscribers' names glow neon.
+                    breathy.com.ui.components.PremiumGlowText(
                         text = entry.nickname,
+                        enabled = entry.isPremium,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = themeTextPrimary,
                             fontWeight = FontWeight.SemiBold
                         ),
+                        color = themeTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -1092,7 +1140,9 @@ private fun CurrentUserBottomBar(
                     rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
                     size = 46.dp,
                     contentDescription = "Your avatar",
-                    animated = false
+                    animated = false,
+                    profilePictureId = entry.profilePicture,
+                    isPremiumUser = entry.isPremium
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -1223,6 +1273,50 @@ private fun ErrorState(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                     color = MaterialTheme.colorScheme.background,
                     fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  v1.0.9 — Period tabs: WEEKLY · MONTHLY · ALL TIME
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun PeriodTabsRow(
+    selected: breathy.com.data.models.LeaderboardPeriod,
+    onSelect: (breathy.com.data.models.LeaderboardPeriod) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        breathy.com.data.models.LeaderboardPeriod.entries.forEach { period ->
+            val isSelected = period == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (isSelected) AccentPrimary else Color.Transparent
+                    )
+                    .clickable { onSelect(period) }
+                    .padding(vertical = 9.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = period.label,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                    ),
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                            else themeTextSecondary
                 )
             }
         }

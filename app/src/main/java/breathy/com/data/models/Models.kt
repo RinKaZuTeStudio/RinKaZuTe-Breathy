@@ -158,7 +158,16 @@ data class User(
     val avatarFrame: String? = null,
     /** Frame IDs owned via Gold purchases (or unlocks). Safe default for legacy accounts. */
     @PropertyName("ownedFrames")
-    val ownedFrames: List<String> = emptyList()
+    val ownedFrames: List<String> = emptyList(),
+    /** Unified profile picture id — see [ProfilePicture]. Null = default (day1). */
+    @PropertyName("profilePicture")
+    val profilePicture: String? = null,
+    /** Unified profile picture IDs owned via Gold / rewarded ads. */
+    @PropertyName("ownedPictures")
+    val ownedPictures: List<String> = emptyList(),
+    /** Rewarded-ad watches completed toward the 5-ad picture unlock. */
+    @PropertyName("picAdWatchCount")
+    val picAdWatchCount: Int = 0
 ){
 
     companion object {
@@ -186,7 +195,10 @@ data class User(
             photoURL = map["photoURL"] as? String,
             location = map["location"] as? String,
             avatarFrame = map["avatarFrame"] as? String,
-            ownedFrames = (map["ownedFrames"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+            ownedFrames = (map["ownedFrames"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            profilePicture = map["profilePicture"] as? String,
+            ownedPictures = (map["ownedPictures"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            picAdWatchCount = (map["picAdWatchCount"] as? Long)?.toInt() ?: 0
         )
 
         /** Compute level from XP using the PRD-specified threshold table. */
@@ -257,8 +269,22 @@ data class User(
         "photoURL" to photoURL,
         "location" to location,
         "avatarFrame" to avatarFrame,
-        "ownedFrames" to ownedFrames
+        "ownedFrames" to ownedFrames,
+        "profilePicture" to profilePicture,
+        "ownedPictures" to ownedPictures,
+        "picAdWatchCount" to picAdWatchCount
     )
+}
+
+/**
+ * Leaderboard time range (v1.0.9). All-Time ranks by lifetime XP;
+ * Weekly / Monthly rank by the auto-resetting period XP mirrors
+ * (publicProfiles.weeklyXp / .monthlyXp).
+ */
+enum class LeaderboardPeriod(val label: String) {
+    WEEKLY("Weekly"),
+    MONTHLY("Monthly"),
+    ALL_TIME("All Time")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -293,6 +319,21 @@ data class PublicProfile(
     /** Denormalized following count (one-way follow graph — see FollowRepository). */
     @PropertyName("followingCount")
     val followingCount: Int = 0,
+    /** Unified profile picture id — see [ProfilePicture]. Null = default (day1). */
+    @PropertyName("profilePicture")
+    val profilePicture: String? = null,
+    /** XP earned during the current ISO week (resets automatically) — Weekly leaderboard. */
+    @PropertyName("weeklyXp")
+    val weeklyXp: Int = 0,
+    /** ISO week key the weekly XP belongs to, e.g. "2026-W36". */
+    @PropertyName("weeklyXpPeriod")
+    val weeklyXpPeriod: String? = null,
+    /** XP earned during the current calendar month (resets automatically) — Monthly leaderboard. */
+    @PropertyName("monthlyXp")
+    val monthlyXp: Int = 0,
+    /** Month key the monthly XP belongs to, e.g. "2026-09". */
+    @PropertyName("monthlyXpPeriod")
+    val monthlyXpPeriod: String? = null,
     /** Last-activity timestamp — used by the initial leaderboard reset filter. */
     @PropertyName("updatedAt")
     @Serializable(with = TimestampSerializer::class)
@@ -311,6 +352,11 @@ data class PublicProfile(
             premium = map["premium"] as? Boolean ?: false,
             followerCount = (map["followerCount"] as? Long)?.toInt() ?: 0,
             followingCount = (map["followingCount"] as? Long)?.toInt() ?: 0,
+            profilePicture = map["profilePicture"] as? String,
+            weeklyXp = (map["weeklyXp"] as? Long)?.toInt() ?: 0,
+            weeklyXpPeriod = map["weeklyXpPeriod"] as? String,
+            monthlyXp = (map["monthlyXp"] as? Long)?.toInt() ?: 0,
+            monthlyXpPeriod = map["monthlyXpPeriod"] as? String,
             updatedAt = map["updatedAt"] as? Timestamp
         )
     }

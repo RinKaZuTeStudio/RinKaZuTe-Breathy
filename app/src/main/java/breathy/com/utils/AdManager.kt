@@ -68,6 +68,10 @@ class AdManager(
         /** Rewarded ad unit — "Gold Ads": +200 Gold on verified completion. */
         const val REWARDED_AD_UNIT_ID = "b0taewni29ftw711"
 
+        /** v1.0.9 rewarded ad unit — unlocks the SUNRISE profile picture after
+         *  5 verified completed watches (placement "Profile Pic"). */
+        const val PROFILE_PIC_REWARDED_AD_UNIT_ID = "sdogk85zaxbkjym5"
+
         /** Native ad unit — rendered as a Breathy-styled sponsored card. */
         const val NATIVE_AD_UNIT_ID = "5o8vznxxsem6mv51"
 
@@ -108,14 +112,16 @@ class AdManager(
         NATIVE
     }
 
-    // ── Ad references ──────────────────────────────────────────────────────────
+    // ── Ad references ──────────────────────────────────────────────────────
 
     private var rewardedAd: LevelPlayRewardedAd? = null
+    private var profilePicRewardedAd: LevelPlayRewardedAd? = null
     private var interstitialAd: LevelPlayInterstitialAd? = null
 
     // ── Loading state ──────────────────────────────────────────────────────────
 
     private val isRewardedLoading = AtomicBoolean(false)
+    private val isProfilePicRewardedLoading = AtomicBoolean(false)
     private val isInterstitialLoading = AtomicBoolean(false)
     private val isInitializing = AtomicBoolean(false)
 
@@ -127,8 +133,14 @@ class AdManager(
     /** Unique token for the currently shown rewarded ad (gold dedup key). */
     private var rewardShowToken: String? = null
 
+    /** Unique token for the currently shown profile-picture rewarded ad. */
+    private var profilePicShowToken: String? = null
+
     /** Guards against duplicate grant callbacks for one completed ad. */
     private val rewardGrantedForThisShow = AtomicBoolean(false)
+
+    /** Guards against duplicate picture-unlock callbacks for one completed ad. */
+    private val profilePicGrantedForThisShow = AtomicBoolean(false)
 
     // ── Frequency capping ──────────────────────────────────────────────────────
 
@@ -149,6 +161,13 @@ class AdManager(
      * as the Gold-ledger dedup key — idempotent under retries/replays.
      */
     var rewardGrantCallback: ((token: String) -> Unit)? = null
+
+    /**
+     * v1.0.9 — called with a unique token when a PROFILE-PIC rewarded ad
+     * (unit [PROFILE_PIC_REWARDED_AD_UNIT_ID]) COMPLETES. AppModule records
+     * one watch toward the 5-ad SUNRISE picture unlock (ledger-deduped).
+     */
+    var profilePicGrantCallback: ((token: String) -> Unit)? = null
 
     /** Optional listener for ad lifecycle events. */
     var eventListener: AdEventListener? = null
@@ -171,6 +190,7 @@ class AdManager(
                 } else if (!premium.isPremium && wasPremium) {
                     Timber.d("AdManager: Premium no longer active — resuming free-user ad strategy")
                     loadRewardedAd()
+                    loadProfilePicRewardedAd()
                     loadInterstitialAd()
                 }
             }
@@ -204,8 +224,8 @@ class AdManager(
                     isInitializing.set(false)
                     if (!isSdkReady.compareAndSet(false, true)) return
                     Timber.i("LevelPlay initialized (appKey=%s)", LEVELPLAY_APP_KEY)
-                    // Pre-load the free-user ad formats after SDK init.
                     loadRewardedAd()
+                    loadProfilePicRewardedAd()
                     loadInterstitialAd()
                 }
 
@@ -336,6 +356,113 @@ class AdManager(
             true
         } catch (e: Exception) {
             Timber.e(e, "Exception showing rewarded ad — never crash on ad errors")
+            false
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  Rewarded ad — "Profile Pic" (5 watches unlock the SUNRISE picture)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /** Load the profile-picture rewarded ad. Safe to call repeatedly. */
+    fun loadProfilePicRewardedAd() {
+        if (isPremiumUser) return
+        if (!isSdkReady.get()) return
+        if (!isProfilePicRewardedLoading.compareAndSet(false, true)) return
+        val ad = profilePicRewardedAd ?: LevelPlayRewardedAd(PROFILE_PIC_REWARDED_AD_UNIT_ID).also {
+            it.setListener(profilePicRewardedListener)
+            profilePicRewardedAd = it
+        }
+        if (ad.isAdReady) {
+            isProfilePicRewardedLoading.set(false)
+            return
+        }
+        try {
+            ad.loadAd()
+        } catch (e: Exception) {
+            isProfilePicRewardedLoading.set(false)
+            Timber.e(e, "Exception requesting profile-pic rewarded ad load")
+            scheduleLoadRetry { loadProfilePicRewardedAd() }
+        }
+    }
+
+    private val profilePicRewardedListener = object : LevelPlayRewardedAdListener {
+        override fun onAdLoaded(adInfo: LevelPlayAdInfo) {
+            isProfilePicRewardedLoading.set(false)
+            Timber.d("LevelPlay profile-pic rewarded ad loaded")
+            eventListener?.onAdLoaded(AdType.REWARDED)
+        }
+
+        override fun onAdLoadFailed(error: LevelPlayAdError) {
+            isProfilePicRewardedLoading.set(false)
+            Timber.w("LevelPlay profile-pic rewarded ad failed to load: %s — will retry", error.errorMessage)
+            eventListener?.onAdLoadFailed(AdType.REWARDED, error.errorMessage)
+            scheduleLoadRetry { loadProfilePicRewardedAd() }
+        }
+
+        override fun onAdDisplayed(adInfo: LevelPlayAdInfo) {
+            eventListener?.onAdShown(AdType.REWARDED)
+        }
+
+        override fun onAdRewarded(reward: LevelPlayReward, adInfo: LevelPlayAdInfo) {
+            // THE ONLY PICTURE-UNLOCK COUNT PATH — fires when the user actually
+            // completed the ad. Guarded so a duplicated callback cannot double-count.
+            val token = profilePicShowToken
+            if (token == null) {
+                Timber.w("LevelPlay profile-pic rewarded callback without show token — ignoring")
+                return
+            }
+            if (profilePicGrantedForThisShow.compareAndSet(false, true)) {
+                Timber.i("LevelPlay profile-pic rewarded ad COMPLETED — recording 1 watch (token=%s…)", token.take(8))
+                try {
+                    profilePicGrantCallback?.invoke(token)
+                } catch (e: Exception) {
+                    Timber.e(e, "Profile-pic unlock grant for rewarded ad failed")
+                }
+            }
+        }
+
+        override fun onAdDisplayFailed(error: LevelPlayAdError, adInfo: LevelPlayAdInfo) {
+            Timber.w("LevelPlay profile-pic rewarded ad failed to display: %s", error.errorMessage)
+            eventListener?.onAdShowFailed(AdType.REWARDED, error.errorMessage)
+        }
+
+        override fun onAdClicked(adInfo: LevelPlayAdInfo) {}
+
+        override fun onAdClosed(adInfo: LevelPlayAdInfo) {
+            Timber.d("LevelPlay profile-pic rewarded ad closed")
+            eventListener?.onAdDismissed(AdType.REWARDED)
+            // Pre-load the next unlock opportunity.
+            loadProfilePicRewardedAd()
+        }
+
+        override fun onAdInfoChanged(adInfo: LevelPlayAdInfo) {}
+    }
+
+    /**
+     * Show the profile-picture rewarded ad. One watch is recorded ONLY through
+     * [profilePicGrantCallback] when LevelPlay confirms completion.
+     *
+     * @return true when the ad was actually shown (or is about to show).
+     */
+    fun showProfilePicRewardedAd(activity: Activity): Boolean {
+        if (isPremiumUser) {
+            Timber.d("Profile-pic rewarded ad skipped: premium user (ad-free)")
+            return false
+        }
+        val ad = profilePicRewardedAd
+        if (ad == null || !ad.isAdReady) {
+            Timber.d("Profile-pic rewarded ad not ready — requesting load")
+            loadProfilePicRewardedAd()
+            return false
+        }
+        profilePicShowToken = UUID.randomUUID().toString().replace("-", "")
+        profilePicGrantedForThisShow.set(false)
+        return try {
+            ad.showAd(activity)
+            true
+        } catch (e: Exception) {
+            Timber.e(e, "Exception showing profile-pic rewarded ad — never crash on ad errors")
             false
         }
     }
@@ -480,9 +607,11 @@ class AdManager(
      */
     fun release() {
         rewardedAd = null
+        profilePicRewardedAd = null
         interstitialAd = null
         interstitialDismissed = null
         isRewardedLoading.set(false)
+        isProfilePicRewardedLoading.set(false)
         isInterstitialLoading.set(false)
         retryJobs.forEach { it.cancel() }
         retryJobs.clear()

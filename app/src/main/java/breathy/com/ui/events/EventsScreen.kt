@@ -260,7 +260,9 @@ class EventsViewModel(
         _uiState.update { it.copy(joiningEventId = eventId) }
 
         viewModelScope.launch {
-            eventRepository.joinEvent(eventId).fold(
+            // v1.0.9 premium perk: verified subscribers join any event FREE.
+            val isPremium = premiumRepository?.isPremium() ?: false
+            eventRepository.joinEvent(eventId, isPremium = isPremium).fold(
                 onSuccess = { participant ->
                     _uiState.update { state ->
                         val updatedEvents = state.events.map { eventWithStatus ->
@@ -448,6 +450,7 @@ fun EventsScreen(
                                     isJoining = uiState.joiningEventId == eventWithStatus.event.id,
                                     goldBalance = uiState.goldBalance,
                                     entryFee = 500,
+                                    isPremium = uiState.isPremium,
                                     onJoin = { viewModel.joinEvent(eventWithStatus.event.id) },
                                     onClick = { onNavigateToEventDetail(eventWithStatus.event.id) }
                                 )
@@ -574,6 +577,7 @@ private fun EventCard(
     isJoining: Boolean,
     goldBalance: Int,
     entryFee: Int,
+    isPremium: Boolean = false,
     onJoin: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -852,8 +856,8 @@ private fun EventCard(
                         )
                     }
                 } else if (isCurrentlyActive || (event.active && System.currentTimeMillis() < event.startDate.toDate().time)) {
-                    // Entry-fee aware CTA: exact fee, disabled when balance is short.
-                    val canAfford = goldBalance >= entryFee
+                    // v1.0.9: Premium subscribers join FREE — no balance gate.
+                    val canAfford = isPremium || goldBalance >= entryFee
                     Column(horizontalAlignment = Alignment.End) {
                         Button(
                             onClick = onJoin,
@@ -865,7 +869,8 @@ private fun EventCard(
                             ),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.semantics {
-                                contentDescription = "Join ${event.title} for $entryFee Gold"
+                                contentDescription = if (isPremium) "Join ${event.title} free (Premium)"
+                                                     else "Join ${event.title} for $entryFee Gold"
                                 role = Role.Button
                             }
                         ) {
@@ -878,7 +883,11 @@ private fun EventCard(
                                 Spacer(modifier = Modifier.width(6.dp))
                             }
                             Text(
-                                text = if (isJoining) "Joining..." else "Join · $entryFee \uD83E\uDE99",
+                                text = when {
+                                    isJoining -> "Joining..."
+                                    isPremium -> "Join · FREE 👑"
+                                    else -> "Join · $entryFee \uD83E\uDE99"
+                                },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
@@ -889,6 +898,16 @@ private fun EventCard(
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = themeTextSecondary,
                                     fontSize = 10.sp
+                                ),
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        } else if (isPremium) {
+                            Text(
+                                text = "Premium perk — free entry",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = AccentPrimary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 ),
                                 modifier = Modifier.padding(top = 4.dp)
                             )

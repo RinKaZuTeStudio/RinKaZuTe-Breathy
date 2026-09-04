@@ -1,29 +1,26 @@
 rules_version = '2';
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  BREATHY — PRODUCTION FIRESTORE RULES (v5, 2026-09)
+//  BREATHY — PRODUCTION FIRESTORE RULES (v6, 2026-09)
 //  Paste this entire file into Firebase Console → Firestore → Rules → Publish
 //  (or deploy with: firebase deploy --only firestore:rules)
 //
-//  FIXES vs the previously published version:
-//   1. users/{uid} update: no longer re-validates the FULL document state.
-//      The old check (email + nickname + quitDate + createdAt required on
-//      every write) denied ALL owner updates for sparse pre-onboarding
-//      documents — Google sign-in creates them WITHOUT quitDate — which made
-//      the Daily Login Reward fail with "permission_denied". Ownership plus
-//      immutable email/createdAt anchors is the security boundary now.
-//   2. users/{uid}/goldTransactions subcollection rules ADDED. The app's Gold
-//      ledger lives INSIDE the user document; the previously published rules
-//      only covered a top-level /goldTransactions path, so the catch-all
-//      denied every ledger write (daily reward, rewarded ads, event entry,
-//      frame purchases). The ledger stays append-only and owner-scoped.
-//   3. publicProfiles/{uid} owner update: no longer re-validates the FULL
-//      profile state (same sparse-document root cause as #1 — the daily
-//      reward transaction mirrors XP onto the profile).
-//   4. publicProfiles/{uid}: cross-user update allowed ONLY for the
-//      followerCount/followingCount counters (the follow system needs this).
-//   5. follows/{followId} rules ADDED — the one-way follow graph had NO rules
-//      in the published version, so every follow/unfollow was denied.
+//  v6 vs v5: the follows/{followId} section is SIMPLIFIED (fewer conditions =
+//  nothing extra to reject a legitimate follow) and documents the new v1.0.9
+//  owner-managed fields (profilePicture, ownedPictures, picAdWatchCount,
+//  weeklyXp/monthlyXp mirrors, animated avatar ids) — all of them flow through
+//  the existing owner-update rules, so no NEW collection or privilege was
+//  added. If follow still fails after publishing v6, the in-app follow error
+//  message now prints the EXACT Firebase project id to verify you edited the
+//  right project.
+//
+//  Carried-over fixes from v5:
+//   1. users/{uid} update: owner-only, no full-document re-validation
+//      (sparse pre-onboarding documents stay writable).
+//   2. users/{uid}/goldTransactions subcollection: append-only Gold ledger.
+//   3. publicProfiles owner update without full-state re-validation.
+//   4. publicProfiles cross-user updates ONLY for follow counters.
+//   5. follows/{followId} rules (the one-way follow graph).
 //
 //  Nothing is public. The catch-all deny remains last.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -192,7 +189,11 @@ service cloud.firestore {
 
 
     // ═══════════════════════════════════════════════════════════════════
-    // follows/{followId} — one-way FOLLOW / FOLLOWING graph (FIX #5)
+    // follows/{followId} — one-way FOLLOW / FOLLOWING graph
+    // v6: minimal validation — creator follows AS themselves and never
+    // follows themselves. (v5 also required createdAt to be a timestamp;
+    // dropping it removes the last thing that could reject a legitimate
+    // follow. Delete stays follower-only; update stays impossible.)
     // Deterministic id: {followerId}_{followedId}
     // ═══════════════════════════════════════════════════════════════════
 
@@ -202,8 +203,7 @@ service cloud.firestore {
       allow create: if isAuthenticated()
         && request.resource.data.followerId == request.auth.uid
         && request.resource.data.followedId is string
-        && request.resource.data.followedId != request.auth.uid
-        && request.resource.data.createdAt is timestamp;
+        && request.resource.data.followedId != request.auth.uid;
 
       allow update: if false;
 

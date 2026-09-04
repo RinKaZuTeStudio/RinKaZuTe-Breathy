@@ -95,6 +95,89 @@ enum class AvatarFrame(
 }
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  UNIFIED PROFILE PICTURE SYSTEM (v1.0.9)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The single set of unified avatars every Breathy account wears everywhere a
+ * profile picture is shown (own profile, leaderboard, community, friends,
+ * chats, public profiles). Artwork: the official PNG collection in docs/.
+ *
+ * Unlock rules:
+ * - [DAY1]        — owned by EVERY account automatically (the default).
+ * - [SEVEN_DAYS]  — unlocks at 7 days smoke-free.
+ * - [THIRTY_DAYS] — unlocks at 30 days smoke-free.
+ * - [NINETY_DAYS] — unlocks at 90 days smoke-free.
+ * - [SUNRISE]     — unlocks after watching 5 rewarded ads (dedicated ad unit).
+ * - [DONT_SMOKE] … [HEALTHY_FUTURE] — one-time Gold purchases (shop, 500+).
+ * - [FREE_FROM_THE_CHAIN] / [FINALLY_FREE] — Premium-only ANIMATED avatars:
+ *   a white flash sweeps every 5 seconds and the artwork alternates between
+ *   the two images. Any subscriber owns them for as long as they subscribe.
+ *
+ * The value persisted in Firestore (users.profilePicture /
+ * publicProfiles.profilePicture) is the [id] string. Gold ownership is
+ * persisted in users.ownedPictures; ad-unlock progress in users.picAdWatchCount.
+ */
+@Serializable
+enum class ProfilePicture(
+    val id: String,
+    val label: String,
+    val description: String,
+    /** Smoke-free days required (0 = everyone from day one). */
+    val unlockDays: Int = 0,
+    /** One-time Gold price when bought from the picture shop; null = not for sale. */
+    val goldPrice: Int? = null,
+    /** Rewarded-ad watches required (0 = not ad-unlockable). */
+    val adsRequired: Int = 0,
+    /** Premium-only (ownership follows the active subscription). */
+    val premiumOnly: Boolean = false,
+    /** Premium animated avatar — white-flash crossfade between the two artworks. */
+    val animated: Boolean = false
+) {
+    @SerialName("day1") DAY1("day1", "Day One", "Fresh start. Every account begins here.", unlockDays = 0),
+    @SerialName("7days") SEVEN_DAYS("7days", "7 Days", "One week smoke-free. Earned, never bought.", unlockDays = 7),
+    @SerialName("30days") THIRTY_DAYS("30days", "30 Days", "One full month smoke-free.", unlockDays = 30),
+    @SerialName("90days") NINETY_DAYS("90days", "90 Days", "The 90-day transformation.", unlockDays = 90),
+    @SerialName("sunrise") SUNRISE("sunrise", "Sunrise", "A new dawn. Watch 5 rewarded ads to unlock.", adsRequired = 5),
+    @SerialName("dontsmoke") DONT_SMOKE("dontsmoke", "Don't Smoke", "Say it loud. 500 Gold.", goldPrice = 500),
+    @SerialName("forrest") FORREST("forrest", "Forrest", "Breathe among the trees. 650 Gold.", goldPrice = 650),
+    @SerialName("freshbreath") FRESH_BREATH("freshbreath", "Fresh Breath", "Clean air energy. 800 Gold.", goldPrice = 800),
+    @SerialName("goodfrombad") GOOD_FROM_BAD("goodfrombad", "Good From Bad", "Turn it around. 950 Gold.", goldPrice = 950),
+    @SerialName("healthheart") HEALTH_HEART("healthheart", "Health Heart", "A heart that thanks you. 1,100 Gold.", goldPrice = 1100),
+    @SerialName("healthlungs") HEALTH_LUNGS("healthlungs", "Health Lungs", "Breathing free. 1,250 Gold.", goldPrice = 1250),
+    @SerialName("healthyfuture") HEALTHY_FUTURE("healthyfuture", "Healthy Future", "The future you're building. 1,500 Gold.", goldPrice = 1500),
+    @SerialName("freefromthechain") FREE_FROM_THE_CHAIN("freefromthechain", "Free From The Chain", "Premium animated avatar — break the chain.", premiumOnly = true, animated = true),
+    @SerialName("finallyfree") FINALLY_FREE("finallyfree", "Finally Free", "Premium animated avatar — the moment after.", premiumOnly = true, animated = true);
+
+    override fun toString(): String = id
+
+    companion object {
+        /** Resolve a Firestore string to the enum; unknown values fall back to [DAY1]. */
+        fun fromId(id: String?): ProfilePicture =
+            entries.find { it.id == id } ?: DAY1
+    }
+
+    /**
+     * Whether this picture is unlocked for the given REAL progression state.
+     * Gold purchases rely on users.ownedPictures (checked by the caller);
+     * this covers progression/premium/ads rules.
+     */
+    fun isUnlockedFor(
+        daysSmokeFree: Int,
+        isPremium: Boolean,
+        picAdWatchCount: Int,
+        ownedPictures: List<String> = emptyList()
+    ): Boolean = when {
+        this == DAY1 -> true
+        unlockDays > 0 -> daysSmokeFree >= unlockDays
+        goldPrice != null -> ownedPictures.contains(id)
+        adsRequired > 0 -> ownedPictures.contains(id) || picAdWatchCount >= adsRequired
+        premiumOnly -> isPremium
+        else -> false
+    }
+}
+
+/**
  * Nature-inspired visual rank identity, derived from the existing level system
  * ([User.computeLevel]). This is a presentation-layer mapping ONLY — it does
  * not change any rank/level/XP calculation.

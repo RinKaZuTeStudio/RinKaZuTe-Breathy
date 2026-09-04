@@ -643,7 +643,9 @@ private fun ChatTopBar(
                     )
                 },
                 size = 40.dp,
-                contentDescription = "${otherUserProfile?.nickname ?: "Chat"}'s avatar"
+                contentDescription = "${otherUserProfile?.nickname ?: "Chat"}'s avatar",
+                profilePictureId = otherUserProfile?.profilePicture,
+                isPremiumUser = otherUserProfile?.premium == true
             )
 
             Spacer(modifier = Modifier.width(12.dp))

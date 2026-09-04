@@ -46,6 +46,9 @@ class BreathyApplication : Application() {
         super.onCreate()
         instance = this
 
+        // ── In-app language (v1.0.9: English / العربية) ──────────────────────
+        breathy.com.utils.AppLanguage.init(this)
+
         // ── Global Crash Safety Net ────────────────────────────────────────────
         // Catch any uncaught exception on the main thread so the app doesn't
         // hard-crash. This is a last resort — all Firestore / auth operations

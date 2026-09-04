@@ -385,6 +385,26 @@ class AuthViewModel(
 
                 _uiState.update { it.copy(isLoading = false) }
 
+                // v1.0.9 FIX — a TIMEOUT (or total read failure) must NEVER be
+                // treated as "new account". withTimeoutOrNull(8s) returns NULL
+                // without throwing, which used to fall straight into the
+                // "needs onboarding" branch below and re-onboarded an account
+                // that is fully registered on the server. From this version,
+                // a missing document behaves exactly like the catch path:
+                // any local onboarding state (flag OR pending write) wins.
+                if (document == null || !document.exists()) {
+                    val hasLocal = onboardingLocalStore.isCompleted(userId) ||
+                            onboardingLocalStore.readPendingProfile(userId) != null
+                    if (hasLocal) {
+                        Timber.w("$TAG: uid=%s server read failed/timed out but LOCAL onboarding state exists — going Home", userId)
+                        retryPendingProfileUpload(userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                        }
+                        return@launch
+                    }
+                }
+
                 val profileComplete = document != null && document.exists()
                     && document.contains("quitDate")
                     && document.contains("quitType")

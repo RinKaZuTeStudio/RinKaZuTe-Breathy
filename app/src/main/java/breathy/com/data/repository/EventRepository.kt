@@ -190,6 +190,10 @@ class EventRepository(
      * Join an event — charges the ENTRY FEE (500 Gold) and creates the
      * participant record inside ONE atomic Firestore transaction.
      *
+     * v1.0.9 PREMIUM PERK: verified Breathy Premium subscribers join ANY
+     * event for FREE — the charge block is skipped entirely, the participant
+     * record carries `entryFee = 0` and the ledger notes the perk.
+     *
      * Guarantees (spec section 24):
      * - Deterministic participant ID ({userId}_{eventId}) prevents duplicate joins.
      * - The exact fee is deducted once; insufficient balance throws
@@ -197,12 +201,17 @@ class EventRepository(
      * - The Gold ledger entry uses a deterministic dedup key, so network
      *   retries can never double-charge.
      */
-    suspend fun joinEvent(eventId: String, entryFee: Int = 500): Result<EventParticipant> = runCatching {
+    suspend fun joinEvent(
+        eventId: String,
+        entryFee: Int = 500,
+        isPremium: Boolean = false
+    ): Result<EventParticipant> = runCatching {
         val uid = currentUserId
         val participantId = EventParticipant.participantId(uid, eventId)
         val participantRef = firestore.collection(EVENT_PARTICIPANTS_COLLECTION).document(participantId)
         val userRef = firestore.collection(USERS_COLLECTION).document(uid)
         val dedupKey = "event_entry_$eventId"
+        val effectiveFee = if (isPremium) 0 else entryFee
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             firestore.runTransaction { tx ->
@@ -211,30 +220,48 @@ class EventRepository(
                     throw IllegalStateException("Already joined this event")
                 }
 
-                // Charge entry fee atomically with the join (null-safe: legacy
-                // documents always carry `coins`; missing means 0 Gold).
-                val userSnap = tx.get(userRef)
-                val balance = (userSnap.getLong("coins") ?: 0L).toInt()
-                if (balance < entryFee) {
-                    throw breathy.com.data.repository.InsufficientGoldException(
-                        required = entryFee, available = balance
+                if (effectiveFee > 0) {
+                    // Charge entry fee atomically with the join (null-safe: legacy
+                    // documents always carry `coins`; missing means 0 Gold).
+                    val userSnap = tx.get(userRef)
+                    val balance = (userSnap.getLong("coins") ?: 0L).toInt()
+                    if (balance < effectiveFee) {
+                        throw breathy.com.data.repository.InsufficientGoldException(
+                            required = effectiveFee, available = balance
+                        )
+                    }
+                    val newBalance = balance - effectiveFee
+                    tx.update(userRef, "coins", newBalance)
+                    tx.set(
+                        userRef.collection("goldTransactions").document(dedupKey),
+                        mapOf(
+                            "amount" to effectiveFee,
+                            "type" to "spend",
+                            "source" to "event_entry",
+                            "description" to "Entered the challenge event",
+                            "dedupKey" to dedupKey,
+                            "balanceAfter" to newBalance,
+                            "timestamp" to FieldValue.serverTimestamp()
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                } else {
+                    // Premium free entry — still write a ledger note (amount 0)
+                    // so the perk is visible in Gold History.
+                    tx.set(
+                        userRef.collection("goldTransactions").document(dedupKey),
+                        mapOf(
+                            "amount" to 0,
+                            "type" to "earn",
+                            "source" to "event_entry_premium",
+                            "description" to "Premium free event entry",
+                            "dedupKey" to dedupKey,
+                            "balanceAfter" to (tx.get(userRef).getLong("coins") ?: 0L).toInt(),
+                            "timestamp" to FieldValue.serverTimestamp()
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
                     )
                 }
-                val newBalance = balance - entryFee
-                tx.update(userRef, "coins", newBalance)
-                tx.set(
-                    userRef.collection("goldTransactions").document(dedupKey),
-                    mapOf(
-                        "amount" to entryFee,
-                        "type" to "spend",
-                        "source" to "event_entry",
-                        "description" to "Entered the challenge event",
-                        "dedupKey" to dedupKey,
-                        "balanceAfter" to newBalance,
-                        "timestamp" to FieldValue.serverTimestamp()
-                    ),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
 
                 val participantData = mapOf(
                     "userId" to uid,
@@ -242,7 +269,7 @@ class EventRepository(
                     "currentStreak" to 0,
                     "totalApprovedDays" to 0,
                     "completed" to false,
-                    "entryFee" to entryFee,
+                    "entryFee" to effectiveFee,
                     "joinedAt" to FieldValue.serverTimestamp(),
                     "rank" to 0
                 )

@@ -23,7 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,9 +105,16 @@ fun BreathyAvatar(
     contentDescription: String? = "Avatar",
     cacheBust: Long = 0,
     /** Set false for static contexts (dense lists) to save animation cost. */
-    animated: Boolean = true
+    animated: Boolean = true,
+    /** v1.0.9 unified profile picture id (users.profilePicture). Null = Day One default. */
+    profilePictureId: String? = null,
+    /** v1.0.9 whether THIS avatar's owner has verified Premium (drives the animated avatar). */
+    isPremiumUser: Boolean = false
 ) {
     val effectiveFrame = frame ?: AvatarFrame.NONE
+    val effectivePicture = breathy.com.data.models.ProfilePicture.fromId(profilePictureId)
+    // Premium ANIMATED avatar: white flash every 5s alternates the two artworks.
+    val useAnimatedAvatar = animated && isPremiumUser && effectivePicture.animated
 
     // Official frame artwork (Avatar Borders Collection sprite sheet)
     val art: ImageBitmap? = when (effectiveFrame) {
@@ -178,29 +187,24 @@ fun BreathyAvatar(
                 .clip(CircleShape)
                 .background(BreathyPalette.veryLightSage)
         ) {
-            if (!photoURL.isNullOrBlank()) {
-                NetworkImage(
-                    model = photoURL,
+            if (useAnimatedAvatar) {
+                // v1.0.9 Premium animated avatar — artwork alternates between
+                // freefromthechain and finallyfree behind a white flash sweep.
+                AnimatedPremiumAvatar(
+                    startWithChain = effectivePicture == breathy.com.data.models.ProfilePicture.FREE_FROM_THE_CHAIN,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // v1.0.9 UNIFIED PROFILE PICTURE — the official collection artwork
+                // is the avatar EVERYWHERE; Day One is the automatic default.
+                androidx.compose.foundation.Image(
+                    bitmap = ImageBitmap.imageResource(profilePictureRes(effectivePicture)),
                     contentDescription = contentDescription,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    cacheBust = cacheBust
+                    filterQuality = FilterQuality.Medium
                 )
-            } else {
-                // Botanical default avatar
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Brush.radialGradient(BreathyPalette.defaultAvatarGradient)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = contentDescription,
-                        tint = BreathyPalette.naturalGreen,
-                        modifier = Modifier.fillMaxSize(0.55f)
-                    )
-                }
             }
         }
 
@@ -211,6 +215,81 @@ fun BreathyAvatar(
             modifier = Modifier.fillMaxSize()
         ) {
             drawFrameArtwork(effectiveFrame, rankTier, ringWidth.toPx(), phase, art)
+        }
+    }
+}
+
+/**
+ * v1.0.9 — drawable resource for a unified profile picture (Day One default).
+ */
+private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): Int = when (picture) {
+    breathy.com.data.models.ProfilePicture.DAY1 -> breathy.com.R.drawable.pic_day1
+    breathy.com.data.models.ProfilePicture.SEVEN_DAYS -> breathy.com.R.drawable.pic_7days
+    breathy.com.data.models.ProfilePicture.THIRTY_DAYS -> breathy.com.R.drawable.pic_30days
+    breathy.com.data.models.ProfilePicture.NINETY_DAYS -> breathy.com.R.drawable.pic_90days
+    breathy.com.data.models.ProfilePicture.SUNRISE -> breathy.com.R.drawable.pic_sunrise
+    breathy.com.data.models.ProfilePicture.DONT_SMOKE -> breathy.com.R.drawable.pic_dontsmoke
+    breathy.com.data.models.ProfilePicture.FORREST -> breathy.com.R.drawable.pic_forrest
+    breathy.com.data.models.ProfilePicture.FRESH_BREATH -> breathy.com.R.drawable.pic_freshbreath
+    breathy.com.data.models.ProfilePicture.GOOD_FROM_BAD -> breathy.com.R.drawable.pic_goodfrombad
+    breathy.com.data.models.ProfilePicture.HEALTH_HEART -> breathy.com.R.drawable.pic_healthheart
+    breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
+    breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
+    breathy.com.data.models.ProfilePicture.FREE_FROM_THE_CHAIN -> breathy.com.R.drawable.pic_freefromthechain
+    breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
+}
+
+/**
+ * v1.0.9 PREMIUM ANIMATED AVATAR — not a heavy animation: every FIVE seconds
+ * a white flash sweeps in, and at its peak the artwork switches between
+ * freefromthechain and finallyfree, then the flash sweeps away.
+ */
+@Composable
+private fun AnimatedPremiumAvatar(
+    startWithChain: Boolean,
+    contentDescription: String?,
+    modifier: Modifier = Modifier
+) {
+    var showChain by remember { mutableStateOf(startWithChain) }
+    var flashAlpha by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(5_000L)
+            // Flash in (350ms)
+            androidx.compose.animation.core.animate(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.tween(350)
+            ) { value, _ -> flashAlpha = value }
+            // Swap the artwork while the screen is fully white
+            showChain = !showChain
+            // Flash away (350ms)
+            androidx.compose.animation.core.animate(
+                initialValue = 1f,
+                targetValue = 0f,
+                animationSpec = androidx.compose.animation.core.tween(350)
+            ) { value, _ -> flashAlpha = value }
+        }
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Image(
+            bitmap = ImageBitmap.imageResource(
+                if (showChain) breathy.com.R.drawable.pic_freefromthechain
+                else breathy.com.R.drawable.pic_finallyfree
+            ),
+            contentDescription = contentDescription,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            filterQuality = FilterQuality.Medium
+        )
+        if (flashAlpha > 0.01f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White.copy(alpha = flashAlpha))
+            )
         }
     }
 }
@@ -1046,6 +1125,8 @@ fun FramedStoryAvatar(
         size = size,
         modifier = modifier,
         contentDescription = contentDescription ?: "$nickname's avatar",
-        animated = animated
+        animated = animated,
+        profilePictureId = profile?.profilePicture,
+        isPremiumUser = profile?.premium == true
     )
 }

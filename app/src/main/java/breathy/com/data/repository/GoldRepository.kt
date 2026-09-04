@@ -90,7 +90,11 @@ class GoldRepository(
             /** Featured push-up event entry fee (spec section 24). */
             const val EVENT_ENTRY = 500
             fun frame(frame: AvatarFrame): Int = frame.goldPrice ?: 0
+            fun profilePicture(picture: breathy.com.data.models.ProfilePicture): Int = picture.goldPrice ?: 0
         }
+
+        /** Premium perk: Gold granted to every subscriber once per ISO week. */
+        const val PREMIUM_WEEKLY_GOLD = 500
 
         private val dayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
@@ -109,6 +113,21 @@ class GoldRepository(
 
         /** dedupKey for a frame purchase — one per frame, ever. */
         fun framePurchaseKey(frameId: String): String = "frame_purchase_$frameId"
+
+        /** dedupKey for a unified profile-picture purchase — one per picture, ever. */
+        fun picturePurchaseKey(pictureId: String): String = "picture_purchase_$pictureId"
+
+        /** dedupKey for the Premium weekly Gold bonus — one per ISO week. */
+        fun premiumWeeklyKey(millis: Long = Date().time): String {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = millis
+            cal.firstDayOfWeek = java.util.Calendar.MONDAY
+            cal.minimalDaysInFirstWeek = 4
+            return "premium_weekly_%04d-W%02d".format(
+                cal.get(java.util.Calendar.YEAR),
+                cal.get(java.util.Calendar.WEEK_OF_YEAR)
+            )
+        }
     }
 
     private fun requireUserId(): String =
@@ -391,5 +410,77 @@ class GoldRepository(
         } ?: throw IllegalStateException("Frame purchase timed out after 30 seconds")
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to purchase frame: %s", frame.id)
+    }
+
+    /**
+     * Purchase a unified profile picture with Gold (v1.0.9 picture shop).
+     * Mirrors [purchaseFrame]: atomic deduction + ownership + equip + ledger.
+     * Re-buying an owned picture re-equips it for free.
+     *
+     * @return resulting Gold balance.
+     */
+    suspend fun purchaseProfilePicture(picture: breathy.com.data.models.ProfilePicture): Result<Int> = runCatching {
+        val price = picture.goldPrice
+            ?: throw IllegalArgumentException("Picture '${picture.id}' is not purchasable with Gold")
+        val uid = requireUserId()
+        val userRef = firestore.collection(USERS_COLLECTION).document(uid)
+        val txId = picturePurchaseKey(picture.id)
+
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            firestore.runTransaction { tx: Transaction ->
+                val userSnap = tx.get(userRef)
+                val existingTx = tx.get(userRef.collection(TX_COLLECTION).document(txId))
+                val owned = (userSnap.get("ownedPictures") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                val current = (userSnap.getLong("coins") ?: 0L).toInt()
+
+                if (owned.contains(picture.id) || existingTx.exists()) {
+                    // Already owned — just make sure it is equipped, never re-charge.
+                    if (userSnap.getString("profilePicture") != picture.id) {
+                        tx.update(userRef, "profilePicture", picture.id)
+                        tx.set(
+                            firestore.collection("publicProfiles").document(uid),
+                            mapOf("profilePicture" to picture.id, "updatedAt" to FieldValue.serverTimestamp()),
+                            SetOptions.merge()
+                        )
+                    }
+                    return@runTransaction current
+                }
+
+                if (current < price) {
+                    throw InsufficientGoldException(required = price, available = current)
+                }
+
+                val newBalance = current - price
+                tx.update(
+                    userRef,
+                    mapOf(
+                        "coins" to newBalance,
+                        "ownedPictures" to (owned + picture.id),
+                        "profilePicture" to picture.id
+                    )
+                )
+                tx.set(
+                    firestore.collection("publicProfiles").document(uid),
+                    mapOf("profilePicture" to picture.id, "updatedAt" to FieldValue.serverTimestamp()),
+                    SetOptions.merge()
+                )
+                tx.set(
+                    userRef.collection(TX_COLLECTION).document(txId),
+                    mapOf(
+                        "amount" to price,
+                        "type" to GoldTxType.SPEND.value,
+                        "source" to "picture_purchase",
+                        "description" to "Unlocked the ${picture.label} profile picture",
+                        "dedupKey" to txId,
+                        "balanceAfter" to newBalance,
+                        "timestamp" to FieldValue.serverTimestamp()
+                    ),
+                    SetOptions.merge()
+                )
+                newBalance
+            }.await()
+        } ?: throw IllegalStateException("Profile picture purchase timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to purchase profile picture: %s", picture.id)
     }
 }

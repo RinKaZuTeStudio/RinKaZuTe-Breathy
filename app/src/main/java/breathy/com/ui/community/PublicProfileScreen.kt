@@ -401,16 +401,20 @@ private fun ProfileHeader(profile: PublicProfile) {
                     User.computeLevel(profile.xp)
                 ),
                 size = 88.dp,
-                contentDescription = "${profile.nickname}'s avatar"
+                contentDescription = "${profile.nickname}'s avatar",
+                profilePictureId = profile.profilePicture,
+                isPremiumUser = profile.premium
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Nickname
-            Text(
+            // Nickname — glows neon for verified Premium subscribers (v1.0.9)
+            breathy.com.ui.components.PremiumGlowText(
                 text = profile.nickname,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                enabled = profile.premium,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold
+                ),
                 color = themeTextPrimary
             )
 
@@ -1009,9 +1013,16 @@ class PublicProfileViewModel(
                         //  · UNAVAILABLE / timeout → genuine network problem
                         //  · anything else → show the error code for diagnosis
                         val code = (e as? com.google.firebase.firestore.FirebaseFirestoreException)?.code
+                        // v1.0.9: include the ACTUAL Firebase project id so a
+                        // PERMISSION_DENIED can never be confused with another
+                        // project's console — compare this id with the project
+                        // you edited in Firebase Console → Firestore → Rules.
+                        val projectId = try {
+                            com.google.firebase.FirebaseApp.getInstance().options.projectId
+                        } catch (_: Exception) { "unknown" }
                         val message = when {
                             code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                                "Follow is blocked by the server rules — the updated security rules haven't been published to the app's Firestore database yet. It usually works right after the rules update."
+                                "Follow blocked (PERMISSION_DENIED). The Firestore RULES in Firebase project \"$projectId\" don't allow the follows collection yet. Publish the v6 rules on THAT project: Console → Firestore Database → Rules → paste → Publish."
                             code == com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE ||
                                 e.message?.contains("timed out", ignoreCase = true) == true ->
                                 "Couldn't " + (if (following) "unfollow" else "follow") +

@@ -146,9 +146,12 @@ class AuthRepository(
                     )
                     // Use toFirestoreMap() for explicit field mapping
                     // to avoid enum-serialization issues with Firestore's POJO converter
+                    // v1.0.9: SetOptions.merge() — a full .set() here used to be able
+                    // to land AFTER the onboarding write (offline queue flush) and
+                    // silently ERASE age/quitDate/nickname — the "age not saved" bug.
                     firestore.collection(USERS_COLLECTION)
                         .document(firebaseUser.uid)
-                        .set(sparseMap)
+                        .set(sparseMap, com.google.firebase.firestore.SetOptions.merge())
                         .await()
 
                     // Create initial public profile (without quitDate)
@@ -162,7 +165,7 @@ class AuthRepository(
                     )
                     firestore.collection(PUBLIC_PROFILES_COLLECTION)
                         .document(firebaseUser.uid)
-                        .set(publicProfile)
+                        .set(publicProfile, com.google.firebase.firestore.SetOptions.merge())
                         .await()
                 } catch (e: Exception) {
                     // Firestore write failed (e.g. rules not deployed yet).
@@ -230,7 +233,7 @@ class AuthRepository(
                         )
                         firestore.collection(USERS_COLLECTION)
                             .document(firebaseUser.uid)
-                            .set(sparseMap)
+                            .set(sparseMap, com.google.firebase.firestore.SetOptions.merge())
                             .await()
 
                         val publicProfile = mapOf(
@@ -243,7 +246,7 @@ class AuthRepository(
                         )
                         firestore.collection(PUBLIC_PROFILES_COLLECTION)
                             .document(firebaseUser.uid)
-                            .set(publicProfile)
+                            .set(publicProfile, com.google.firebase.firestore.SetOptions.merge())
                             .await()
                     } catch (e: Exception) {
                         // Firestore write failed (e.g. rules not deployed yet).

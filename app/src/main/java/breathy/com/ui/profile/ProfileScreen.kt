@@ -17,6 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.ChevronRight
@@ -96,6 +97,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -106,8 +108,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import breathy.com.ui.components.NetworkImage
+import breathy.com.ui.components.PremiumGlow
 import breathy.com.ui.components.invalidateImageCache
 import breathy.com.ui.components.clearImageCache
+import breathy.com.utils.s
 import breathy.com.BreathyApplication
 import breathy.com.data.models.Achievement
 import breathy.com.data.models.Subscription
@@ -245,6 +249,7 @@ fun ProfileScreen(
                         photoCacheBust = uiState.photoCacheBust,
                         avatarFrame = breathy.com.data.models.AvatarFrame.fromId(uiState.user?.avatarFrame),
                         isPremium = uiState.isPremium,
+                        profilePictureId = uiState.user?.profilePicture,
                         onAvatarClick = {
                             photoPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -530,6 +535,7 @@ fun ProfileScreen(
 
     // ── Avatar Frame Picker ──────────────────────────────────
     if (showFramePicker) {
+        val context = LocalContext.current
         AvatarFramePickerSheet(
             currentFrame = breathy.com.data.models.AvatarFrame.fromId(uiState.user?.avatarFrame),
             isPremium = uiState.isPremium,
@@ -544,7 +550,26 @@ fun ProfileScreen(
                 showFramePicker = false
             },
             onPurchase = { frame -> viewModel.purchaseFrame(frame) },
-            onDismiss = { showFramePicker = false }
+            onDismiss = { showFramePicker = false },
+            // ── v1.0.9 unified profile pictures ────────────────────────
+            currentPicture = breathy.com.data.models.ProfilePicture.fromId(uiState.user?.profilePicture),
+            ownedPictures = uiState.user?.ownedPictures ?: emptyList(),
+            picAdWatchCount = uiState.user?.picAdWatchCount ?: 0,
+            onEquipPicture = { picture ->
+                viewModel.updateProfilePicture(picture)
+            },
+            onBuyPicture = { picture -> viewModel.purchaseProfilePicture(picture) },
+            onWatchAd = {
+                val activity = context as? android.app.Activity
+                if (activity != null) {
+                    val started = BreathyApplication.instance.let { app ->
+                        app.appModule.adManager.showProfilePicRewardedAd(activity)
+                    }
+                    if (!started) {
+                        viewModel.notifyAdNotReady()
+                    }
+                }
+            }
         )
     }
 }
@@ -566,6 +591,7 @@ private fun ProfileHeader(
     photoCacheBust: Long = 0L,
     avatarFrame: breathy.com.data.models.AvatarFrame = breathy.com.data.models.AvatarFrame.NONE,
     isPremium: Boolean = false,
+    profilePictureId: String? = null,
     onAvatarClick: () -> Unit,
     onChangeFrame: () -> Unit,
     onEditNickname: () -> Unit,
@@ -630,6 +656,8 @@ private fun ProfileHeader(
                         size = 104.dp,
                         contentDescription = "Your avatar",
                         cacheBust = photoCacheBust,
+                        profilePictureId = profilePictureId,
+                        isPremiumUser = isPremium,
                         modifier = Modifier.clickable(onClick = onAvatarClick)
                     )
                 }
@@ -664,12 +692,14 @@ private fun ProfileHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
+            // v1.0.9 — subscriber's own name glows neon (Premium Glow Text).
+            breathy.com.ui.components.PremiumGlowText(
                 text = nickname.ifBlank { "Quitter" },
+                enabled = isPremium,
                 style = MaterialTheme.typography.headlineSmall.copy(
-                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 ),
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1227,6 +1257,82 @@ private fun SettingsSection(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
+            // v1.0.9 — Language: English / العربية (in-app switch)
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var currentLang by remember {
+                mutableStateOf(breathy.com.utils.AppLanguage.current)
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Language",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = s("Language", "اللغة"),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                        Text(
+                            text = s("Switch app language", "تغيير لغة التطبيق"),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    breathy.com.utils.AppLanguage.Lang.entries.forEach { lang ->
+                        val selected = lang == currentLang
+                        Card(
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selected) themeAccentPrimaryMuted
+                                                 else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                            onClick = {
+                                breathy.com.utils.AppLanguage.set(context, lang)
+                                currentLang = lang
+                                // Recreate so every localized surface re-reads the language.
+                                (context as? android.app.Activity)?.recreate()
+                            }
+                        ) {
+                            Text(
+                                text = lang.displayName,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (selected) themeAccentPrimary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
+
             // Friends navigation row
             Row(
                 modifier = Modifier
@@ -1703,6 +1809,76 @@ class ProfileViewModel(
         }
     }
 
+    /** Friendly message when the rewarded ad is still preparing. */
+    fun notifyAdNotReady() {
+        _uiState.update {
+            it.copy(errorMessage = s("The ad is still preparing — try again in a few seconds.", "الإعلان قيد التحميل — حاول مجدداً بعد ثوانٍ."))
+        }
+    }
+
+    /**
+     * v1.0.9 — equip a unified profile picture (users + publicProfiles) so it
+     * renders EVERYWHERE avatars are shown.
+     */
+    fun updateProfilePicture(picture: breathy.com.data.models.ProfilePicture) {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            try {
+                userRepository.updateProfilePicture(userId, picture.id).getOrThrow()
+                _uiState.update { state ->
+                    state.copy(
+                        user = state.user?.copy(profilePicture = picture.id),
+                        errorMessage = null
+                    )
+                }
+                Timber.i("Profile: unified picture '%s' equipped", picture.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to update profile picture")
+                _uiState.update {
+                    it.copy(errorMessage = s("Couldn't update your profile picture. Please try again.", "تعذّر تحديث الصورة الشخصية. حاول مجدداً."))
+                }
+            }
+        }
+    }
+
+    /**
+     * v1.0.9 — buy a Gold-priced unified profile picture (shop starts at 500
+     * Gold): atomic deduction + ownership + equip in one transaction.
+     */
+    fun purchaseProfilePicture(picture: breathy.com.data.models.ProfilePicture) {
+        val repo = goldRepository ?: return
+        viewModelScope.launch {
+            try {
+                repo.purchaseProfilePicture(picture).getOrThrow()
+                _uiState.update { state ->
+                    state.copy(
+                        user = state.user?.copy(
+                            profilePicture = picture.id,
+                            ownedPictures = (state.user?.ownedPictures ?: emptyList()) + picture.id
+                        ),
+                        errorMessage = null
+                    )
+                }
+            } catch (e: breathy.com.data.repository.InsufficientGoldException) {
+                _uiState.update {
+                    it.copy(
+                        errorMessage = s(
+                            "Not enough Gold — the ${picture.label} picture costs ${picture.goldPrice} Gold.",
+                            "ذهب غير كافٍ — صورة ${picture.label} تكلف ${picture.goldPrice} ذهباً."
+                        )
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to purchase profile picture")
+                _uiState.update { it.copy(errorMessage = s("Purchase failed. Please try again.", "فشل الشراء. حاول مجدداً.")) }
+            }
+        }
+    }
+
     /** Tracks the previous premium flag so a false→true transition (the
      *  moment the user actually subscribes/restores) can be detected. */
     private var wasPremium: Boolean? = null
@@ -1970,10 +2146,19 @@ private fun AvatarFramePickerSheet(
     daysSmokeFree: Int,
     onSelect: (breathy.com.data.models.AvatarFrame) -> Unit,
     onPurchase: (breathy.com.data.models.AvatarFrame) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    // ── v1.0.9 unified profile pictures ────────────────────────────────────
+    currentPicture: breathy.com.data.models.ProfilePicture = breathy.com.data.models.ProfilePicture.DAY1,
+    ownedPictures: List<String> = emptyList(),
+    picAdWatchCount: Int = 0,
+    onEquipPicture: (breathy.com.data.models.ProfilePicture) -> Unit = {},
+    onBuyPicture: (breathy.com.data.models.ProfilePicture) -> Unit = {},
+    onWatchAd: () -> Unit = {}
 ) {
     val frames = breathy.com.data.models.AvatarFrame.entries
+    val pictures = breathy.com.data.models.ProfilePicture.entries
     val modalBottomSheetState = rememberModalBottomSheetState()
+    var tab by remember { androidx.compose.runtime.mutableIntStateOf(0) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1987,16 +2172,48 @@ private fun AvatarFramePickerSheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "Avatar frame",
+                text = s("Avatar Collection", "مجموعة الأفاتار"),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Frames show your real progression. Unlock more as you grow.",
+                text = s(
+                    "Pictures and frames show your real progression. Unlock more as you grow.",
+                    "الصور والإطارات تعرض تقدمك الحقيقي. افتح المزيد كلما تقدمت."
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // ── Tab switcher: Pictures | Frames ───────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                listOf(s("Pictures", "الصور"), s("Frames", "الإطارات")).forEachIndexed { index, label ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (tab == index) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .clickable { tab = index }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (tab == index) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
             // YOUR GOLD — always visible while shopping (spec section 10)
             Card(
@@ -2014,7 +2231,7 @@ private fun AvatarFramePickerSheet(
                     Text(text = "🪙", fontSize = 18.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Your Gold",
+                        text = s("Your Gold", "ذهبك"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium,
                             color = GoldDeep
@@ -2033,48 +2250,238 @@ private fun AvatarFramePickerSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Lazy grid of frames, 3 per row
-            val rows = frames.chunked(3)
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                for (row in rows) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        for (frame in row) {
-                            val ownedByGold = ownedFrames.contains(frame.id)
-                            val unlocked = ownedByGold || frame.isUnlockedFor(
-                                level = level,
-                                hasAchievement = hasAchievements,
-                                hasEventWin = hasEventWin,
-                                isPremium = isPremium,
-                                daysSmokeFree = daysSmokeFree
-                            )
-                            val isSelected = frame == currentFrame
-                            FrameCard(
-                                frame = frame,
-                                unlocked = unlocked,
-                                isSelected = isSelected,
-                                level = level,
-                                hasAchievements = hasAchievements,
-                                hasEventWin = hasEventWin,
-                                isPremium = isPremium,
-                                goldBalance = goldBalance,
-                                daysSmokeFree = daysSmokeFree,
-                                onBuy = { onPurchase(frame) },
-                                modifier = Modifier.weight(1f),
-                                onClick = { if (unlocked) onSelect(frame) }
-                            )
+            if (tab == 0) {
+                // ═══ UNIFIED PROFILE PICTURES ═══
+                val rows = pictures.chunked(3)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    for (row in rows) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            for (picture in row) {
+                                ProfilePictureCard(
+                                    picture = picture,
+                                    isSelected = picture == currentPicture,
+                                    isPremium = isPremium,
+                                    goldBalance = goldBalance,
+                                    daysSmokeFree = daysSmokeFree,
+                                    picAdWatchCount = picAdWatchCount,
+                                    owned = ownedPictures.contains(picture.id),
+                                    onEquip = { onEquipPicture(picture) },
+                                    onBuy = { onBuyPicture(picture) },
+                                    onWatchAd = onWatchAd,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            repeat(3 - row.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
-                        // pad the last row
-                        repeat(3 - row.size) {
-                            Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            } else {
+                // ═══ FRAME COLLECTION ═══
+                val rows = frames.chunked(3)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    for (row in rows) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            for (frame in row) {
+                                val ownedByGold = ownedFrames.contains(frame.id)
+                                val unlocked = ownedByGold || frame.isUnlockedFor(
+                                    level = level,
+                                    hasAchievement = hasAchievements,
+                                    hasEventWin = hasEventWin,
+                                    isPremium = isPremium,
+                                    daysSmokeFree = daysSmokeFree
+                                )
+                                val isSelected = frame == currentFrame
+                                FrameCard(
+                                    frame = frame,
+                                    unlocked = unlocked,
+                                    isSelected = isSelected,
+                                    level = level,
+                                    hasAchievements = hasAchievements,
+                                    hasEventWin = hasEventWin,
+                                    isPremium = isPremium,
+                                    goldBalance = goldBalance,
+                                    daysSmokeFree = daysSmokeFree,
+                                    onBuy = { onPurchase(frame) },
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { if (unlocked) onSelect(frame) }
+                                )
+                            }
+                            // pad the last row
+                            repeat(3 - row.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * v1.0.9 — one card in the unified PROFILE PICTURES collection.
+ * Unlock states: Day One (everyone) · milestone days · Gold shop (500+)
+ * · 5 rewarded ads · Premium animated pair.
+ */
+@Composable
+private fun ProfilePictureCard(
+    picture: breathy.com.data.models.ProfilePicture,
+    isSelected: Boolean,
+    isPremium: Boolean,
+    goldBalance: Int,
+    daysSmokeFree: Int,
+    picAdWatchCount: Int,
+    owned: Boolean,
+    onEquip: () -> Unit,
+    onBuy: () -> Unit,
+    onWatchAd: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val unlocked = owned || picture.isUnlockedFor(
+        daysSmokeFree = daysSmokeFree,
+        isPremium = isPremium,
+        picAdWatchCount = picAdWatchCount
+    )
+    val borderColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary
+        unlocked -> MaterialTheme.colorScheme.outlineVariant
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    }
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Image(
+                painter = androidx.compose.ui.res.painterResource(pictureDrawable(picture)),
+                contentDescription = picture.label,
+                modifier = Modifier
+                    .size(84.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                alpha = if (unlocked) 1f else 0.35f
+            )
+            if (!unlocked) {
+                Text(text = "🔒", fontSize = 22.sp)
+            }
+            if (picture.animated && isPremium) {
+                Text(
+                    text = s("ANIMATED", "متحركة"),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = PremiumGlow.NEON_MINT,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = picture.label,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        when {
+            isSelected -> {
+                Text(
+                    text = s("WORN", "مُرتداة"),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            unlocked -> {
+                TextButton(
+                    onClick = onEquip,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    modifier = Modifier.height(26.dp)
+                ) {
+                    Text(text = s("Wear", "ارتداء"), style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            picture.unlockDays > 0 -> {
+                Text(
+                    text = s("Day " + picture.unlockDays, "يوم " + picture.unlockDays),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            picture.adsRequired > 0 && !owned -> {
+                TextButton(
+                    onClick = onWatchAd,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    modifier = Modifier.height(26.dp)
+                ) {
+                    Text(
+                        text = "▶ " + picAdWatchCount + "/" + picture.adsRequired,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+            picture.goldPrice != null && !owned -> {
+                val canAfford = goldBalance >= picture.goldPrice
+                TextButton(
+                    onClick = onBuy,
+                    enabled = canAfford,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    modifier = Modifier.height(26.dp)
+                ) {
+                    Text(
+                        text = "🪙 %,d".format(picture.goldPrice),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = if (canAfford) GoldDeep else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            picture.premiumOnly -> {
+                Text(
+                    text = "👑 " + s("Premium", "بريميوم"),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+/** v1.0.9 — drawable for a profile-picture collection card. */
+private fun pictureDrawable(picture: breathy.com.data.models.ProfilePicture): Int = when (picture) {
+    breathy.com.data.models.ProfilePicture.DAY1 -> breathy.com.R.drawable.pic_day1
+    breathy.com.data.models.ProfilePicture.SEVEN_DAYS -> breathy.com.R.drawable.pic_7days
+    breathy.com.data.models.ProfilePicture.THIRTY_DAYS -> breathy.com.R.drawable.pic_30days
+    breathy.com.data.models.ProfilePicture.NINETY_DAYS -> breathy.com.R.drawable.pic_90days
+    breathy.com.data.models.ProfilePicture.SUNRISE -> breathy.com.R.drawable.pic_sunrise
+    breathy.com.data.models.ProfilePicture.DONT_SMOKE -> breathy.com.R.drawable.pic_dontsmoke
+    breathy.com.data.models.ProfilePicture.FORREST -> breathy.com.R.drawable.pic_forrest
+    breathy.com.data.models.ProfilePicture.FRESH_BREATH -> breathy.com.R.drawable.pic_freshbreath
+    breathy.com.data.models.ProfilePicture.GOOD_FROM_BAD -> breathy.com.R.drawable.pic_goodfrombad
+    breathy.com.data.models.ProfilePicture.HEALTH_HEART -> breathy.com.R.drawable.pic_healthheart
+    breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
+    breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
+    breathy.com.data.models.ProfilePicture.FREE_FROM_THE_CHAIN -> breathy.com.R.drawable.pic_freefromthechain
+    breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
 }
 
 @Composable

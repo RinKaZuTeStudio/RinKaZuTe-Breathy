@@ -245,7 +245,20 @@ class FriendsViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        _events.emit(FriendsSingleEvent.ShowSnackbar("Action failed — try again"))
+                        // v1.0.9 — surface the REAL cause so a rules problem is
+                        // instantly recognizable (with the exact project id).
+                        val code = (e as? com.google.firebase.firestore.FirebaseFirestoreException)?.code
+                        val projectId = try {
+                            com.google.firebase.FirebaseApp.getInstance().options.projectId
+                        } catch (_: Exception) { "unknown" }
+                        val message = when (code) {
+                            com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+                                "Follow blocked (PERMISSION_DENIED) — publish the v6 Firestore rules on project \"$projectId\"."
+                            com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE ->
+                                "Action failed — check your connection and try again"
+                            else -> "Action failed — try again"
+                        }
+                        _events.emit(FriendsSingleEvent.ShowSnackbar(message))
                     }
                 }
             )
@@ -899,7 +912,9 @@ private fun FollowUserCard(
                 ),
                 size = 46.dp,
                 contentDescription = "${profile.nickname}'s avatar",
-                animated = false
+                animated = false,
+                profilePictureId = profile.profilePicture,
+                isPremiumUser = profile.premium
             )
 
             Column(modifier = Modifier.weight(1f)) {
@@ -1079,7 +1094,9 @@ private fun ChatListItem(
                     )
                 },
                 size = 48.dp,
-                contentDescription = "${profile?.nickname ?: "Chat"}'s avatar"
+                contentDescription = "${profile?.nickname ?: "Chat"}'s avatar",
+                profilePictureId = profile?.profilePicture,
+                isPremiumUser = profile?.premium == true
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -1212,7 +1229,9 @@ private fun FriendItem(
                     ),
                     size = 48.dp,
                     contentDescription = "${profile.nickname}'s avatar",
-                    animated = false
+                    animated = false,
+                    profilePictureId = profile.profilePicture,
+                    isPremiumUser = profile.premium
                 )
                 // Online indicator dot (shows if user has daysSmokeFree > 0
                 // as a proxy for active status; real app uses Firestore presence)
@@ -1943,7 +1962,9 @@ private fun SearchResultItem(
                 ),
                 size = 36.dp,
                 contentDescription = "${profile.nickname}'s avatar",
-                animated = false
+                animated = false,
+                profilePictureId = profile.profilePicture,
+                isPremiumUser = profile.premium
             )
 
             Spacer(modifier = Modifier.width(10.dp))

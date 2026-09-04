@@ -163,7 +163,8 @@ class EventChallengeViewModel(
     private val eventRepository: EventRepository,
     private val auth: FirebaseAuth,
     private val eventId: String,
-    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null,
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -289,7 +290,9 @@ class EventChallengeViewModel(
     fun joinEvent() {
         val uid = currentUserId ?: return
         viewModelScope.launch {
-            eventRepository.joinEvent(eventId).fold(
+            // v1.0.9 premium perk: verified subscribers join any event FREE.
+            val isPremium = premiumRepository?.isPremium() ?: false
+            eventRepository.joinEvent(eventId, isPremium = isPremium).fold(
                 onSuccess = { participant ->
                     _uiState.update {
                         it.copy(
@@ -324,12 +327,13 @@ class EventChallengeViewModelFactory(
     private val eventRepository: EventRepository,
     private val auth: FirebaseAuth,
     private val eventId: String,
-    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null,
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(EventChallengeViewModel::class.java)) {
-            return EventChallengeViewModel(eventRepository, auth, eventId, goldRepository) as T
+            return EventChallengeViewModel(eventRepository, auth, eventId, goldRepository, premiumRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
@@ -356,7 +360,8 @@ fun EventChallengeScreen(
                 eventRepository = app.appModule.eventRepository,
                 auth = app.appModule.firebaseAuth,
                 eventId = eventId,
-                goldRepository = app.appModule.goldRepository
+                goldRepository = app.appModule.goldRepository,
+                premiumRepository = app.appModule.premiumRepository
             )
         )[EventChallengeViewModel::class.java]
     }
@@ -935,7 +940,9 @@ private fun EventPodiumColumn(
                 )
             },
             size = avatarSize,
-            contentDescription = "${profile?.nickname ?: "Participant"}'s avatar"
+            contentDescription = "${profile?.nickname ?: "Participant"}'s avatar",
+            profilePictureId = profile?.profilePicture,
+            isPremiumUser = profile?.premium == true
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -1056,7 +1063,10 @@ private fun EventLeaderboardRow(
                     )
                 },
                 size = 40.dp,
-                contentDescription = "${profile?.nickname ?: "Participant"}'s avatar"
+                contentDescription = "${profile?.nickname ?: "Participant"}'s avatar",
+                profilePictureId = profile?.profilePicture,
+                isPremiumUser = profile?.premium == true,
+                animated = false
             )
 
             // Name and streak

@@ -212,6 +212,22 @@ fun SubscriptionScreen(
                         description = "No interstitials, no banners — zero ads everywhere."
                     )
                     PremiumBenefitRow(
+                        title = "+500 Gold every week",
+                        description = "A 500-Gold weekly bonus, credited automatically while subscribed."
+                    )
+                    PremiumBenefitRow(
+                        title = "FREE entry to every event",
+                        description = "Skip the 500-Gold entry fee on any event — subscribers join free."
+                    )
+                    PremiumBenefitRow(
+                        title = "Animated avatars",
+                        description = "Free From The Chain & Finally Free — animated with a white flash, yours while subscribed."
+                    )
+                    PremiumBenefitRow(
+                        title = "Neon Glow name",
+                        description = "Your nickname glows with an animated neon halo everywhere in the app."
+                    )
+                    PremiumBenefitRow(
                         title = "Exclusive events & challenges",
                         description = "Premium-only competitions with real prize pools."
                     )
@@ -286,6 +302,10 @@ fun SubscriptionScreen(
                         Spacer(Modifier.height(10.dp))
                         val benefits = listOf(
                             "Ad-free experience",
+                            "+500 Gold every week",
+                            "FREE entry to every event",
+                            "Animated avatars — Free From The Chain & Finally Free",
+                            "Neon Glow name",
                             "Exclusive events & challenges",
                             "Premium avatar frame — auto-equipped",
                             "Premium badge on leaderboard & community",

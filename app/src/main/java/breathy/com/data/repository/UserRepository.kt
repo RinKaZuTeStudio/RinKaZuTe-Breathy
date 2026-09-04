@@ -60,6 +60,49 @@ class UserRepository(
         const val DAILY_REWARD_XP = 5
         const val DAILY_REWARD_COINS_MIN = 10
         const val DAILY_REWARD_COINS_MAX = 50
+
+        /** ISO-week key for the WEEKLY leaderboard, e.g. "2026-W36". */
+        fun weeklyXpPeriodKey(millis: Long = System.currentTimeMillis()): String {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = millis
+            cal.firstDayOfWeek = java.util.Calendar.MONDAY
+            cal.minimalDaysInFirstWeek = 4
+            return "%04d-W%02d".format(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.WEEK_OF_YEAR))
+        }
+
+        /** Calendar-month key for the MONTHLY leaderboard, e.g. "2026-09". */
+        fun monthlyXpPeriodKey(millis: Long = System.currentTimeMillis()): String {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = millis
+            return "%04d-%02d".format(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1)
+        }
+    }
+
+    /**
+     * Period-aware XP fields for the WEEKLY / MONTHLY leaderboards (v1.0.9).
+     * Returns the map to merge into a publicProfiles update so weekly/monthly
+     * XP rolls forward inside the current period and resets automatically
+     * when a new week/month begins — computed from the profile snapshot that
+     * the caller's transaction has already read.
+     */
+    private fun periodXpDelta(
+        profileSnap: com.google.firebase.firestore.DocumentSnapshot,
+        xpDelta: Int
+    ): Map<String, Any?> {
+        val wkKey = weeklyXpPeriodKey()
+        val moKey = monthlyXpPeriodKey()
+        val weekly = if (profileSnap.getString("weeklyXpPeriod") == wkKey)
+            (profileSnap.getLong("weeklyXp") ?: 0L).toInt() + xpDelta
+        else xpDelta.coerceAtLeast(0)
+        val monthly = if (profileSnap.getString("monthlyXpPeriod") == moKey)
+            (profileSnap.getLong("monthlyXp") ?: 0L).toInt() + xpDelta
+        else xpDelta.coerceAtLeast(0)
+        return mapOf(
+            "weeklyXp" to weekly.coerceAtLeast(0),
+            "weeklyXpPeriod" to wkKey,
+            "monthlyXp" to monthly.coerceAtLeast(0),
+            "monthlyXpPeriod" to moKey
+        )
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -557,7 +600,8 @@ class UserRepository(
                 val currentXp = (snapshot.getLong("xp") ?: 0L).toInt()
                 val newXp = currentXp + amount
                 transaction.update(userRef, "xp", newXp)
-                transaction.update(profileRef, "xp", newXp)
+                val profileSnap = transaction.get(profileRef)
+                transaction.update(profileRef, mapOf("xp" to newXp) + periodXpDelta(profileSnap, amount))
                 newXp
             }.await()
         } ?: throw IllegalStateException("Add XP timed out after 30 seconds")
@@ -604,7 +648,8 @@ class UserRepository(
                 val newXp = currentXp + xpDelta
                 val newCoins = currentCoins + coinDelta
                 transaction.update(userRef, mapOf("xp" to newXp, "coins" to newCoins))
-                transaction.update(profileRef, "xp", newXp)
+                val profileSnap = transaction.get(profileRef)
+                transaction.update(profileRef, mapOf("xp" to newXp) + periodXpDelta(profileSnap, xpDelta))
                 Pair(newXp, newCoins)
             }.await()
         } ?: throw IllegalStateException("Update XP/coins timed out after 30 seconds")
@@ -648,7 +693,8 @@ class UserRepository(
                     "xp" to newXp,
                     "lastDailyClaim" to Timestamp.now()
                 ))
-                transaction.update(profileRef, "xp", newXp)
+                val profileSnap = transaction.get(profileRef)
+                transaction.update(profileRef, mapOf("xp" to newXp) + periodXpDelta(profileSnap, DAILY_REWARD_XP))
 
                 // Gold ledger entry — dedup key makes replayed claims no-ops.
                 val dayKey = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
@@ -937,13 +983,105 @@ class UserRepository(
     /** Observe public profiles ordered by XP (leaderboard). */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observePublicProfilesOrderedByXp(limit: Int): Flow<List<Pair<String, PublicProfile>>> =
+        observePublicProfilesForPeriod(limit, breathy.com.data.models.LeaderboardPeriod.ALL_TIME)
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  Unified profile pictures (v1.0.9)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Equip a unified profile picture: writes users/{uid}.profilePicture and
+     * mirrors it onto publicProfiles/{uid} so EVERY surface (leaderboard,
+     * community, friends, chats, public profiles) renders the same picture.
+     */
+    suspend fun updateProfilePicture(userId: String, pictureId: String): Result<Unit> = runCatching {
+        require(pictureId.isNotBlank()) { "Picture id must not be blank" }
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            firestore.collection(USERS_COLLECTION).document(userId)
+                .update("profilePicture", pictureId).await()
+            firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
+                .update("profilePicture", pictureId).await()
+            Unit
+        } ?: throw IllegalStateException("Updating profile picture timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to update profile picture for: %s", userId)
+    }
+
+    /**
+     * Record ONE completed rewarded-ad watch toward the 5-ad profile-picture
+     * unlock. Replay-proof via the Gold ledger: the ledger doc id IS the ad
+     * token, so a repeated callback for the same show is a no-op. At 5 watches
+     * the ad-unlock picture (SUNRISE) is added to users.ownedPictures.
+     *
+     * @return the updated watch count (0..5).
+     */
+    suspend fun grantProfilePictureAdWatch(userId: String, adToken: String): Result<Int> = runCatching {
+        require(adToken.isNotBlank()) { "Ad token must not be blank" }
+        val unlockPictureId = breathy.com.data.models.ProfilePicture.SUNRISE.id
+        val required = breathy.com.data.models.ProfilePicture.SUNRISE.adsRequired
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            val userRef = firestore.collection(USERS_COLLECTION).document(userId)
+            val ledgerRef = userRef.collection("goldTransactions").document("picads_$adToken")
+            firestore.runTransaction { tx ->
+                val ledger = tx.get(ledgerRef)
+                val userSnap = tx.get(userRef)
+                val current = (userSnap.getLong("picAdWatchCount") ?: 0L).toInt()
+                if (ledger.exists()) {
+                    // Already counted this exact ad show — dedup.
+                    return@runTransaction current
+                }
+                val newCount = (current + 1).coerceAtMost(required)
+                tx.update(userRef, "picAdWatchCount", newCount)
+                val alreadyOwned = (userSnap.get("ownedPictures") as? List<*>)?.contains(unlockPictureId) == true
+                if (newCount >= required && !alreadyOwned) {
+                    tx.update(userRef, "ownedPictures", com.google.firebase.firestore.FieldValue.arrayUnion(unlockPictureId))
+                }
+                tx.set(
+                    ledgerRef,
+                    mapOf(
+                        "amount" to 0,
+                        "type" to "earn",
+                        "source" to "profile_pic_ad",
+                        "description" to "Profile picture unlock ad ($newCount/$required)",
+                        "dedupKey" to "picads_$adToken",
+                        "balanceAfter" to (userSnap.getLong("coins") ?: 0L).toInt(),
+                        "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
+                newCount
+            }.await()
+        } ?: throw IllegalStateException("Recording ad watch timed out after 30 seconds")
+    }.onFailure { e ->
+        if (e !is CancellationException) Timber.e(e, "Failed to record profile-pic ad watch for: %s", userId)
+    }
+
+    /**
+     * v1.0.9 — leaderboard by PERIOD. All-Time ranks by lifetime `xp`;
+     * Weekly / Monthly rank by the period-aware `weeklyXp` / `monthlyXp`
+     * mirrors maintained by every XP transaction (they reset automatically
+     * when a new week / month begins).
+     */
+    fun observePublicProfilesForPeriod(
+        limit: Int,
+        period: breathy.com.data.models.LeaderboardPeriod
+    ): Flow<List<Pair<String, PublicProfile>>> =
         callbackFlow {
+            val orderByField = when (period) {
+                breathy.com.data.models.LeaderboardPeriod.WEEKLY -> "weeklyXp"
+                breathy.com.data.models.LeaderboardPeriod.MONTHLY -> "monthlyXp"
+                breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> "xp"
+            }
             val registration = firestore.collection(PUBLIC_PROFILES_COLLECTION)
-                .orderBy("xp", Query.Direction.DESCENDING)
+                // Single-field orderBy ONLY — a secondary tie-breaker would
+                // require a composite index and break the out-of-box query.
+                // Documents missing the period field (no XP this period)
+                // are excluded by Firestore, which is exactly correct.
+                .orderBy(orderByField, Query.Direction.DESCENDING)
                 .limit(limit.toLong())
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Timber.e(error, "observePublicProfilesOrderedByXp error")
+                        Timber.e(error, "observePublicProfilesForPeriod(%s) error", period)
                         // Don't close — emit empty list as fallback
                         trySend(emptyList())
                         return@addSnapshotListener
