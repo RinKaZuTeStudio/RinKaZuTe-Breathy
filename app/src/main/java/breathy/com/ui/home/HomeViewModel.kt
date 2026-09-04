@@ -38,6 +38,10 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val nickname: String = "",
     val photoURL: String? = null,
+    /** v1.0.10 — unified avatar identity for the top bar (picture + frame + premium animation). */
+    val avatarFrame: String? = null,
+    val profilePicture: String? = null,
+    val isPremium: Boolean = false,
     val daysSmokeFree: Int = 0,
     val moneySaved: Double = 0.0,
     val cigarettesAvoided: Int = 0,
@@ -77,7 +81,9 @@ class HomeViewModel(
     private val userRepository: UserRepository,
     private val rewardRepository: RewardRepository,
     private val auth: FirebaseAuth,
-    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null,
+    /** v1.0.10 — drives the premium animated avatar in the top bar. */
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -223,6 +229,9 @@ class HomeViewModel(
                 isLoading = false,
                 nickname = user.nickname.ifBlank { "Quitter" },
                 photoURL = user.photoURL,
+                avatarFrame = user.avatarFrame,
+                profilePicture = user.profilePicture,
+                isPremium = premiumRepository?.isPremium() ?: false,
                 daysSmokeFree = daysSmokeFree,
                 moneySaved = moneySaved,
                 cigarettesAvoided = cigarettesAvoided,
@@ -416,13 +425,14 @@ class HomeViewModelFactory(
     private val userRepository: UserRepository,
     private val rewardRepository: RewardRepository,
     private val auth: FirebaseAuth,
-    private val goldRepository: breathy.com.data.repository.GoldRepository? = null
+    private val goldRepository: breathy.com.data.repository.GoldRepository? = null,
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            return HomeViewModel(userRepository, rewardRepository, auth, goldRepository) as T
+            return HomeViewModel(userRepository, rewardRepository, auth, goldRepository, premiumRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

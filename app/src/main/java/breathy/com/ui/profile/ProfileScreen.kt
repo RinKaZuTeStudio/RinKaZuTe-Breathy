@@ -191,12 +191,10 @@ fun ProfileScreen(
     var showEditAgeDialog by remember { mutableStateOf(false) }
     var showFramePicker by remember { mutableStateOf(false) }
 
-    // Photo picker — uses Android Photo Picker (no permissions required)
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.updatePhoto(it) }
-    }
+    // v1.0.10 — the legacy gallery "Change Photo" flow is REMOVED. Profile
+    // pictures now come exclusively from the unified Avatar Collection
+    // (milestones / Gold shop / rewarded ads / Premium). Tapping the avatar
+    // opens that collection.
 
     // Staggered entrance
     var headerVisible by remember { mutableStateOf(false) }
@@ -250,11 +248,7 @@ fun ProfileScreen(
                         avatarFrame = breathy.com.data.models.AvatarFrame.fromId(uiState.user?.avatarFrame),
                         isPremium = uiState.isPremium,
                         profilePictureId = uiState.user?.profilePicture,
-                        onAvatarClick = {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
+                        onAvatarClick = { showFramePicker = true },
                         onChangeFrame = { showFramePicker = true },
                         onEditNickname = { showEditNicknameDialog = true },
                         onEditAge = { showEditAgeDialog = true }
@@ -663,26 +657,8 @@ private fun ProfileHeader(
                 }
             }
 
-            // Camera icon overlay
-            Card(
-                modifier = Modifier.size(32.dp),
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(containerColor = AccentPrimary),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                onClick = onAvatarClick
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Change photo",
-                        tint = MaterialTheme.colorScheme.background,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
+            // v1.0.10 — camera "Change photo" overlay REMOVED: profile
+            // pictures come from the Avatar Collection only.
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -2480,7 +2456,6 @@ private fun pictureDrawable(picture: breathy.com.data.models.ProfilePicture): In
     breathy.com.data.models.ProfilePicture.HEALTH_HEART -> breathy.com.R.drawable.pic_healthheart
     breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
     breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
-    breathy.com.data.models.ProfilePicture.FREE_FROM_THE_CHAIN -> breathy.com.R.drawable.pic_freefromthechain
     breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
 }
 

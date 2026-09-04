@@ -168,6 +168,10 @@ class StoryRepository(
                 "likes" to 0L,
                 "likedBy" to emptyList<String>(),
                 "replyCount" to 0L,
+                // v1.0.10 — author avatar identity (picture + border) so the
+                // feed renders the same unified avatar as everywhere else.
+                "authorAvatarFrame" to user.avatarFrame,
+                "authorProfilePicture" to user.profilePicture,
                 "createdAt" to FieldValue.serverTimestamp()
             )
 
@@ -182,6 +186,8 @@ class StoryRepository(
                 content = content,
                 lifeChanges = lifeChanges,
                 daysSmokeFree = user.daysSmokeFree,
+                authorAvatarFrame = user.avatarFrame,
+                authorProfilePicture = user.profilePicture,
                 createdAt = com.google.firebase.Timestamp.now()
             )
         } ?: throw IllegalStateException("Create story timed out after 30 seconds")

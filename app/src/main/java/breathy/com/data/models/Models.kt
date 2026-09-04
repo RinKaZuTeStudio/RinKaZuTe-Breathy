@@ -388,6 +388,13 @@ data class Story(
     val likedBy: List<String> = emptyList(),
     @PropertyName("replyCount")
     val replyCount: Int = 0,
+    /** v1.0.10 — author's avatar frame + unified picture, denormalized at
+     *  creation so the community feed renders the SAME avatar identity
+     *  (picture + border) as everywhere else. Null on legacy stories. */
+    @PropertyName("authorAvatarFrame")
+    val authorAvatarFrame: String? = null,
+    @PropertyName("authorProfilePicture")
+    val authorProfilePicture: String? = null,
     @PropertyName("createdAt")
     @Serializable(with = TimestampSerializer::class)
         val createdAt: Timestamp = Timestamp.now()
@@ -404,6 +411,8 @@ data class Story(
             likes = (map["likes"] as? Long)?.toInt() ?: 0,
             likedBy = (map["likedBy"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             replyCount = (map["replyCount"] as? Long)?.toInt() ?: 0,
+            authorAvatarFrame = map["authorAvatarFrame"] as? String,
+            authorProfilePicture = map["authorProfilePicture"] as? String,
             createdAt = map["createdAt"] as? Timestamp ?: Timestamp.now()
         )
     }

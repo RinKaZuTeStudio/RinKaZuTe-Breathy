@@ -110,9 +110,11 @@ enum class AvatarFrame(
  * - [NINETY_DAYS] — unlocks at 90 days smoke-free.
  * - [SUNRISE]     — unlocks after watching 5 rewarded ads (dedicated ad unit).
  * - [DONT_SMOKE] … [HEALTHY_FUTURE] — one-time Gold purchases (shop, 500+).
- * - [FREE_FROM_THE_CHAIN] / [FINALLY_FREE] — Premium-only ANIMATED avatars:
- *   a white flash sweeps every 5 seconds and the artwork alternates between
- *   the two images. Any subscriber owns them for as long as they subscribe.
+ * - [FINALLY_FREE] — Premium-only ANIMATED avatar: a white flash sweeps every
+ *   5 seconds over the artwork. Any subscriber owns it for as long as they
+ *   subscribe.
+ *   (v1.0.10 — "freefromthechain" was REMOVED from the collection; accounts
+ *   still holding that id are remapped to [FINALLY_FREE] by [fromId].)
  *
  * The value persisted in Firestore (users.profilePicture /
  * publicProfiles.profilePicture) is the [id] string. Gold ownership is
@@ -146,15 +148,21 @@ enum class ProfilePicture(
     @SerialName("healthheart") HEALTH_HEART("healthheart", "Health Heart", "A heart that thanks you. 1,100 Gold.", goldPrice = 1100),
     @SerialName("healthlungs") HEALTH_LUNGS("healthlungs", "Health Lungs", "Breathing free. 1,250 Gold.", goldPrice = 1250),
     @SerialName("healthyfuture") HEALTHY_FUTURE("healthyfuture", "Healthy Future", "The future you're building. 1,500 Gold.", goldPrice = 1500),
-    @SerialName("freefromthechain") FREE_FROM_THE_CHAIN("freefromthechain", "Free From The Chain", "Premium animated avatar — break the chain.", premiumOnly = true, animated = true),
     @SerialName("finallyfree") FINALLY_FREE("finallyfree", "Finally Free", "Premium animated avatar — the moment after.", premiumOnly = true, animated = true);
 
     override fun toString(): String = id
 
     companion object {
-        /** Resolve a Firestore string to the enum; unknown values fall back to [DAY1]. */
-        fun fromId(id: String?): ProfilePicture =
-            entries.find { it.id == id } ?: DAY1
+        /**
+         * Resolve a Firestore string to the enum; unknown values fall back to
+         * [DAY1]. v1.0.10: the removed "freefromthechain" id remaps to
+         * [FINALLY_FREE] so existing premium accounts keep their animated
+         * avatar seamlessly.
+         */
+        fun fromId(id: String?): ProfilePicture = when (id) {
+            "freefromthechain" -> FINALLY_FREE
+            else -> entries.find { it.id == id } ?: DAY1
+        }
     }
 
     /**

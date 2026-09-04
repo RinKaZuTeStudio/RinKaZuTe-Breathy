@@ -188,10 +188,9 @@ fun BreathyAvatar(
                 .background(BreathyPalette.veryLightSage)
         ) {
             if (useAnimatedAvatar) {
-                // v1.0.9 Premium animated avatar — artwork alternates between
-                // freefromthechain and finallyfree behind a white flash sweep.
+                // v1.0.10 Premium animated avatar — FINALLY FREE with the
+                // white flash sweep every 5 seconds (single artwork).
                 AnimatedPremiumAvatar(
-                    startWithChain = effectivePicture == breathy.com.data.models.ProfilePicture.FREE_FROM_THE_CHAIN,
                     contentDescription = contentDescription,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -235,22 +234,20 @@ private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): 
     breathy.com.data.models.ProfilePicture.HEALTH_HEART -> breathy.com.R.drawable.pic_healthheart
     breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
     breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
-    breathy.com.data.models.ProfilePicture.FREE_FROM_THE_CHAIN -> breathy.com.R.drawable.pic_freefromthechain
     breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
 }
 
 /**
- * v1.0.9 PREMIUM ANIMATED AVATAR — not a heavy animation: every FIVE seconds
- * a white flash sweeps in, and at its peak the artwork switches between
- * freefromthechain and finallyfree, then the flash sweeps away.
+ * v1.0.10 PREMIUM ANIMATED AVATAR — FINALLY FREE. Not a heavy animation:
+ * every FIVE seconds a white flash sweeps in over the artwork and sweeps
+ * away again. (v1.0.9's two-artwork swap is gone — freefromthechain was
+ * removed from the collection; the flash stays as the signature motion.)
  */
 @Composable
 private fun AnimatedPremiumAvatar(
-    startWithChain: Boolean,
     contentDescription: String?,
     modifier: Modifier = Modifier
 ) {
-    var showChain by remember { mutableStateOf(startWithChain) }
     var flashAlpha by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -262,8 +259,6 @@ private fun AnimatedPremiumAvatar(
                 targetValue = 1f,
                 animationSpec = androidx.compose.animation.core.tween(350)
             ) { value, _ -> flashAlpha = value }
-            // Swap the artwork while the screen is fully white
-            showChain = !showChain
             // Flash away (350ms)
             androidx.compose.animation.core.animate(
                 initialValue = 1f,
@@ -275,10 +270,7 @@ private fun AnimatedPremiumAvatar(
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Image(
-            bitmap = ImageBitmap.imageResource(
-                if (showChain) breathy.com.R.drawable.pic_freefromthechain
-                else breathy.com.R.drawable.pic_finallyfree
-            ),
+            bitmap = ImageBitmap.imageResource(breathy.com.R.drawable.pic_finallyfree),
             contentDescription = contentDescription,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,

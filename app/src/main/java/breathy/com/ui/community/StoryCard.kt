@@ -266,49 +266,22 @@ private fun StoryCardHeader(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar
-        val photoUrl = story.photoURL?.takeIf { it.isNotBlank() }
-        if (photoUrl != null) {
-            NetworkImage(
-                model = photoUrl,
+        // v1.0.10 — UNIFIED AVATAR: the author's official picture + avatar
+        // border render in the feed exactly like everywhere else in the app.
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clickable(onClick = onAvatarClick)
+        ) {
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = story.photoURL,
+                frame = breathy.com.data.models.AvatarFrame.fromId(story.authorAvatarFrame),
+                rankTier = null,
+                size = 44.dp,
                 contentDescription = "${story.nickname}'s avatar",
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onAvatarClick)
-                    .semantics {
-                        contentDescription = "View ${story.nickname}'s profile"
-                        role = Role.Button
-                    },
-                contentScale = ContentScale.Crop
+                profilePictureId = story.authorProfilePicture,
+                animated = false
             )
-        } else {
-            // Fallback avatar with initial letter
-            Surface(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onAvatarClick)
-                    .semantics {
-                        contentDescription = "View ${story.nickname}'s profile"
-                        role = Role.Button
-                    },
-                shape = CircleShape,
-                color = AccentPrimary.copy(alpha = 0.15f)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = story.nickname.take(1).uppercase(),
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            color = AccentPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))

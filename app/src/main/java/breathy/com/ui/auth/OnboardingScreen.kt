@@ -1497,16 +1497,13 @@ private fun ProfileStep(
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Profile photo with glow
+        // v1.0.10 — UNIFIED AVATAR PREVIEW (static Day One artwork, no
+        // gallery picker): every account starts with the official Day One
+        // picture; the gallery "Add/Change Profile Photo" flow is removed.
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(120.dp)
-                .clickable {
-                    photoPickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                }
         ) {
             // Glow
             Box(
@@ -1521,48 +1518,15 @@ private fun ProfileStep(
                     )
             )
 
-            // Photo or placeholder
-            if (photoUri != null) {
-                NetworkImage(
-                    model = photoUri,
-                    contentDescription = "Profile photo",
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, AccentPrimary, CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .border(
-                            2.dp,
-                            AccentPrimary.copy(alpha = 0.4f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Default profile icon",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Text(
-                            text = "Add Photo",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                }
-            }
+            // Unified avatar preview (Day One default artwork)
+            breathy.com.ui.components.BreathyAvatar(
+                photoURL = null,
+                frame = breathy.com.data.models.AvatarFrame.NONE,
+                rankTier = null,
+                size = 110.dp,
+                contentDescription = "Your avatar",
+                animated = false
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -1578,7 +1542,7 @@ private fun ProfileStep(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "Choose a nickname for the community.\nYou can add a photo too!",
+            text = "Choose a nickname for the community.\nYour avatar collection grows as you progress!",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -1649,30 +1613,9 @@ private fun ProfileStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Photo change button
-        OutlinedButton(
-            onClick = {
-                photoPickerLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = AccentPrimary
-            )
-        ) {
-            Icon(
-                imageVector = if (photoUri != null) Icons.Default.Check else Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (photoUri != null) "Photo selected \u2714" else "Add profile photo (optional)",
-                fontSize = 14.sp
-            )
-        }
+        // v1.0.10 — the "Add profile photo (optional)" gallery button is
+        // REMOVED. Pictures come exclusively from the unified Avatar
+        // Collection (milestones / Gold shop / ads / Premium).
 
         Spacer(modifier = Modifier.height(24.dp))
 

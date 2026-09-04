@@ -15,6 +15,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -117,7 +118,8 @@ fun HomeScreen(
             userRepository = app.appModule.userRepository,
             rewardRepository = app.appModule.rewardRepository,
             auth = app.appModule.firebaseAuth,
-            goldRepository = app.appModule.goldRepository
+            goldRepository = app.appModule.goldRepository,
+            premiumRepository = app.appModule.premiumRepository
         ))
     }
 ) {
@@ -257,7 +259,10 @@ fun HomeScreen(
                         photoURL = uiState.photoURL,
                         goldBalance = uiState.coins,
                         onAvatarClick = onNavigateToProfile,
-                        onNotificationClick = onNavigateToNotifications
+                        onNotificationClick = onNavigateToNotifications,
+                        avatarFrame = uiState.avatarFrame,
+                        profilePicture = uiState.profilePicture,
+                        isPremium = uiState.isPremium
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -545,7 +550,10 @@ private fun TopBar(
     photoURL: String?,
     goldBalance: Int,
     onAvatarClick: () -> Unit,
-    onNotificationClick: () -> Unit
+    onNotificationClick: () -> Unit,
+    avatarFrame: String? = null,
+    profilePicture: String? = null,
+    isPremium: Boolean = false
 ) {
     Row(
         modifier = Modifier
@@ -558,35 +566,23 @@ private fun TopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Avatar
-            Card(
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.2f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                onClick = onAvatarClick
+            // v1.0.10 — UNIFIED AVATAR: the official profile picture + avatar
+            // border (frame) render here exactly like everywhere else in the
+            // app. Premium subscribers also get their animated avatar here.
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable(onClick = onAvatarClick)
             ) {
-                if (!photoURL.isNullOrBlank()) {
-                    NetworkImage(
-                        model = photoURL,
-                        contentDescription = "Your avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = nickname.take(1).uppercase(),
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                color = AccentPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
+                breathy.com.ui.components.BreathyAvatar(
+                    photoURL = photoURL,
+                    frame = breathy.com.data.models.AvatarFrame.fromId(avatarFrame),
+                    rankTier = null,
+                    size = 48.dp,
+                    contentDescription = "Your avatar",
+                    profilePictureId = profilePicture,
+                    isPremiumUser = isPremium
+                )
             }
 
             // Greeting

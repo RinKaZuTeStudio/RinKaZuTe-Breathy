@@ -105,6 +105,130 @@ class UserRepository(
         )
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    //  v1.0.10 SELF-HEAL — missing documents can never block rewards again
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * v1.0.10 ROOT-CAUSE FIX for "daily reward fails with a Firestore error"
+     * and other transaction failures: when an account's `users/{uid}` or
+     * `publicProfiles/{uid}` document never landed (rules were publishing
+     * during onboarding, offline first run, retry queue exhausted), every
+     * `transaction.update()` on it fails and the daily reward / XP / coins
+     * flow dies. These transaction-scoped helpers write the update when the
+     * document exists, or CREATE it with the minimum fields the security
+     * rules require when it does not — so a sparse account heals itself on
+     * the very next reward claim instead of erroring forever.
+     */
+    private fun transactionalUserWrite(
+        transaction: com.google.firebase.firestore.Transaction,
+        userRef: com.google.firebase.firestore.DocumentReference,
+        snapshot: com.google.firebase.firestore.DocumentSnapshot,
+        updates: Map<String, Any?>
+    ) {
+        if (snapshot.exists()) {
+            transaction.update(userRef, updates)
+        } else {
+            val email = auth.currentUser?.email.orEmpty()
+            val healed = mutableMapOf<String, Any?>(
+                "email" to email,
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                "coins" to 0L,
+                "xp" to 0L,
+                "nickname" to (auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Quitter")
+            )
+            healed.putAll(updates)
+            transaction.set(userRef, healed, com.google.firebase.firestore.SetOptions.merge())
+        }
+    }
+
+    /** Companion self-heal for `publicProfiles/{uid}` inside a transaction. */
+    private fun transactionalProfileWrite(
+        transaction: com.google.firebase.firestore.Transaction,
+        profileRef: com.google.firebase.firestore.DocumentReference,
+        profileSnap: com.google.firebase.firestore.DocumentSnapshot,
+        userSnap: com.google.firebase.firestore.DocumentSnapshot,
+        updates: Map<String, Any?>
+    ) {
+        if (profileSnap.exists()) {
+            transaction.update(profileRef, updates)
+        } else {
+            val nickname = userSnap.getString("nickname")?.takeIf { it.isNotBlank() }
+                ?: auth.currentUser?.displayName?.takeIf { it.isNotBlank() }
+                ?: "Quitter"
+            val healed = mutableMapOf<String, Any?>(
+                "nickname" to nickname,
+                "xp" to 0L,
+                "daysSmokeFree" to 0L,
+                "followerCount" to 0L,
+                "followingCount" to 0L,
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+            healed.putAll(updates)
+            transaction.set(profileRef, healed, com.google.firebase.firestore.SetOptions.merge())
+        }
+    }
+
+    /**
+     * v1.0.10 — startup safety net: if the signed-in account is missing its
+     * `users/{uid}` or `publicProfiles/{uid}` document, create a minimal
+     * rules-valid one so every feature (daily reward, XP, follow counters,
+     * avatar) works immediately. Fire-and-forget; the pending-onboarding
+     * retry queue still restores the FULL profile on top of this.
+     */
+    fun ensureUserDocuments(uid: String) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val userRef = firestore.collection(USERS_COLLECTION).document(uid)
+                val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(uid)
+                val userSnap = withTimeoutOrNull(NETWORK_TIMEOUT_MS) { userRef.get().await() }
+                val profileSnap = withTimeoutOrNull(NETWORK_TIMEOUT_MS) { profileRef.get().await() }
+                if (userSnap?.exists() == true && profileSnap?.exists() == true) return@launch
+
+                val email = auth.currentUser?.email.orEmpty()
+                val nickname = auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Quitter"
+                val batch = firestore.batch()
+                if (userSnap?.exists() != true) {
+                    batch.set(
+                        userRef,
+                        mapOf(
+                            "email" to email,
+                            "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                            "nickname" to nickname,
+                            "coins" to 0L,
+                            "xp" to 0L,
+                            "avatarFrame" to breathy.com.data.models.AvatarFrame.NONE.id,
+                            "profilePicture" to breathy.com.data.models.ProfilePicture.DAY1.id
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                }
+                if (profileSnap?.exists() != true) {
+                    batch.set(
+                        profileRef,
+                        mapOf(
+                            "nickname" to nickname,
+                            "xp" to 0L,
+                            "daysSmokeFree" to 0L,
+                            "followerCount" to 0L,
+                            "followingCount" to 0L,
+                            "avatarFrame" to breathy.com.data.models.AvatarFrame.NONE.id,
+                            "profilePicture" to breathy.com.data.models.ProfilePicture.DAY1.id,
+                            "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                }
+                withTimeoutOrNull(NETWORK_TIMEOUT_MS) { batch.commit().await() }
+                Timber.i("UserRepository: self-heal created missing documents for uid=%s", uid)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "UserRepository: self-heal could not run for uid=%s (will retry on next launch)", uid)
+            }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     //  Real-time current user tracking
     // ═══════════════════════════════════════════════════════════════════════════
@@ -117,6 +241,9 @@ class UserRepository(
             val uid = firebaseAuth.currentUser?.uid
             if (uid != null) {
                 listenToUserDocument(uid)
+                // v1.0.10 — heal missing users/publicProfiles documents so
+                // daily rewards, XP and follow counters never fail again.
+                ensureUserDocuments(uid)
             } else {
                 userListenerRegistration?.remove()
                 userListenerRegistration = null
@@ -599,9 +726,10 @@ class UserRepository(
                 val snapshot = transaction.get(userRef)
                 val currentXp = (snapshot.getLong("xp") ?: 0L).toInt()
                 val newXp = currentXp + amount
-                transaction.update(userRef, "xp", newXp)
+                transactionalUserWrite(transaction, userRef, snapshot, mapOf("xp" to newXp))
                 val profileSnap = transaction.get(profileRef)
-                transaction.update(profileRef, mapOf("xp" to newXp) + periodXpDelta(profileSnap, amount))
+                transactionalProfileWrite(transaction, profileRef, profileSnap, snapshot,
+                    mapOf("xp" to newXp) + periodXpDelta(profileSnap, amount))
                 newXp
             }.await()
         } ?: throw IllegalStateException("Add XP timed out after 30 seconds")
@@ -621,7 +749,7 @@ class UserRepository(
                 val snapshot = transaction.get(userRef)
                 val currentCoins = (snapshot.getLong("coins") ?: 0L).toInt()
                 val newCoins = currentCoins + amount
-                transaction.update(userRef, "coins", newCoins)
+                transactionalUserWrite(transaction, userRef, snapshot, mapOf("coins" to newCoins))
                 newCoins
             }.await()
         } ?: throw IllegalStateException("Add coins timed out after 30 seconds")
@@ -647,9 +775,10 @@ class UserRepository(
                 val currentCoins = (snapshot.getLong("coins") ?: 0L).toInt()
                 val newXp = currentXp + xpDelta
                 val newCoins = currentCoins + coinDelta
-                transaction.update(userRef, mapOf("xp" to newXp, "coins" to newCoins))
+                transactionalUserWrite(transaction, userRef, snapshot, mapOf("xp" to newXp, "coins" to newCoins))
                 val profileSnap = transaction.get(profileRef)
-                transaction.update(profileRef, mapOf("xp" to newXp) + periodXpDelta(profileSnap, xpDelta))
+                transactionalProfileWrite(transaction, profileRef, profileSnap, snapshot,
+                    mapOf("xp" to newXp) + periodXpDelta(profileSnap, xpDelta))
                 Pair(newXp, newCoins)
             }.await()
         } ?: throw IllegalStateException("Update XP/coins timed out after 30 seconds")
@@ -688,30 +817,39 @@ class UserRepository(
                 val newCoins = currentCoins + reward
                 val newXp = currentXp + DAILY_REWARD_XP
 
-                transaction.update(userRef, mapOf(
+                // v1.0.10 self-heal: creates a rules-valid user document when
+                // the account's doc never landed instead of failing forever.
+                transactionalUserWrite(transaction, userRef, snapshot, mapOf(
                     "coins" to newCoins,
                     "xp" to newXp,
                     "lastDailyClaim" to Timestamp.now()
                 ))
                 val profileSnap = transaction.get(profileRef)
-                transaction.update(profileRef, mapOf("xp" to newXp) + periodXpDelta(profileSnap, DAILY_REWARD_XP))
+                transactionalProfileWrite(transaction, profileRef, profileSnap, snapshot,
+                    mapOf("xp" to newXp) + periodXpDelta(profileSnap, DAILY_REWARD_XP))
 
                 // Gold ledger entry — dedup key makes replayed claims no-ops.
+                // v1.0.10: existence-guarded — a merge-set on an EXISTING
+                // ledger doc would be an UPDATE and the append-only rules
+                // rightly deny updates; skipping the write keeps the claim
+                // working (idempotent — the doc already has today's reward).
                 val dayKey = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
                     .format(java.util.Date())
-                transaction.set(
-                    userRef.collection("goldTransactions").document("daily_checkin_$dayKey"),
-                    mapOf(
-                        "amount" to reward,
-                        "type" to "earn",
-                        "source" to "daily_checkin",
-                        "description" to "Daily check-in",
-                        "dedupKey" to "daily_checkin_$dayKey",
-                        "balanceAfter" to newCoins,
-                        "timestamp" to FieldValue.serverTimestamp()
-                    ),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
+                val ledgerRef = userRef.collection("goldTransactions").document("daily_checkin_$dayKey")
+                if (!transaction.get(ledgerRef).exists()) {
+                    transaction.set(
+                        ledgerRef,
+                        mapOf(
+                            "amount" to reward,
+                            "type" to "earn",
+                            "source" to "daily_checkin",
+                            "description" to "Daily check-in",
+                            "dedupKey" to "daily_checkin_$dayKey",
+                            "balanceAfter" to newCoins,
+                            "timestamp" to FieldValue.serverTimestamp()
+                        )
+                    )
+                }
 
                 reward
             }.await()

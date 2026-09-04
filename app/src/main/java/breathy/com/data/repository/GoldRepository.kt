@@ -62,6 +62,32 @@ class GoldRepository(
     private val auth: FirebaseAuth
 ) {
 
+    /**
+     * v1.0.10 self-heal — same contract as UserRepository's transactional
+     * user write: update when the document exists, create a rules-valid one
+     * (email + createdAt anchors) when it does not, so Gold rewards can
+     * never fail on a sparse account.
+     */
+    private fun selfHealUserWrite(
+        tx: Transaction,
+        userRef: com.google.firebase.firestore.DocumentReference,
+        snapshot: com.google.firebase.firestore.DocumentSnapshot,
+        updates: Map<String, Any?>
+    ) {
+        if (snapshot.exists()) {
+            tx.update(userRef, updates)
+        } else {
+            val healed = mutableMapOf<String, Any?>(
+                "email" to (auth.currentUser?.email ?: ""),
+                "createdAt" to FieldValue.serverTimestamp(),
+                "nickname" to (auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Quitter"),
+                "xp" to 0L
+            )
+            healed.putAll(updates)
+            tx.set(userRef, healed, SetOptions.merge())
+        }
+    }
+
     companion object {
         private const val TAG = "GoldRepository"
         private const val NETWORK_TIMEOUT_MS = 30_000L
@@ -253,7 +279,7 @@ class GoldRepository(
                 }
                 val current = (userSnap.getLong("coins") ?: 0L).toInt()
                 val newBalance = current + amount
-                tx.update(userRef, "coins", newBalance)
+                selfHealUserWrite(tx, userRef, userSnap, mapOf("coins" to newBalance))
                 tx.set(
                     userRef.collection(TX_COLLECTION).document(txId),
                     mapOf(
@@ -314,7 +340,7 @@ class GoldRepository(
                     throw InsufficientGoldException(required = amount, available = current)
                 }
                 val newBalance = current - amount
-                tx.update(userRef, "coins", newBalance)
+                selfHealUserWrite(tx, userRef, userSnap, mapOf("coins" to newBalance))
                 tx.set(
                     userRef.collection(TX_COLLECTION).document(txId),
                     mapOf(

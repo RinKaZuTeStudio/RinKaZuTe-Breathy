@@ -454,13 +454,14 @@ private fun ProfileHeader(profile: PublicProfile) {
                     )
                 }
 
-                // Follower count — REAL one-way follow graph (spec sections 32-34)
+                // Follower count — v1.0.10: LIVE count from the follows graph
+                // (falls back to the denormalized counter before first snapshot)
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = SoftSage.copy(alpha = 0.4f)
                 ) {
                     Text(
-                        text = "${profile.followerCount.coerceAtLeast(0)} followers",
+                        text = "${(uiState.liveFollowerCount ?: profile.followerCount).coerceAtLeast(0)} followers",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         color = breathy.com.ui.theme.DeepForest,
                         style = MaterialTheme.typography.labelMedium,
@@ -807,7 +808,13 @@ data class PublicProfileUiState(
     val error: String? = null,
     /** One-way follow relationship: does the CURRENT user follow this profile? */
     val isFollowing: Boolean = false,
-    val isFollowBusy: Boolean = false
+    val isFollowBusy: Boolean = false,
+    /**
+     * v1.0.10 — LIVE follower count derived from the follows collection
+     * (real edges, not the denormalized counter). Null until the first
+     * snapshot arrives; the UI falls back to profile.followerCount.
+     */
+    val liveFollowerCount: Int? = null
 )
 
 class PublicProfileViewModel(
@@ -832,6 +839,12 @@ class PublicProfileViewModel(
 
     init {
         loadProfile()
+        // v1.0.10 — LIVE follow state + LIVE follower count. Both listeners
+        // emit from the local cache the moment the follow edge is written,
+        // so the button flips and the count ticks up IN PLACE — no exiting
+        // and re-entering the profile, and no stale denormalized counter.
+        observeFollowState()
+        observeLiveFollowerCount()
     }
 
     private fun loadProfile() {
@@ -975,6 +988,36 @@ class PublicProfileViewModel(
                 },
                 onFailure = { e -> Timber.w(e, "Failed to check follow status") }
             )
+        }
+    }
+
+    /**
+     * v1.0.10 — keep isFollowing in sync with a LIVE snapshot listener on
+     * follows/{me}_{target}. Fires immediately (local cache) and on every
+     * server acknowledgement, including writes made by THIS device.
+     */
+    private fun observeFollowState() {
+        val repo = followRepository ?: return
+        val uid = currentUserId ?: return
+        if (profileUserId == uid) return
+        viewModelScope.launch {
+            repo.observeIsFollowing(uid, profileUserId).collect { following ->
+                _uiState.value = _uiState.value.copy(isFollowing = following)
+            }
+        }
+    }
+
+    /**
+     * v1.0.10 — display the REAL number of followers, counted live from the
+     * follows collection. Survives denied/denormalized counter writes and
+     * updates instantly when this (or any) device follows/unfollows.
+     */
+    private fun observeLiveFollowerCount() {
+        val repo = followRepository ?: return
+        viewModelScope.launch {
+            repo.observeFollowerCount(profileUserId).collect { count ->
+                _uiState.value = _uiState.value.copy(liveFollowerCount = count)
+            }
         }
     }
 
