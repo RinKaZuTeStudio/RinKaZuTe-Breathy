@@ -140,7 +140,9 @@ data class LeaderboardUiState(
     val selectedPeriod: LeaderboardPeriod = LeaderboardPeriod.ALL_TIME,
     val errorMessage: String? = null,
     /** REAL member count — server-side aggregate of actual created accounts. */
-    val memberCount: Int = 0
+    val memberCount: Int = 0,
+    /** v1.0.11 — one-shot prize-payout notice (cleared after showing). */
+    val rewardNotice: String? = null
 )
 
 data class LeaderboardEntry(
@@ -167,7 +169,9 @@ typealias LeaderboardPeriod = breathy.com.data.models.LeaderboardPeriod
 
 class LeaderboardViewModel(
     private val userRepository: UserRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    /** v1.0.11 — settles the weekly/monthly rollover and rank payouts. */
+    private val leaderboardRepository: breathy.com.data.repository.LeaderboardRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -213,6 +217,28 @@ class LeaderboardViewModel(
         val uid = currentUserId ?: run {
             _uiState.update { it.copy(isLoading = false, errorMessage = s("Not authenticated", "غير مسجل الدخول")) }
             return
+        }
+
+        // v1.0.11 — settle the period rollover + payouts in the background.
+        // Idempotent: finalizing is transaction-guarded and prizes are
+        // dedup-keyed, so repeated loads never double-pay.
+        val settlePeriod = _uiState.value.selectedPeriod
+        if (settlePeriod != breathy.com.data.models.LeaderboardPeriod.ALL_TIME && leaderboardRepository != null) {
+            viewModelScope.launch {
+                val result = leaderboardRepository.finalizeAndClaim(settlePeriod) ?: return@launch
+                if (result.goldAwarded > 0) {
+                    val label = if (settlePeriod == breathy.com.data.models.LeaderboardPeriod.WEEKLY)
+                        s("weekly", "الأسبوعي") else s("monthly", "الشهري")
+                    _uiState.update {
+                        it.copy(
+                            rewardNotice = s(
+                                "🏆 +%1\$d Gold — rank #%3\$d in the %2\$s leaderboard!",
+                                "🏆 +%1\$d ذهب — المركز #%3\$d في قائمة %2\$s!"
+                            ).format(result.goldAwarded, label, result.myRank ?: 0)
+                        )
+                    }
+                }
+            }
         }
 
         periodJob?.cancel()
@@ -358,16 +384,22 @@ class LeaderboardViewModel(
         // weeklyXp, Monthly by monthlyXp, All-Time by lifetime xp).
         loadLeaderboard()
     }
+
+    /** v1.0.11 — clear the prize notice after it has been shown. */
+    fun clearRewardNotice() {
+        _uiState.update { it.copy(rewardNotice = null) }
+    }
 }
 
 class LeaderboardViewModelFactory(
     private val userRepository: UserRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val leaderboardRepository: breathy.com.data.repository.LeaderboardRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LeaderboardViewModel::class.java)) {
-            return LeaderboardViewModel(userRepository, auth) as T
+            return LeaderboardViewModel(userRepository, auth, leaderboardRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
@@ -404,7 +436,8 @@ fun LeaderboardScreen(
             androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current!!,
             LeaderboardViewModelFactory(
                 userRepository = app.appModule.userRepository,
-                auth = app.appModule.firebaseAuth
+                auth = app.appModule.firebaseAuth,
+                leaderboardRepository = app.appModule.leaderboardRepository
             )
         )[LeaderboardViewModel::class.java]
     }
@@ -429,6 +462,15 @@ fun LeaderboardScreen(
     DisposableEffect(Unit) {
         Timber.d("LeaderboardScreen: composed")
         onDispose { Timber.d("LeaderboardScreen: disposed") }
+    }
+
+    // v1.0.11 — show the leaderboard prize payout notice exactly once.
+    val toastContext = LocalContext.current
+    LaunchedEffect(uiState.rewardNotice) {
+        uiState.rewardNotice?.let { notice ->
+            android.widget.Toast.makeText(toastContext, notice, android.widget.Toast.LENGTH_LONG).show()
+            viewModel.clearRewardNotice()
+        }
     }
 
     val pullRefreshState = rememberPullRefreshState(
@@ -529,6 +571,13 @@ fun LeaderboardScreen(
                                 selected = uiState.selectedPeriod,
                                 onSelect = { viewModel.selectPeriod(it) }
                             )
+                        }
+
+                        // ── v1.0.11 PRIZE TABLE for the selected period ────
+                        if (uiState.selectedPeriod != breathy.com.data.models.LeaderboardPeriod.ALL_TIME) {
+                            item(key = "prize_table") {
+                                LeaderboardPrizeCard(period = uiState.selectedPeriod)
+                            }
                         }
 
                         item(key = "your_position") {
@@ -1278,6 +1327,73 @@ private fun ErrorState(
                 )
             }
         }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  v1.0.11 — Prize table card for the selected period.
+//  Weekly : ranks 1–3 → 1000 Gold · 4–10 → 500 · 11–50 → 100
+//  Monthly: ranks 1–3 → 5000 Gold · 4–10 → 3000 · 11–50 → 500
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun LeaderboardPrizeCard(
+    period: breathy.com.data.models.LeaderboardPeriod,
+    modifier: Modifier = Modifier
+) {
+    val isWeekly = period == breathy.com.data.models.LeaderboardPeriod.WEEKLY
+    val top = if (isWeekly) 1000 else 5000
+    val mid = if (isWeekly) 500 else 3000
+    val rest = if (isWeekly) 100 else 500
+    val title = if (isWeekly)
+        s("Weekly prizes — resets every week", "جوائز أسبوعية — تُصفّر كل أسبوع")
+    else
+        s("Monthly prizes — resets every month", "جوائز شهرية — تُصفّر كل شهر")
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = AccentPrimary.copy(alpha = 0.08f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = themeTextPrimary
+                )
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            PrizeRow(emoji = "🥇", text = s("Top 3", "المراكز الثلاثة الأولى"), gold = top)
+            PrizeRow(emoji = "🏅", text = s("Places 4 – 10", "المراكز 4 – 10"), gold = mid)
+            PrizeRow(emoji = "🎁", text = s("Places 11 – 50", "المراكز 11 – 50"), gold = rest)
+        }
+    }
+}
+
+@Composable
+private fun PrizeRow(emoji: String, text: String, gold: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = emoji, fontSize = 13.sp)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium.copy(color = themeTextSecondary),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = s("+%,d Gold", "+%,d ذهب").format(gold),
+            style = MaterialTheme.typography.labelMedium.copy(
+                color = GoldDeep,
+                fontWeight = FontWeight.Bold
+            )
+        )
     }
 }
 

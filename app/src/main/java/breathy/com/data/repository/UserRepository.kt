@@ -44,6 +44,14 @@ import java.util.concurrent.TimeUnit
  * All network operations enforce a 30-second timeout.
  * All mutable operations use [Result] for error handling.
  */
+/**
+ * Thrown when the daily reward was already claimed today.
+ * The UI treats this as a SUCCESS state (check-in already done)
+ * instead of surfacing an error to the user.
+ */
+class AlreadyClaimedException :
+    Exception("Daily reward already claimed today")
+
 class UserRepository(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
@@ -78,33 +86,36 @@ class UserRepository(
             cal.timeInMillis = millis
             return "%04d-%02d".format(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1)
         }
-    }
 
-    /**
-     * Period-aware XP fields for the WEEKLY / MONTHLY leaderboards (v1.0.9).
-     * Returns the map to merge into a publicProfiles update so weekly/monthly
-     * XP rolls forward inside the current period and resets automatically
-     * when a new week/month begins — computed from the profile snapshot that
-     * the caller's transaction has already read.
-     */
-    private fun periodXpDelta(
-        profileSnap: com.google.firebase.firestore.DocumentSnapshot,
-        xpDelta: Int
-    ): Map<String, Any?> {
-        val wkKey = weeklyXpPeriodKey()
-        val moKey = monthlyXpPeriodKey()
-        val weekly = if (profileSnap.getString("weeklyXpPeriod") == wkKey)
-            (profileSnap.getLong("weeklyXp") ?: 0L).toInt() + xpDelta
-        else xpDelta.coerceAtLeast(0)
-        val monthly = if (profileSnap.getString("monthlyXpPeriod") == moKey)
-            (profileSnap.getLong("monthlyXp") ?: 0L).toInt() + xpDelta
-        else xpDelta.coerceAtLeast(0)
-        return mapOf(
-            "weeklyXp" to weekly.coerceAtLeast(0),
-            "weeklyXpPeriod" to wkKey,
-            "monthlyXp" to monthly.coerceAtLeast(0),
-            "monthlyXpPeriod" to moKey
-        )
+        /**
+         * Period-aware XP fields for the WEEKLY / MONTHLY leaderboards.
+         * Companion-object so EVERY repository that grants XP (UserRepository,
+         * RewardRepository, …) feeds the same weekly/monthly mirrors — before
+         * v1.0.11 only three of the six XP paths updated them, which made the
+         * Weekly / Monthly / All-Time boards show identical users and ranks.
+         *
+         * @param profileSnap the publicProfiles snapshot the caller's
+         *        transaction has ALREADY read (reads must precede writes).
+         */
+        fun periodXpDelta(
+            profileSnap: com.google.firebase.firestore.DocumentSnapshot,
+            xpDelta: Int
+        ): Map<String, Any?> {
+            val wkKey = weeklyXpPeriodKey()
+            val moKey = monthlyXpPeriodKey()
+            val weekly = if (profileSnap.getString("weeklyXpPeriod") == wkKey)
+                (profileSnap.getLong("weeklyXp") ?: 0L).toInt() + xpDelta
+            else xpDelta.coerceAtLeast(0)
+            val monthly = if (profileSnap.getString("monthlyXpPeriod") == moKey)
+                (profileSnap.getLong("monthlyXp") ?: 0L).toInt() + xpDelta
+            else xpDelta.coerceAtLeast(0)
+            return mapOf(
+                "weeklyXp" to weekly.coerceAtLeast(0),
+                "weeklyXpPeriod" to wkKey,
+                "monthlyXp" to monthly.coerceAtLeast(0),
+                "monthlyXpPeriod" to moKey
+            )
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -688,6 +699,14 @@ class UserRepository(
     /**
      * Update the daysSmokeFree denormalized field on the public profile.
      * Called whenever the user's days smoke-free might have changed (app open, midnight, etc.).
+     *
+     * v1.0.11 NICKNAME FIX: this write used to copy `nickname` / `photoURL` /
+     * `location` from the private user document back onto the public profile.
+     * When the user document was sparse or self-healed (nickname blank or a
+     * fallback), it SILENTLY CLOBBERED the nickname the user typed during
+     * onboarding — the #1 cause of "my nickname is not getting saved".
+     * Those identity fields have dedicated flows (onboarding / profile edit /
+     * updatePhoto); this sync now touches ONLY the derived stat fields.
      */
     suspend fun updatePublicProfileDaysSmokeFree(userId: String): Result<Unit> = runCatching {
         val user = getUser(userId).getOrThrow()
@@ -696,11 +715,6 @@ class UserRepository(
                 .set(
                     mapOf(
                         "daysSmokeFree" to user.daysSmokeFree,
-                        "xp" to user.xp,
-                        "nickname" to user.nickname,
-                        "photoURL" to (user.photoURL ?: FieldValue.delete()),
-                        "location" to (user.location ?: FieldValue.delete()),
-                        "avatarFrame" to user.avatarFrame,
                         "updatedAt" to FieldValue.serverTimestamp()
                     ),
                     SetOptions.merge()
@@ -725,11 +739,15 @@ class UserRepository(
             val userRef = firestore.collection(USERS_COLLECTION).document(userId)
             val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
             firestore.runTransaction { transaction ->
+                // v1.0.11 FIX: ALL reads MUST happen before ANY write —
+                // reading the profile after the user-doc write aborted every
+                // XP grant with "transactions require all reads to be
+                // executed before all writes".
                 val snapshot = transaction.get(userRef)
+                val profileSnap = transaction.get(profileRef)
                 val currentXp = (snapshot.getLong("xp") ?: 0L).toInt()
                 val newXp = currentXp + amount
                 transactionalUserWrite(transaction, userRef, snapshot, mapOf("xp" to newXp))
-                val profileSnap = transaction.get(profileRef)
                 transactionalProfileWrite(transaction, profileRef, profileSnap, snapshot,
                     mapOf("xp" to newXp) + periodXpDelta(profileSnap, amount))
                 newXp
@@ -772,13 +790,14 @@ class UserRepository(
             val userRef = firestore.collection(USERS_COLLECTION).document(userId)
             val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
             firestore.runTransaction { transaction ->
+                // v1.0.11 FIX: all reads before all writes (same as addXp).
                 val snapshot = transaction.get(userRef)
+                val profileSnap = transaction.get(profileRef)
                 val currentXp = (snapshot.getLong("xp") ?: 0L).toInt()
                 val currentCoins = (snapshot.getLong("coins") ?: 0L).toInt()
                 val newXp = currentXp + xpDelta
                 val newCoins = currentCoins + coinDelta
                 transactionalUserWrite(transaction, userRef, snapshot, mapOf("xp" to newXp, "coins" to newCoins))
-                val profileSnap = transaction.get(profileRef)
                 transactionalProfileWrite(transaction, profileRef, profileSnap, snapshot,
                     mapOf("xp" to newXp) + periodXpDelta(profileSnap, xpDelta))
                 Pair(newXp, newCoins)
@@ -798,7 +817,19 @@ class UserRepository(
             val userRef = firestore.collection(USERS_COLLECTION).document(userId)
             val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
             firestore.runTransaction { transaction ->
+                // ═══ v1.0.11 ROOT-CAUSE FIX ═══
+                // "Firestore transactions require all reads to be executed
+                // before all writes" — the profile read and the ledger read
+                // used to run AFTER transactionalUserWrite (a write), which
+                // aborted EVERY claim with exactly that error. ALL reads are
+                // now hoisted to the top of the transaction.
                 val snapshot = transaction.get(userRef)
+                val profileSnap = transaction.get(profileRef)
+                val dayKey = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(java.util.Date())
+                val ledgerRef = userRef.collection("goldTransactions").document("daily_checkin_$dayKey")
+                val ledgerExists = transaction.get(ledgerRef).exists()
+
                 val lastClaimTs = snapshot.getTimestamp("lastDailyClaim")
                 val lastClaim = lastClaimTs?.toDate()
                 val now = Calendar.getInstance()
@@ -809,7 +840,7 @@ class UserRepository(
                     val sameDay = lastClaimCal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
                             lastClaimCal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)
                     if (sameDay) {
-                        throw IllegalStateException(s("Daily reward already claimed today — come back tomorrow!", "تم استلام المكافأة اليومية بالفعل — عد غدًا!"))
+                        throw AlreadyClaimedException()
                     }
                 }
 
@@ -826,19 +857,12 @@ class UserRepository(
                     "xp" to newXp,
                     "lastDailyClaim" to Timestamp.now()
                 ))
-                val profileSnap = transaction.get(profileRef)
                 transactionalProfileWrite(transaction, profileRef, profileSnap, snapshot,
                     mapOf("xp" to newXp) + periodXpDelta(profileSnap, DAILY_REWARD_XP))
 
                 // Gold ledger entry — dedup key makes replayed claims no-ops.
-                // v1.0.10: existence-guarded — a merge-set on an EXISTING
-                // ledger doc would be an UPDATE and the append-only rules
-                // rightly deny updates; skipping the write keeps the claim
-                // working (idempotent — the doc already has today's reward).
-                val dayKey = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-                    .format(java.util.Date())
-                val ledgerRef = userRef.collection("goldTransactions").document("daily_checkin_$dayKey")
-                if (!transaction.get(ledgerRef).exists()) {
+                // Existence was resolved in the READ phase above (v1.0.11).
+                if (!ledgerExists) {
                     transaction.set(
                         ledgerRef,
                         mapOf(

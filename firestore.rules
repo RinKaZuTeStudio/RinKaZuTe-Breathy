@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  BREATHY — PRODUCTION FIRESTORE RULES (v7, 2026-09)
+//  BREATHY — PRODUCTION FIRESTORE RULES (v8, 2026-09)
 //
 //  ⚠️ WHERE TO PUBLISH (critical):
 //  Firebase Console → Firestore Database → use the DATABASE DROPDOWN at the
@@ -9,6 +9,14 @@ rules_version = '2';
 //  (this is the database the app has ALWAYS used — all user data lives
 //  there). Then open Rules, paste this file, and press Publish. Rules are
 //  per-database: publishing to a different database does nothing for the app.
+//
+//  v8 vs v7: adds the `leaderboardArchive` collection used by the v1.0.11
+//  weekly/monthly leaderboard reset + Gold prizes. Any signed-in user may
+//  create/update the two archive documents (weekly/monthly) — the app has no
+//  server, so the rollover snapshot is written lazily by trusted clients and
+//  guarded by a transaction; every user's Gold payout itself remains a
+//  SELF-claim (owner-only write) keyed by a dedup ledger entry, so no user
+//  can ever modify another user's balance through this collection.
 //
 //  v7 vs v6: onlyUpdatingFollowCounters() now also accepts 'updatedAt' (the
 //  developer's own published edit — kept as the baseline so this file is a
@@ -522,6 +530,20 @@ service cloud.firestore {
       allow update: if isAdmin();
 
       allow delete: if isAdmin();
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    // leaderboardArchive/{weekly|monthly}  (NEW in v8)
+    // Weekly / Monthly leaderboard rollover snapshots written lazily by the
+    // signed-in clients (no backend exists). Gold payouts are SELF-claims on
+    // each user's own document — this archive never carries balances.
+    // ═══════════════════════════════════════════════════════════════════
+
+    match /leaderboardArchive/{archiveId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if false;
     }
 
 

@@ -479,100 +479,34 @@ fun EventsScreen(
 }
 
 /**
- * Canonical featured event hero — the SAME artwork as the Home featured card
- * (spec section 21). Coming Soon badge + title + description + reward preview.
+ * Canonical featured event hero — v1.0.11 redesign: the NEW botanical
+ * banner (shared with Home) followed by a compact balance strip.
  */
 @Composable
 private fun EventHeroBanner(
     goldBalance: Int,
     onOpenEvent: () -> Unit = {}
 ) {
-    Card(
-        onClick = onOpenEvent,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = PureWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, SoftSage.copy(alpha = 0.6f))
-    ) {
-        Column {
-            Box {
-                Image(
-                    painter = painterResource(R.drawable.event_pushup_hero),
-                    contentDescription = "Push-Up Challenge event artwork",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(170.dp),
-                    contentScale = ContentScale.Crop
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        breathy.com.ui.components.EventBannerCard(
+            onClick = onOpenEvent,
+            modifier = Modifier.fillMaxWidth(),
+            ctaLabel = s("Join Challenge", "انضم للتحدي")
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "🪙", fontSize = 12.sp)
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = s("Your balance: %,d", "رصيدك: %,d").format(goldBalance),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = themeTextSecondary,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(10.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = DeepForest)
-                ) {
-                    Text(
-                        text = s("COMING SOON", "قريبًا"),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = NaturalYellow,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = s("Push-Up Challenge", "تحدي تمارين الضغط"),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = themeTextPrimary
-                    )
-                )
-                Text(
-                    text = s(
-                        "Compete with the community. Daily push-up check-ins, live event leaderboard, exclusive rewards.",
-                        "نافس المجتمع. تسجيل حضور يومي لتمارين الضغط، ولوحة صدارة مباشرة للفعالية، ومكافآت حصرية."
-                    ),
-                    style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = VeryLightSage)
-                    ) {
-                        Text(
-                            text = s("🪙 Entry 500 Gold", "🪙 رسوم الدخول 500 ذهب"),
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = GoldDeep,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = VeryLightSage)
-                    ) {
-                        Text(
-                            text = s("Your balance: %,d", "رصيدك: %,d").format(goldBalance),
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = themeTextSecondary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                    }
-                }
-            }
+            )
         }
     }
 }

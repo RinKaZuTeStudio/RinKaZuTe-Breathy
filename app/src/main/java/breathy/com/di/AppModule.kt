@@ -7,6 +7,7 @@ import breathy.com.data.repository.GoldRepository
 import breathy.com.data.repository.EventRepository
 import breathy.com.data.repository.FollowRepository
 import breathy.com.data.repository.FriendRepository
+import breathy.com.data.repository.LeaderboardRepository
 import breathy.com.data.repository.PremiumRepository
 import breathy.com.data.repository.RewardRepository
 import breathy.com.data.repository.SafetyRepository
@@ -247,6 +248,18 @@ class AppModule(
             firestore = firestore,
             auth = firebaseAuth,
             userRepository = userRepository
+        )
+    }
+
+    /**
+     * Leaderboard repository — v1.0.11 weekly/monthly period rollover and
+     * rank-based Gold rewards (lazy client-side finalize + self-claim).
+     */
+    val leaderboardRepository: LeaderboardRepository by lazy {
+        Timber.d("Initializing LeaderboardRepository")
+        LeaderboardRepository(
+            firestore = firestore,
+            auth = firebaseAuth
         )
     }
 

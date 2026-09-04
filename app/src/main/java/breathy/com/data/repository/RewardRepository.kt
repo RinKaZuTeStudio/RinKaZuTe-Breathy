@@ -363,7 +363,10 @@ class RewardRepository(
                         val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
 
                         firestore.runTransaction { transaction ->
+                            // v1.0.11: read BOTH docs first (all reads before
+                            // all writes) and feed the weekly/monthly mirrors.
                             val snapshot = transaction.get(userRef)
+                            val profileSnap = transaction.get(profileRef)
                             val currentAchievements = (snapshot.get("achievements") as? List<*>)
                                 ?.filterIsInstance<String>()?.toSet() ?: emptySet()
 
@@ -380,7 +383,11 @@ class RewardRepository(
                                     "xp" to newXp,
                                     "coins" to newCoins
                                 ))
-                                transaction.update(profileRef, "xp", newXp)
+                                transaction.update(
+                                    profileRef,
+                                    mapOf("xp" to newXp) +
+                                        UserRepository.periodXpDelta(profileSnap, achievement.xpReward)
+                                )
 
                                 // Gold ledger entry (dedup: one per achievement, ever)
                                 val txRef = userRef.collection("goldTransactions")
@@ -420,6 +427,9 @@ class RewardRepository(
     /**
      * Grant XP to a user with an optional reason (for logging).
      * Updates both the user document and the public profile.
+     * v1.0.11: reads BOTH documents before any write (Firestore transaction
+     * ordering rule) and feeds the weekly/monthly XP mirrors so story,
+     * event, friend and coach XP all count toward the period leaderboards.
      * @return the new total XP after the addition.
      */
     suspend fun grantXp(userId: String, amount: Int, reason: String = ""): Result<Int> =
@@ -429,11 +439,16 @@ class RewardRepository(
                 val userRef = firestore.collection(USERS_COLLECTION).document(userId)
                 val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
                 firestore.runTransaction { transaction ->
+                    // v1.0.11 FIX: ALL reads before ALL writes.
                     val snapshot = transaction.get(userRef)
+                    val profileSnap = transaction.get(profileRef)
                     val currentXp = (snapshot.getLong("xp") ?: 0L).toInt()
                     val newXp = currentXp + amount
                     transaction.update(userRef, "xp", newXp)
-                    transaction.update(profileRef, "xp", newXp)
+                    transaction.update(
+                        profileRef,
+                        mapOf("xp" to newXp) + UserRepository.periodXpDelta(profileSnap, amount)
+                    )
                     newXp
                 }.await()
             } ?: throw IllegalStateException("Grant XP timed out after 30 seconds")
@@ -465,6 +480,7 @@ class RewardRepository(
     /**
      * Award XP to a user (alias for grantXp without return value).
      * Updates both user and public profile.
+     * v1.0.11: reads before writes + weekly/monthly mirror maintenance.
      */
     suspend fun awardXP(userId: String, amount: Int): Result<Unit> = runCatching {
         if (amount < 0) throw IllegalArgumentException("XP amount must be non-negative")
@@ -472,11 +488,16 @@ class RewardRepository(
             val userRef = firestore.collection(USERS_COLLECTION).document(userId)
             val profileRef = firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId)
             firestore.runTransaction { transaction ->
+                // v1.0.11 FIX: ALL reads before ALL writes.
                 val snapshot = transaction.get(userRef)
+                val profileSnap = transaction.get(profileRef)
                 val currentXp = (snapshot.getLong("xp") ?: 0L).toInt()
                 val newXp = currentXp + amount
                 transaction.update(userRef, "xp", newXp)
-                transaction.update(profileRef, "xp", newXp)
+                transaction.update(
+                    profileRef,
+                    mapOf("xp" to newXp) + UserRepository.periodXpDelta(profileSnap, amount)
+                )
             }.await()
             Unit
         } ?: throw IllegalStateException("Award XP timed out after 30 seconds")

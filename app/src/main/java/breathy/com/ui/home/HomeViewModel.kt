@@ -71,6 +71,7 @@ sealed class HomeSingleEvent {
     data class ShowAchievementUnlock(val achievement: Achievement) : HomeSingleEvent()
     data class ShowDailyReward(val coins: Int) : HomeSingleEvent()
     data class ShowCravingXP(val xp: Int) : HomeSingleEvent()
+    data class ShowLeaderboardReward(val gold: Int, val periodLabel: String, val rank: Int?) : HomeSingleEvent()
     data class ShowError(val message: String) : HomeSingleEvent()
 }
 
@@ -84,7 +85,9 @@ class HomeViewModel(
     private val auth: FirebaseAuth,
     private val goldRepository: breathy.com.data.repository.GoldRepository? = null,
     /** v1.0.10 — drives the premium animated avatar in the top bar. */
-    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null,
+    /** v1.0.11 — settles weekly/monthly leaderboard payouts on app open. */
+    private val leaderboardRepository: breathy.com.data.repository.LeaderboardRepository? = null
 ) : ViewModel() {
 
     companion object {
@@ -105,6 +108,33 @@ class HomeViewModel(
     init {
         loadUserData()
         checkStreakMilestones()
+        settleLeaderboards()
+    }
+
+    /**
+     * v1.0.11 — weekly/monthly leaderboard rollover + rank payouts. Runs on
+     * every Home open (lazy, idempotent, rules-safe): the first client to
+     * open after a period ends snapshots the final ranking; every client
+     * then pays ITSELF its archived rank prize via a dedup-keyed ledger.
+     */
+    private fun settleLeaderboards() {
+        val repo = leaderboardRepository ?: return
+        viewModelScope.launch {
+            try {
+                val weekly = repo.finalizeAndClaim(breathy.com.data.models.LeaderboardPeriod.WEEKLY)
+                if (weekly != null && weekly.goldAwarded > 0) {
+                    _events.emit(HomeSingleEvent.ShowLeaderboardReward(weekly.goldAwarded, "weekly", weekly.myRank))
+                }
+                val monthly = repo.finalizeAndClaim(breathy.com.data.models.LeaderboardPeriod.MONTHLY)
+                if (monthly != null && monthly.goldAwarded > 0) {
+                    _events.emit(HomeSingleEvent.ShowLeaderboardReward(monthly.goldAwarded, "monthly", monthly.myRank))
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Leaderboard settlement failed — non-fatal")
+            }
+        }
     }
 
     /**
@@ -321,6 +351,20 @@ class HomeViewModel(
     @Volatile
     private var isClaimingDailyReward = false
 
+    /**
+     * v1.0.11 AUTO CHECK-IN — the daily "I didn't smoke today" check-in is
+     * now automatic: using the app at least once a day IS the check-in.
+     * The Home screen calls this once per load while the reward is still
+     * unclaimed; there is no manual Claim button anymore. If the claim is
+     * already done (or a second device claimed first) the state silently
+     * flips to claimed — never an error popup.
+     */
+    fun autoCheckInIfPending() {
+        val state = _uiState.value
+        if (state.isLoading || state.dailyRewardClaimed) return
+        claimDailyReward()
+    }
+
     fun claimDailyReward() {
         val uid = userId ?: return
         if (isClaimingDailyReward) return
@@ -338,6 +382,12 @@ class HomeViewModel(
                     }
                     _events.emit(HomeSingleEvent.ShowDailyReward(coinsAwarded))
                 }.onFailure { e ->
+                    // v1.0.11: "already claimed" is a SUCCESS state — another
+                    // session/device checked in first. Flip silently, no error.
+                    if (e is breathy.com.data.repository.AlreadyClaimedException) {
+                        _uiState.update { it.copy(dailyRewardClaimed = true) }
+                        return@onFailure
+                    }
                     _events.emit(HomeSingleEvent.ShowError(e.message ?: s("Failed to claim reward", "تعذّر استلام المكافأة")))
                 }
             } catch (e: Exception) {
@@ -427,13 +477,14 @@ class HomeViewModelFactory(
     private val rewardRepository: RewardRepository,
     private val auth: FirebaseAuth,
     private val goldRepository: breathy.com.data.repository.GoldRepository? = null,
-    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null
+    private val premiumRepository: breathy.com.data.repository.PremiumRepository? = null,
+    private val leaderboardRepository: breathy.com.data.repository.LeaderboardRepository? = null
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            return HomeViewModel(userRepository, rewardRepository, auth, goldRepository, premiumRepository) as T
+            return HomeViewModel(userRepository, rewardRepository, auth, goldRepository, premiumRepository, leaderboardRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

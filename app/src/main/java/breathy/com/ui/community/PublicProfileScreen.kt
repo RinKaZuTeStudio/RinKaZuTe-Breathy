@@ -1051,42 +1051,16 @@ class PublicProfileViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        // v1.0.8 — tell the user the REAL cause instead of a
-                        // generic "check your connection":
-                        //  · PERMISSION_DENIED → server rules reject the write
-                        //    (rules update not published to the app's Firestore
-                        //    database yet — publishing is server-side, instant)
-                        //  · UNAVAILABLE / timeout → genuine network problem
-                        //  · anything else → show the error code for diagnosis
-                        val code = (e as? com.google.firebase.firestore.FirebaseFirestoreException)?.code
-                        // v1.0.9: include the ACTUAL Firebase project id so a
-                        // PERMISSION_DENIED can never be confused with another
-                        // project's console — compare this id with the project
-                        // you edited in Firebase Console → Firestore → Rules.
-                        val projectId = try {
-                            com.google.firebase.FirebaseApp.getInstance().options.projectId
-                        } catch (_: Exception) { "unknown" }
-                        val message = when {
-                            code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                                s(
-                                    "Follow blocked (PERMISSION_DENIED). Publish the v7 Firestore rules in Console → Firestore Database → (database dropdown: ai-studio-breathy-…) → Rules → paste → Publish.",
-                                    "تم حظر المتابعة (PERMISSION_DENIED). انشر قواعد Firestore الإصدار 7 في Console → Firestore Database → (قائمة قواعد البيانات: ai-studio-breathy-…) → Rules → الصق → Publish."
-                                )
-                            code == com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE ||
-                                e.message?.contains("timed out", ignoreCase = true) == true ->
-                                s(
-                                    "Couldn't %s — check your connection and try again.",
-                                    "تعذر %s — تحقق من اتصالك وحاول مجددًا."
-                                ).format(if (following) s("unfollow", "إلغاء متابعة") else s("follow", "متابعة"))
-                            else ->
-                                s(
-                                    "Couldn't %s (%s). Please try again.",
-                                    "تعذر %s (%s). حاول مجددًا."
-                                ).format(
-                                    if (following) s("unfollow", "إلغاء متابعة") else s("follow", "متابعة"),
-                                    code?.name ?: e.javaClass.simpleName
-                                )
-                        }
+                        // v1.0.11 — the developer-oriented "publish the v7
+                        // rules" warning is REMOVED per user request. The
+                        // ruleset is published; any residual failure shows a
+                        // clean, generic retry message with no console
+                        // instructions, no error codes, no project ids.
+                        val action = if (following) s("unfollow", "إلغاء متابعة") else s("follow", "متابعة")
+                        val message = s(
+                            "Couldn't %1\$s — please try again.",
+                            "تعذر %1\$s — حاول مجددًا."
+                        ).format(action)
                         _uiState.value = _uiState.value.copy(
                             isFollowBusy = false,
                             error = message

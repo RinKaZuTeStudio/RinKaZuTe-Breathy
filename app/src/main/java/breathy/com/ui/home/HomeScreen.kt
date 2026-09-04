@@ -52,6 +52,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -120,7 +121,8 @@ fun HomeScreen(
             rewardRepository = app.appModule.rewardRepository,
             auth = app.appModule.firebaseAuth,
             goldRepository = app.appModule.goldRepository,
-            premiumRepository = app.appModule.premiumRepository
+            premiumRepository = app.appModule.premiumRepository,
+            leaderboardRepository = app.appModule.leaderboardRepository
         ))
     }
 ) {
@@ -155,7 +157,7 @@ fun HomeScreen(
             when (event) {
                 is HomeSingleEvent.ShowDailyReward -> {
                     snackbarHostState.showSnackbar(
-                        s("🎉 Reward Claimed! +%d coins", "🎉 تم استلام المكافأة! +%d عملة").format(event.coins),
+                        s("✅ Daily check-in complete! +%d Gold", "✅ تم تسجيل الحضور اليومي! +%d ذهب").format(event.coins),
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -163,6 +165,13 @@ fun HomeScreen(
                     snackbarHostState.showSnackbar(
                         s("💪 +%d XP earned!", "💪 ربحت %d نقطة XP!").format(event.xp),
                         duration = SnackbarDuration.Short
+                    )
+                }
+                is HomeSingleEvent.ShowLeaderboardReward -> {
+                    snackbarHostState.showSnackbar(
+                        s("🏆 +%1\$d Gold — %2\$s leaderboard reward!", "🏆 +%1\$d ذهب — جائزة قائمة المتصدرين %2\$s!")
+                            .format(event.gold, event.periodLabel),
+                        duration = SnackbarDuration.Long
                     )
                 }
                 is HomeSingleEvent.ShowAchievementUnlock -> {
@@ -325,8 +334,18 @@ fun HomeScreen(
                                 )
                     ) {
                         if (!uiState.dailyRewardClaimed) {
+                            // v1.0.11 AUTO CHECK-IN — using the app today IS
+                            // the "didn't smoke today" check-in. The reward
+                            // claims itself shortly after load; tapping the
+                            // banner retries when offline.
+                            LaunchedEffect(uiState.isLoading, uiState.dailyRewardClaimed) {
+                                if (!uiState.isLoading) {
+                                    delay(1_500)
+                                    viewModel.autoCheckInIfPending()
+                                }
+                            }
                             DailyRewardBanner(
-                                onClaim = { viewModel.claimDailyReward() }
+                                onRetry = { viewModel.claimDailyReward() }
                             )
                         } else if (countdownSeconds > 0) {
                             DailyRewardCountdown(
@@ -660,87 +679,20 @@ private fun TopBar(
 }
 
 /**
- * Featured event card — the SAME canonical push-up challenge artwork used on
- * the Events page (spec section 21). Coming Soon badge, title, short
- * description and a reward preview. Tapping opens the Events tab.
+ * Featured event card — v1.0.11 redesign: the NEW canonical botanical
+ * banner (shared component) shown on BOTH the Home screen and the Events
+ * page. Tapping opens the Events tab.
  */
 @Composable
 private fun FeaturedEventCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    breathy.com.ui.components.EventBannerCard(
         onClick = onClick,
-        modifier = modifier.semantics {
-            contentDescription = "Featured event: Push-Up Challenge. Coming soon. Open Events."
-            role = Role.Button
-        },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = PureWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, SoftSage.copy(alpha = 0.6f))
-    ) {
-        Column {
-            Box {
-                Image(
-                    painter = painterResource(R.drawable.event_pushup_hero),
-                    contentDescription = "Push-Up Challenge event artwork",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp),
-                    contentScale = ContentScale.Crop
-                )
-                // Coming Soon badge
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(10.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = DeepForest)
-                ) {
-                    Text(
-                        text = s("COMING SOON", "قريبًا"),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = NaturalYellow,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    )
-                }
-            }
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Text(
-                    text = s("Push-Up Challenge", "تحدي تمارين الضغط"),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = s("Build your streak, one push-up at a time. Daily check-ins, real progress, community glory.", "ابنِ سلسلتك، تمرين ضغط واحد في كل مرة. تسجيل يومي، تقدّم حقيقي، ومنافسة ودية مع المجتمع."),
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "🏆", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = s("Entry 500 Gold · Exclusive rewards for top performers", "المشاركة 500 ذهب · مكافآت حصرية لأفضل المشاركين"),
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = GoldDeep,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
-            }
-        }
-    }
+        modifier = modifier,
+        ctaLabel = s("View Events", "عرض الفعاليات")
+    )
 }
 
 /** Return a time-of-day greeting. */
@@ -767,8 +719,9 @@ private fun HeroStatCard(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "hero_glow")
     val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.15f,
-        targetValue = 0.35f,
+        // v1.0.11: glow REDUCED — it used to shine over the number itself.
+        initialValue = 0.05f,
+        targetValue = 0.13f,
         animationSpec = infiniteRepeatable(
             animation = tween(2000),
             repeatMode = RepeatMode.Reverse
@@ -801,9 +754,9 @@ private fun HeroStatCard(
                             AccentPrimary.copy(alpha = 0f)
                         ),
                         center = center,
-                        radius = 120.dp.toPx()
+                        radius = 90.dp.toPx()
                     ),
-                    radius = 120.dp.toPx(),
+                    radius = 90.dp.toPx(),
                     center = center
                 )
             }
@@ -834,9 +787,10 @@ private fun HeroStatCard(
                         fontWeight = FontWeight.Bold,
                         color = AccentPrimary,
                         shadow = Shadow(
-                            color = AccentPrimary.copy(alpha = 0.4f),
+                            // v1.0.11: text shadow reduced so the number reads clean
+                            color = AccentPrimary.copy(alpha = 0.15f),
                             offset = Offset(0f, 0f),
-                            blurRadius = 16f
+                            blurRadius = 7f
                         )
                     )
                 )
@@ -889,7 +843,7 @@ private fun HeroStatCard(
 
 @Composable
 private fun DailyRewardBanner(
-    onClaim: () -> Unit
+    onRetry: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "reward_pulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -909,7 +863,7 @@ private fun DailyRewardBanner(
         colors = CardDefaults.cardColors(containerColor = AccentPrimary.copy(alpha = 0.1f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp),
-        onClick = onClaim
+        onClick = onRetry
     ) {
         Row(
             modifier = Modifier
@@ -924,20 +878,20 @@ private fun DailyRewardBanner(
             ) {
                 Icon(
                     imageVector = Icons.Default.Savings,
-                    contentDescription = "Daily Reward",
+                    contentDescription = "Daily check-in",
                     tint = AccentPrimary,
                     modifier = Modifier.size(28.dp)
                 )
                 Column {
                     Text(
-                        text = s("Claim your daily reward!", "استلم مكافأتك اليومية!"),
+                        text = s("Daily check-in", "التسجيل اليومي"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
-                        text = s("Tap to earn coins + XP", "اضغط لتربح عملات + XP"),
+                        text = s("Checking in automatically — you didn't smoke today", "تسجيل تلقائي — لم تدخّن اليوم"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
@@ -946,20 +900,11 @@ private fun DailyRewardBanner(
                 }
             }
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = AccentPrimary),
-                shape = RoundedCornerShape(20.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Text(
-                    text = s("Claim", "استلم"),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = MaterialTheme.colorScheme.background,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 2.dp,
+                color = AccentPrimary
+            )
         }
     }
 }
@@ -991,14 +936,14 @@ private fun DailyRewardCountdown(
             )
             Column {
                 Text(
-                    text = s("Daily reward claimed!", "تم استلام المكافأة اليومية!"),
+                    text = s("Checked in today ✓", "تم التسجيل اليوم ✓"),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
                 Text(
-                    text = s("Next reward in %s", "المكافأة التالية بعد %s").format(countdownText),
+                    text = s("Next check-in in %s", "التسجيل التالي بعد %s").format(countdownText),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp

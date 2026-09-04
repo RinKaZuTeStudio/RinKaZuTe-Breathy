@@ -246,19 +246,13 @@ class FriendsViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        // v1.0.9 — surface the REAL cause so a rules problem is
-                        // instantly recognizable (with the exact project id).
-                        val code = (e as? com.google.firebase.firestore.FirebaseFirestoreException)?.code
-                        val projectId = try {
-                            com.google.firebase.FirebaseApp.getInstance().options.projectId
-                        } catch (_: Exception) { "unknown" }
-                        val message = when (code) {
-                            com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                                s("Follow blocked (PERMISSION_DENIED) — publish the v7 Firestore rules (Console → Firestore → database dropdown: ai-studio-breathy-… → Rules).", "تم حظر المتابعة (PERMISSION_DENIED) — انشر قواعد Firestore الإصدار 7 (Console → Firestore → قائمة قواعد البيانات: ai-studio-breathy-… → Rules).")
-                            com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE ->
-                                s("Action failed — check your connection and try again", "فشل الإجراء — تحقق من اتصالك وحاول مجددًا")
-                            else -> s("Action failed — try again", "فشل الإجراء — حاول مجددًا")
-                        }
+                        // v1.0.11 — the developer-oriented "publish the v7
+                        // rules" warning is REMOVED per user request. Any
+                        // residual failure shows a clean generic message.
+                        val message = s(
+                            "Action failed — please try again",
+                            "فشل الإجراء — حاول مجددًا"
+                        )
                         _events.emit(FriendsSingleEvent.ShowSnackbar(message))
                     }
                 }

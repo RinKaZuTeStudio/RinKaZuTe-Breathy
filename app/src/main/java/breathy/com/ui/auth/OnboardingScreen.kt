@@ -331,8 +331,17 @@ class OnboardingViewModel(
 
         saveJob = viewModelScope.launch {
             try {
-                // Check nickname availability inside the coroutine (suspend call)
-                val isAvailable = userRepository.isNicknameAvailable(state.nickname)
+                // Check nickname availability inside the coroutine (suspend call).
+                // v1.0.11 NICKNAME FIX: exclude the user's OWN profile from the
+                // uniqueness check — the signup flow already created a sparse
+                // publicProfile carrying the auto-generated nickname (email
+                // prefix / Google display name). Without the exclusion, typing
+                // that same natural nickname was rejected as "already taken"
+                // and the nickname could never be saved.
+                val isAvailable = userRepository.isNicknameAvailable(
+                    nickname = state.nickname,
+                    excludeUserId = currentUser.uid
+                )
                 if (!isAvailable) {
                     safetyNetJob.cancel()
                     _uiState.update {
