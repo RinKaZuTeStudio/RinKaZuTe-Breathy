@@ -134,11 +134,14 @@ enum class AvatarFrame(
  * - [NINETY_DAYS] — unlocks at 90 days smoke-free.
  * - [SUNRISE]     — unlocks after watching 5 rewarded ads (dedicated ad unit).
  * - [DONT_SMOKE] … [HEALTHY_FUTURE] — one-time Gold purchases (shop, 500+).
- * - [FINALLY_FREE] — Premium-only ANIMATED avatar: a white flash sweeps every
- *   5 seconds over the artwork. Any subscriber owns it for as long as they
- *   subscribe.
- *   (v1.0.10 — "freefromthechain" was REMOVED from the collection; accounts
- *   still holding that id are remapped to [FINALLY_FREE] by [fromId].)
+ * - [FREEFROMTHECHAIN] — Premium-only ANIMATED avatar: ONE profile picture
+ *   with two artwork states (Free From The Chain → Finally Free) that
+ *   alternate smoothly every 5 seconds. It is a single collection item —
+ *   FinallyFree is a FRAME of this animation, never a separate selectable
+ *   picture. Any subscriber owns it for as long as they subscribe.
+ *   (v1.0.11 rev 3 — "finallyfree" as a standalone item was merged into this
+ *   animated identity; accounts still holding that id resolve here via
+ *   [Companion.fromId].)
  *
  * The value persisted in Firestore (users.profilePicture /
  * publicProfiles.profilePicture) is the [id] string. Gold ownership is
@@ -172,7 +175,7 @@ enum class ProfilePicture(
     @SerialName("healthheart") HEALTH_HEART("healthheart", "Health Heart", "A heart that thanks you. 1,100 Gold.", goldPrice = 1100),
     @SerialName("healthlungs") HEALTH_LUNGS("healthlungs", "Health Lungs", "Breathing free. 1,250 Gold.", goldPrice = 1250),
     @SerialName("healthyfuture") HEALTHY_FUTURE("healthyfuture", "Healthy Future", "The future you're building. 1,500 Gold.", goldPrice = 1500),
-    @SerialName("finallyfree") FINALLY_FREE("finallyfree", "Finally Free", "Premium animated avatar — the moment after.", premiumOnly = true, animated = true);
+    @SerialName("freefromthechain") FREEFROMTHECHAIN("freefromthechain", "Free From The Chain", "Premium animated avatar — breaking free, every 5 seconds.", premiumOnly = true, animated = true);
 
     override fun toString(): String = id
 
@@ -190,18 +193,18 @@ enum class ProfilePicture(
         HEALTH_HEART -> breathy.com.utils.s("Health Heart", "قلب سليم")
         HEALTH_LUNGS -> breathy.com.utils.s("Health Lungs", "رئة سليمة")
         HEALTHY_FUTURE -> breathy.com.utils.s("Healthy Future", "مستقبل صحي")
-        FINALLY_FREE -> breathy.com.utils.s("Finally Free", "حُرّ أخيراً")
+        FREEFROMTHECHAIN -> breathy.com.utils.s("Free From The Chain", "حُرّ من السلسلة")
     }
 
     companion object {
         /**
          * Resolve a Firestore string to the enum; unknown values fall back to
-         * [DAY1]. v1.0.10: the removed "freefromthechain" id remaps to
-         * [FINALLY_FREE] so existing premium accounts keep their animated
-         * avatar seamlessly.
+         * [DAY1]. v1.0.11 rev 3: the standalone "finallyfree" id remaps to
+         * [FREEFROMTHECHAIN] — the two artworks are frames of ONE animated
+         * profile picture, so legacy accounts keep the animation seamlessly.
          */
         fun fromId(id: String?): ProfilePicture = when (id) {
-            "freefromthechain" -> FINALLY_FREE
+            "finallyfree" -> FREEFROMTHECHAIN
             else -> entries.find { it.id == id } ?: DAY1
         }
     }

@@ -1052,17 +1052,12 @@ class PublicProfileViewModel(
                 },
                 onFailure = { e ->
                     if (e !is CancellationException) {
-                        Timber.e(e, "toggleFollow failed")
-                        // v1.0.11 — user-facing policy: NEVER surface Firestore
-                        // errors, rule versions, console instructions or any
-                        // developer text. One clean, friendly retry line only.
-                        _uiState.value = _uiState.value.copy(
-                            isFollowBusy = false,
-                            error = s(
-                                "Couldn't complete the action. Please try again.",
-                                "تعذر إكمال الإجراء. حاول مجددًا."
-                            )
-                        )
+                        // v1.0.11 rev 3 — SUPPRESS ALL follow error UI. The
+                        // user must never see any error/debug/Firestore text
+                        // after pressing Follow: no message, no codes, no
+                        // instructions. Failure is only logged for developers.
+                        Timber.e(e, "toggleFollow failed (silently suppressed for UI)")
+                        _uiState.value = _uiState.value.copy(isFollowBusy = false)
                     }
                 }
             )

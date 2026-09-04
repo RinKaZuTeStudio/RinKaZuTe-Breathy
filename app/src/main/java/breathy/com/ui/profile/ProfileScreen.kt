@@ -2463,7 +2463,7 @@ private fun pictureDrawable(picture: breathy.com.data.models.ProfilePicture): In
     breathy.com.data.models.ProfilePicture.HEALTH_HEART -> breathy.com.R.drawable.pic_healthheart
     breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
     breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
-    breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
+    breathy.com.data.models.ProfilePicture.FREEFROMTHECHAIN -> breathy.com.R.drawable.pic_freefromthechain
 }
 
 @Composable

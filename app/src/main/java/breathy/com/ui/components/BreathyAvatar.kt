@@ -182,22 +182,20 @@ fun BreathyAvatar(
         }
 
         // ── Inner avatar circle FIRST — the frame renders IN FRONT of it ──
-        // v1.0.10 SIZE FIX — the artwork circle now matches EACH frame's
-        // actual inner opening (measured from the official border PNGs'
-        // inscribed transparent circle, with a small tuck under the wreath
-        // edge). Previously a fixed 0.66 fraction made the artwork spill
-        // OUTSIDE decorative frames (nature/event/premium/rank/…) so the
-        // square card background showed around the wreath — the "distorted"
-        // look. Square art into a square circle via Crop = zero distortion.
+        // v1.0.11 rev 3 — STANDARDIZED INNER APERTURE: ONE fixed photo size
+        // for EVERY frame. The photo always occupies exactly this same inner
+        // circle regardless of which frame is selected — frame artwork varies,
+        // the avatar opening never does. (Single source of truth below.)
         Box(
             modifier = Modifier
-                .size(size * frameHoleFraction(effectiveFrame))
+                .size(size * STANDARD_INNER_APERTURE)
                 .clip(CircleShape)
                 .background(BreathyPalette.veryLightSage)
         ) {
             if (useAnimatedAvatar) {
-                // v1.0.10 Premium animated avatar — FINALLY FREE with the
-                // white flash sweep every 5 seconds (single artwork).
+                // v1.0.11 rev 3 Premium ANIMATED avatar — FREE FROM THE CHAIN:
+                // ONE profile picture alternating its two artwork states
+                // (Free From The Chain → Finally Free) every 5 seconds.
                 AnimatedPremiumAvatar(
                     contentDescription = contentDescription,
                     modifier = Modifier.fillMaxSize()
@@ -253,7 +251,7 @@ private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): 
     breathy.com.data.models.ProfilePicture.HEALTH_HEART -> breathy.com.R.drawable.pic_healthheart
     breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
     breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
-    breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
+    breathy.com.data.models.ProfilePicture.FREEFROMTHECHAIN -> breathy.com.R.drawable.pic_freefromthechain
 }
 
 /**
@@ -280,69 +278,61 @@ private fun avatarArtZoom(picture: breathy.com.data.models.ProfilePicture): Floa
     breathy.com.data.models.ProfilePicture.HEALTH_HEART -> 1.35f
     breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> 1.35f
     breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> 1.25f
-    breathy.com.data.models.ProfilePicture.FINALLY_FREE -> 1.35f
+    breathy.com.data.models.ProfilePicture.FREEFROMTHECHAIN -> 1.35f
 }
 
 /**
- * v1.0.10 — fraction of the avatar canvas that the artwork circle occupies,
- * matched to each official border artwork's real inner opening (the largest
- * transparent circle centered in the frame PNG, plus ~12% tuck so the art
- * edge hides beneath the wreath instead of floating with a gap). Measured
- * offline from the shipped 512×512 frame PNGs — values are static because
- * the frame collection is bundled with the app.
+ * v1.0.11 rev 3 — THE single source of truth for the inner avatar/photo size.
+ *
+ * Every frame renders the profile picture inside the SAME fixed circle —
+ * this fraction of the avatar canvas — so switching frames never changes the
+ * photo size: SAME PHOTO SIZE → SAME INNER CIRCLE → DIFFERENT FRAME ARTWORK
+ * around it. Value matches the ring frames' measured inner openings (0.44–0.49
+ * of the canvas) plus a small tuck, so ring frames fill cleanly; ornate
+ * wreaths (smaller openings) simply overlap the photo edge with their own
+ * artwork, which is always drawn IN FRONT.
  */
-private fun frameHoleFraction(frame: breathy.com.data.models.AvatarFrame): Float = when (frame) {
-    breathy.com.data.models.AvatarFrame.NONE -> 0.551f        // classic thin ring
-    breathy.com.data.models.AvatarFrame.NATURE -> 0.494f      // leaf wreath
-    breathy.com.data.models.AvatarFrame.LEAF -> 0.509f        // laurel
-    breathy.com.data.models.AvatarFrame.BRONZE -> 0.499f      // medal ring
-    breathy.com.data.models.AvatarFrame.SILVER -> 0.529f      // medal ring
-    breathy.com.data.models.AvatarFrame.GOLD -> 0.507f        // star medal
-    breathy.com.data.models.AvatarFrame.ACHIEVEMENT -> 0.341f // gem wreath
-    breathy.com.data.models.AvatarFrame.EVENT -> 0.416f       // radiant wreath
-    breathy.com.data.models.AvatarFrame.PREMIUM -> 0.341f     // ornate gem wreath
-    breathy.com.data.models.AvatarFrame.RANK -> 0.346f        // crystal wreath
-}
+private const val STANDARD_INNER_APERTURE = 0.52f
 
 /**
- * v1.0.10 PREMIUM ANIMATED AVATAR — FINALLY FREE. Not a heavy animation:
- * every FIVE seconds a white flash sweeps in over the artwork and sweeps
- * away again. (v1.0.9's two-artwork swap is gone — freefromthechain was
- * removed from the collection; the flash stays as the signature motion.)
+ * v1.0.11 rev 3 PREMIUM ANIMATED AVATAR — FREE FROM THE CHAIN.
+ * ONE profile picture with TWO artwork states that alternate smoothly
+ * forever: FREEFROMTHECHAIN (start) → 5s → FINALLYFREE → 5s → back.
+ * Both states are frames of the same identity — the frame/border drawn
+ * around this composable is untouched by the artwork swap.
  */
 @Composable
 private fun AnimatedPremiumAvatar(
     contentDescription: String?,
     modifier: Modifier = Modifier
 ) {
-    var flashAlpha by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    // Starts on the FIRST state (Free From The Chain) and flips every 5s.
+    var showSecondState by remember { androidx.compose.runtime.mutableStateOf(false) }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(5_000L)
-            // Flash in (350ms)
-            androidx.compose.animation.core.animate(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = androidx.compose.animation.core.tween(350)
-            ) { value, _ -> flashAlpha = value }
-            // Flash away (350ms)
-            androidx.compose.animation.core.animate(
-                initialValue = 1f,
-                targetValue = 0f,
-                animationSpec = androidx.compose.animation.core.tween(350)
-            ) { value, _ -> flashAlpha = value }
+            showSecondState = !showSecondState
         }
     }
 
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    androidx.compose.animation.Crossfade(
+        targetState = showSecondState,
+        animationSpec = androidx.compose.animation.core.tween(600),
+        label = "premium_avatar_swap",
+        modifier = modifier
+    ) { second ->
         androidx.compose.foundation.Image(
-            bitmap = ImageBitmap.imageResource(breathy.com.R.drawable.pic_finallyfree),
+            bitmap = ImageBitmap.imageResource(
+                if (second) breathy.com.R.drawable.pic_finallyfree
+                else breathy.com.R.drawable.pic_freefromthechain
+            ),
             contentDescription = contentDescription,
             modifier = Modifier
                 .fillMaxSize()
                 // v1.0.11 FILL FIX — same center-zoom treatment as the static
-                // artwork (FINALLY_FREE = 1.35f); clipped by the avatar circle.
+                // artworks (FREEFROMTHECHAIN/FINALLYFREE = 1.35f); clipped by
+                // the avatar circle.
                 .graphicsLayer {
                     scaleX = 1.35f
                     scaleY = 1.35f
@@ -350,13 +340,6 @@ private fun AnimatedPremiumAvatar(
             contentScale = ContentScale.Crop,
             filterQuality = FilterQuality.Medium
         )
-        if (flashAlpha > 0.01f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.White.copy(alpha = flashAlpha))
-            )
-        }
     }
 }
 
