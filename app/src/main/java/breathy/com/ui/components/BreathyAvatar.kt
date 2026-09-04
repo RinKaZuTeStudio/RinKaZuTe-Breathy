@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -207,7 +208,18 @@ fun BreathyAvatar(
                 androidx.compose.foundation.Image(
                     bitmap = ImageBitmap.imageResource(profilePictureRes(effectivePicture)),
                     contentDescription = contentDescription,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        // v1.0.11 FILL FIX — center zoom so the artwork's
+                        // subject fills the frame's inner aperture instead of
+                        // floating small inside its square-card margins.
+                        // Proportional scale about the CENTER (never stretched);
+                        // the parent clip(CircleShape) keeps it inside the opening.
+                        .graphicsLayer {
+                            val z = avatarArtZoom(effectivePicture)
+                            scaleX = z
+                            scaleY = z
+                        },
                     contentScale = ContentScale.Crop,
                     filterQuality = FilterQuality.Medium
                 )
@@ -242,6 +254,33 @@ private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): 
     breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
     breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
     breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
+}
+
+/**
+ * v1.0.11 AVATAR FILL FIX — center zoom applied when a collection artwork is
+ * drawn inside the avatar circle. The source images are square sticker cards
+ * with generous background margins; rendered 1:1 the subject floated small
+ * inside the frame's opening ("excessive empty space around it"). Each
+ * constant was tuned against the real artwork so the subject fills the
+ * aperture edge-to-edge while text/badges on the art stay readable. The
+ * scale is proportional about the CENTER — artwork is never stretched or
+ * distorted, and the identical mechanism runs for EVERY frame (NONE,
+ * NATURE, LEAF, BRONZE, SILVER, GOLD, RANK, ACHIEVEMENT, EVENT, PREMIUM).
+ */
+private fun avatarArtZoom(picture: breathy.com.data.models.ProfilePicture): Float = when (picture) {
+    breathy.com.data.models.ProfilePicture.DAY1 -> 1.25f
+    breathy.com.data.models.ProfilePicture.SEVEN_DAYS -> 1.25f
+    breathy.com.data.models.ProfilePicture.THIRTY_DAYS -> 1.25f
+    breathy.com.data.models.ProfilePicture.NINETY_DAYS -> 1.30f
+    breathy.com.data.models.ProfilePicture.SUNRISE -> 1.20f
+    breathy.com.data.models.ProfilePicture.DONT_SMOKE -> 1.30f
+    breathy.com.data.models.ProfilePicture.FORREST -> 1.30f
+    breathy.com.data.models.ProfilePicture.FRESH_BREATH -> 1.25f
+    breathy.com.data.models.ProfilePicture.GOOD_FROM_BAD -> 1.30f
+    breathy.com.data.models.ProfilePicture.HEALTH_HEART -> 1.35f
+    breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> 1.35f
+    breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> 1.25f
+    breathy.com.data.models.ProfilePicture.FINALLY_FREE -> 1.35f
 }
 
 /**
@@ -300,7 +339,14 @@ private fun AnimatedPremiumAvatar(
         androidx.compose.foundation.Image(
             bitmap = ImageBitmap.imageResource(breathy.com.R.drawable.pic_finallyfree),
             contentDescription = contentDescription,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                // v1.0.11 FILL FIX — same center-zoom treatment as the static
+                // artwork (FINALLY_FREE = 1.35f); clipped by the avatar circle.
+                .graphicsLayer {
+                    scaleX = 1.35f
+                    scaleY = 1.35f
+                },
             contentScale = ContentScale.Crop,
             filterQuality = FilterQuality.Medium
         )

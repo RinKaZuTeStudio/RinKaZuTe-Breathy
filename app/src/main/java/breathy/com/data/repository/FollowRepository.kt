@@ -72,7 +72,21 @@ class FollowRepository(
         val me = currentUidOrError()
         require(targetUid.isNotBlank() && targetUid != me) { "Invalid follow target" }
 
-        writeFollowEdgeWithRetry(me, targetUid)
+        // v1.0.11 — IDEMPOTENT: when the follow edge already exists, succeed
+        // silently. Re-writing an existing document is an UPDATE and the
+        // rules intentionally reject updates on follows/{followId}, so a
+        // stale-UI double-tap used to surface PERMISSION_DENIED to the user.
+        // Existence is checked first (reads before writes, single doc read);
+        // counters are only touched on the transition itself.
+        val transitioned = withTimeoutOrNull(TIMEOUT_MS) {
+            val edgeRef = firestore.collection(FOLLOWS_COLLECTION).document(followId(me, targetUid))
+            if (edgeRef.get().await().exists()) {
+                return@withTimeoutOrNull false // already following — nothing to do
+            }
+            writeFollowEdgeWithRetry(me, targetUid)
+            true
+        } ?: throw IllegalStateException("Follow timed out — try again")
+        if (!transitioned) return@runCatching
 
         incrementCounterBestEffort(targetUid, "followerCount", +1)
         incrementCounterBestEffort(me, "followingCount", +1)

@@ -246,12 +246,12 @@ class FriendsViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        // v1.0.11 — the developer-oriented "publish the v7
-                        // rules" warning is REMOVED per user request. Any
-                        // residual failure shows a clean generic message.
+                        // v1.0.11 — user-facing policy: NEVER surface Firestore
+                        // errors, rule versions, console instructions or any
+                        // developer text. One clean, friendly retry line only.
                         val message = s(
-                            "Action failed — please try again",
-                            "فشل الإجراء — حاول مجددًا"
+                            "Couldn't complete the action. Please try again.",
+                            "تعذر إكمال الإجراء. حاول مجددًا."
                         )
                         _events.emit(FriendsSingleEvent.ShowSnackbar(message))
                     }

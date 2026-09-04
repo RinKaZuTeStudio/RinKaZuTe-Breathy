@@ -879,7 +879,9 @@ class PublicProfileViewModel(
                         Timber.e(e, "Failed to load public profile: %s", profileUserId)
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = e.localizedMessage ?: s("Failed to load profile", "تعذر تحميل الملف الشخصي")
+                            // v1.0.11 — never leak raw Firestore/exception text
+                            // to the user; a friendly generic line only.
+                            error = s("Couldn't complete the action. Please try again.", "تعذر إكمال الإجراء. حاول مجددًا.")
                         )
                     }
                 }
@@ -1051,19 +1053,15 @@ class PublicProfileViewModel(
                 onFailure = { e ->
                     if (e !is CancellationException) {
                         Timber.e(e, "toggleFollow failed")
-                        // v1.0.11 — the developer-oriented "publish the v7
-                        // rules" warning is REMOVED per user request. The
-                        // ruleset is published; any residual failure shows a
-                        // clean, generic retry message with no console
-                        // instructions, no error codes, no project ids.
-                        val action = if (following) s("unfollow", "إلغاء متابعة") else s("follow", "متابعة")
-                        val message = s(
-                            "Couldn't %1\$s — please try again.",
-                            "تعذر %1\$s — حاول مجددًا."
-                        ).format(action)
+                        // v1.0.11 — user-facing policy: NEVER surface Firestore
+                        // errors, rule versions, console instructions or any
+                        // developer text. One clean, friendly retry line only.
                         _uiState.value = _uiState.value.copy(
                             isFollowBusy = false,
-                            error = message
+                            error = s(
+                                "Couldn't complete the action. Please try again.",
+                                "تعذر إكمال الإجراء. حاول مجددًا."
+                            )
                         )
                     }
                 }
