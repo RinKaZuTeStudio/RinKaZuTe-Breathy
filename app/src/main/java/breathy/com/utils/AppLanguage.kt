@@ -28,6 +28,11 @@ object AppLanguage {
     private const val PREFS = "breathy_prefs"
     private const val KEY = "app_language"
 
+    // v1.0.10 — ENGLISH remains the DEFAULT app language (developer
+    // requirement: "اللغة الافتراضية الإنجليزية"). Every screen is fully
+    // localized, so the moment the user switches to Arabic (Profile →
+    // Settings → Language) the ENTIRE UI — including Settings itself —
+    // renders in Arabic, except user nicknames.
     @Volatile
     var current: Lang = Lang.ENGLISH
         private set

@@ -15,6 +15,16 @@ enum class FrameRarity(val label: String) {
     @SerialName("epic") EPIC("Epic"),
     @SerialName("legendary") LEGENDARY("Legendary"),
     @SerialName("premium") PREMIUM("Premium");
+
+    /** v1.0.10 — Arabic-aware display label (resolves at call time). */
+    fun displayLabel(): String = when (this) {
+        COMMON -> breathy.com.utils.s("Common", "عادي")
+        UNCOMMON -> breathy.com.utils.s("Uncommon", "غير شائع")
+        RARE -> breathy.com.utils.s("Rare", "نادر")
+        EPIC -> breathy.com.utils.s("Epic", "ملحمي")
+        LEGENDARY -> breathy.com.utils.s("Legendary", "أسطوري")
+        PREMIUM -> breathy.com.utils.s("Premium", "بريميوم")
+    }
 }
 
 /**
@@ -61,6 +71,20 @@ enum class AvatarFrame(
     @SerialName("rank") RANK("rank", "Rank", "Competitive · Bold · Reach Tree rank (Level 9) to wear.", FrameRarity.EPIC);
 
     override fun toString(): String = id
+
+    /** v1.0.10 — Arabic-aware display label (resolves at call time). */
+    fun displayLabel(): String = when (this) {
+        NONE -> breathy.com.utils.s("Classic", "كلاسيكي")
+        NATURE -> breathy.com.utils.s("Nature", "طبيعة")
+        LEAF -> breathy.com.utils.s("Leaf", "ورقة")
+        BRONZE -> breathy.com.utils.s("Bronze", "برونزي")
+        SILVER -> breathy.com.utils.s("Silver", "فضي")
+        GOLD -> breathy.com.utils.s("Gold", "ذهبي")
+        ACHIEVEMENT -> breathy.com.utils.s("Achievement", "إنجاز")
+        EVENT -> breathy.com.utils.s("Event", "فعالية")
+        PREMIUM -> breathy.com.utils.s("Premium", "بريميوم")
+        RANK -> breathy.com.utils.s("Rank", "رتبة")
+    }
 
     companion object {
         /** Resolve a Firestore string to the enum; unknown values fall back to [NONE]. */
@@ -152,6 +176,23 @@ enum class ProfilePicture(
 
     override fun toString(): String = id
 
+    /** v1.0.10 — Arabic-aware display label (resolves at call time). */
+    fun displayLabel(): String = when (this) {
+        DAY1 -> breathy.com.utils.s("Day One", "اليوم الأول")
+        SEVEN_DAYS -> breathy.com.utils.s("7 Days", "7 أيام")
+        THIRTY_DAYS -> breathy.com.utils.s("30 Days", "30 يوماً")
+        NINETY_DAYS -> breathy.com.utils.s("90 Days", "90 يوماً")
+        SUNRISE -> breathy.com.utils.s("Sunrise", "الشروق")
+        DONT_SMOKE -> breathy.com.utils.s("Don't Smoke", "لا تدخّن")
+        FORREST -> breathy.com.utils.s("Forrest", "فورست")
+        FRESH_BREATH -> breathy.com.utils.s("Fresh Breath", "نَفَس منعش")
+        GOOD_FROM_BAD -> breathy.com.utils.s("Good From Bad", "تحوّل للخير")
+        HEALTH_HEART -> breathy.com.utils.s("Health Heart", "قلب سليم")
+        HEALTH_LUNGS -> breathy.com.utils.s("Health Lungs", "رئة سليمة")
+        HEALTHY_FUTURE -> breathy.com.utils.s("Healthy Future", "مستقبل صحي")
+        FINALLY_FREE -> breathy.com.utils.s("Finally Free", "حُرّ أخيراً")
+    }
+
     companion object {
         /**
          * Resolve a Firestore string to the enum; unknown values fall back to
@@ -205,6 +246,17 @@ enum class RankTier(
     TREE("Tree", 9, "🌳"),
     FOREST("Forest", 12, "🌲"),
     EVERGREEN("Evergreen", 15, "🌿");
+
+    /** v1.0.10 — Arabic-aware display label (resolves at call time). */
+    fun displayLabel(): String = when (this) {
+        SEED -> breathy.com.utils.s("Seed", "بذرة")
+        SPROUT -> breathy.com.utils.s("Sprout", "برعم")
+        LEAF -> breathy.com.utils.s("Leaf", "ورقة")
+        PLANT -> breathy.com.utils.s("Plant", "نبتة")
+        TREE -> breathy.com.utils.s("Tree", "شجرة")
+        FOREST -> breathy.com.utils.s("Forest", "غابة")
+        EVERGREEN -> breathy.com.utils.s("Evergreen", "دائمة الخضرة")
+    }
 
     companion object {
         /** Resolve the tier for a level; unknown levels clamp to the highest tier. */

@@ -53,6 +53,7 @@ import breathy.com.ui.theme.BreathyBorders
 import breathy.com.ui.theme.BreathyPalette
 import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeTextPrimary
+import breathy.com.utils.s
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -93,7 +94,7 @@ fun PayoutSetupScreen(
         val uid = auth.currentUser?.uid
         if (uid == null) {
             isLoading = false
-            errorMessage = "Sign in to manage your payout settings."
+            errorMessage = s("Sign in to manage your payout settings.", "سجّل الدخول لإدارة إعدادات الدفع.")
             return@LaunchedEffect
         }
         try {
@@ -124,7 +125,7 @@ fun PayoutSetupScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Payment / Payout Setup",
+                        text = s("Payment / Payout Setup", "إعدادات الدفع"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -169,7 +170,7 @@ fun PayoutSetupScreen(
                         .padding(20.dp)
                 ) {
                     Text(
-                        text = "Payment Method",
+                        text = s("Payment Method", "طريقة الدفع"),
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -198,7 +199,7 @@ fun PayoutSetupScreen(
                                 color = BreathyPalette.darkBotanical
                             )
                             Text(
-                                text = "The only supported payout method",
+                                text = s("The only supported payout method", "طريقة الدفع الوحيدة المدعومة"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = BreathyPalette.textSecondary
                             )
@@ -211,7 +212,7 @@ fun PayoutSetupScreen(
 
             // ── PayPal email form ────────────────────────────────────────
             Text(
-                text = "PayPal Email",
+                text = s("PayPal Email", "بريد الدفع (PayPal)"),
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.Bold
                 ),
@@ -219,8 +220,10 @@ fun PayoutSetupScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Used only to send your event prize payouts and gift cards. " +
-                    "We never ask for your PayPal password.",
+                text = s(
+                    "Used only to send your event prize payouts and gift cards. We never ask for your PayPal password.",
+                    "يُستخدم فقط لإرسال جوائز الفعاليات وبطاقات الهدايا. لا نطلب كلمة مرور PayPal أبداً."
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = BreathyPalette.textSecondary
             )
@@ -268,7 +271,7 @@ fun PayoutSetupScreen(
                 if (email.isNotBlank() && !emailValid) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Enter a valid email address.",
+                        text = s("Enter a valid email address.", "أدخل بريداً إلكترونياً صالحاً."),
                         style = MaterialTheme.typography.labelSmall,
                         color = BreathyPalette.error
                     )
@@ -289,7 +292,7 @@ fun PayoutSetupScreen(
                     onClick = {
                         val uid = auth.currentUser?.uid
                         if (uid == null) {
-                            errorMessage = "Sign in to manage your payout settings."
+                            errorMessage = s("Sign in to manage your payout settings.", "سجّل الدخول لإدارة إعدادات الدفع.")
                             return@Button
                         }
                         isSaving = true
@@ -311,7 +314,10 @@ fun PayoutSetupScreen(
                                 Timber.i("PayoutSetup: PayPal email saved for %s", uid)
                             } catch (e: Exception) {
                                 Timber.e(e, "PayoutSetup: failed to save PayPal email")
-                                errorMessage = "Could not save right now — check your connection and try again."
+                                errorMessage = s(
+                                    "Could not save right now — check your connection and try again.",
+                                    "تعذّر الحفظ الآن — تحقق من اتصالك وحاول مجدداً."
+                                )
                             }
                             isSaving = false
                         }
@@ -333,7 +339,7 @@ fun PayoutSetupScreen(
                             color = BreathyPalette.warmWhite
                         )
                     } else {
-                        Text(text = "Save", fontWeight = FontWeight.Bold)
+                        Text(text = s("Save", "حفظ"), fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -348,7 +354,7 @@ fun PayoutSetupScreen(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = "PayPal email saved — your prize payouts will be sent here.",
+                            text = s("PayPal email saved — your prize payouts will be sent here.", "تم حفظ بريد PayPal — ستُرسَل جوائزك إلى هنا."),
                             style = MaterialTheme.typography.bodySmall,
                             color = BreathyPalette.textSecondary
                         )
@@ -366,7 +372,7 @@ fun PayoutSetupScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "How your PayPal email is used",
+                        text = s("How your PayPal email is used", "كيف نستخدم بريد PayPal"),
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -374,10 +380,10 @@ fun PayoutSetupScreen(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Event prizes include PayPal gift cards. If you win, " +
-                            "the Breathy team sends the gift card to this email " +
-                            "address. It is stored securely, used only for prize " +
-                            "delivery, and never shared with other players.",
+                        text = s(
+                            "Event prizes include PayPal gift cards. If you win, the Breathy team sends the gift card to this email address. It is stored securely, used only for prize delivery, and never shared with other players.",
+                            "تشمل جوائز الفعاليات بطاقات هدايا PayPal. إذا فزت، يرسل فريق Breathy بطاقة الهدايا إلى هذا البريد الإلكتروني. يُخزَّن بشكل آمن، ويُستخدم فقط لتسليم الجوائز، ولا يُشارك أبداً مع اللاعبين الآخرين."
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = BreathyPalette.textSecondary
                     )

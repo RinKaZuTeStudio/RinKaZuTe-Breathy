@@ -74,6 +74,7 @@ import breathy.com.ui.theme.SemanticSuccess
 import breathy.com.ui.theme.themeTextDisabled
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -128,7 +129,7 @@ fun PostStoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Share Your Story",
+                        text = s("Share Your Story", "شارك قصتك"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -229,7 +230,7 @@ private fun ContentInput(
 ) {
     Column {
         Text(
-            text = "Your Story",
+            text = s("Your Story", "قصتك"),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = themeTextPrimary
@@ -249,7 +250,7 @@ private fun ContentInput(
                 },
             placeholder = {
                 Text(
-                    text = "Share your quit-smoking journey, tips, or encouragement...",
+                    text = s("Share your quit-smoking journey, tips, or encouragement...", "شارك رحلتك للإقلاع عن التدخين أو نصائحك أو كلمات تشجيع..."),
                     color = themeTextDisabled
                 )
             },
@@ -308,14 +309,14 @@ private fun LifeChangesInput(
 ) {
     Column {
         Text(
-            text = "Life Changes (optional)",
+            text = s("Life Changes (optional)", "تغيرات الحياة (اختياري)"),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = themeTextPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "What positive changes have you noticed?",
+            text = s("What positive changes have you noticed?", "ما التغييرات الإيجابية التي لاحظتها؟"),
             style = MaterialTheme.typography.bodySmall,
             color = themeTextDisabled
         )
@@ -379,7 +380,7 @@ private fun LifeChangesInput(
                         },
                     placeholder = {
                         Text(
-                            text = "e.g., Better breathing",
+                            text = s("e.g., Better breathing", "مثل: تنفّس أفضل"),
                             color = themeTextDisabled
                         )
                     },
@@ -411,21 +412,21 @@ private fun LifeChangesInput(
                     modifier = Modifier.height(56.dp)
                 ) {
                     Text(
-                        text = "Add",
+                        text = s("Add", "إضافة"),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
             Text(
-                text = "${lifeChanges.size}/5 changes",
+                text = s("%d/5 changes", "%d/5 تغييرات").format(lifeChanges.size),
                 style = MaterialTheme.typography.labelSmall,
                 color = themeTextDisabled,
                 modifier = Modifier.padding(top = 4.dp)
             )
         } else {
             Text(
-                text = "Maximum 5 life changes reached",
+                text = s("Maximum 5 life changes reached", "وصلت إلى الحد الأقصى وهو 5 تغييرات"),
                 style = MaterialTheme.typography.labelSmall,
                 color = themeTextDisabled
             )
@@ -440,7 +441,7 @@ private fun PreviewCard(
 ) {
     Column {
         Text(
-            text = "Preview",
+            text = s("Preview", "معاينة"),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = themeTextSecondary
@@ -464,7 +465,7 @@ private fun PreviewCard(
                     ) {}
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "You",
+                        text = s("You", "أنت"),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = themeTextSecondary
@@ -537,9 +538,9 @@ private fun PostButton(
                 strokeCap = StrokeCap.Round
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Posting...", fontWeight = FontWeight.SemiBold)
+            Text(text = s("Posting...", "جارٍ النشر..."), fontWeight = FontWeight.SemiBold)
         } else {
-            Text(text = "Post Story", fontWeight = FontWeight.Bold)
+            Text(text = s("Post Story", "انشر القصة"), fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -572,14 +573,14 @@ private fun SuccessOverlay() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Story Shared!",
+                text = s("Story Shared!", "تمت مشاركة قصتك!"),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = themeTextPrimary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Your story is now inspiring others",
+                text = s("Your story is now inspiring others", "قصتك تُلهم الآخرين الآن"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = themeTextSecondary
             )
@@ -618,8 +619,10 @@ class PostStoryViewModel(
     fun onContentChanged(content: String) {
         val error = when {
             content.isBlank() -> null
-            content.length < MIN_CONTENT_LENGTH -> "Story must be at least $MIN_CONTENT_LENGTH characters"
-            content.length > MAX_CONTENT_LENGTH -> "Story exceeds $MAX_CONTENT_LENGTH characters"
+            content.length < MIN_CONTENT_LENGTH ->
+                s("Story must be at least %d characters", "يجب أن تتكون القصة من %d أحرف على الأقل").format(MIN_CONTENT_LENGTH)
+            content.length > MAX_CONTENT_LENGTH ->
+                s("Story exceeds %d characters", "القصة تتجاوز %d حرفًا").format(MAX_CONTENT_LENGTH)
             else -> null
         }
         _uiState.value = _uiState.value.copy(
@@ -654,7 +657,7 @@ class PostStoryViewModel(
         val content = _uiState.value.content.trim()
         if (content.length < MIN_CONTENT_LENGTH) {
             _uiState.value = _uiState.value.copy(
-                contentError = "Story must be at least $MIN_CONTENT_LENGTH characters"
+                contentError = s("Story must be at least %d characters", "يجب أن تتكون القصة من %d أحرف على الأقل").format(MIN_CONTENT_LENGTH)
             )
             return
         }
@@ -678,7 +681,7 @@ class PostStoryViewModel(
                         Timber.e(e, "Failed to post story")
                         _uiState.value = _uiState.value.copy(
                             isPosting = false,
-                            error = e.localizedMessage ?: "Failed to post story"
+                            error = e.localizedMessage ?: s("Failed to post story", "تعذر نشر القصة")
                         )
                     }
                 }

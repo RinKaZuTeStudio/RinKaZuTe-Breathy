@@ -86,6 +86,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import breathy.com.BreathyApplication
+import breathy.com.utils.s
 import breathy.com.data.models.CheckinStatus
 import breathy.com.data.models.EventCheckin
 import breathy.com.data.repository.EventRepository
@@ -188,7 +189,7 @@ class AdminReviewViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load pending check-ins: ${e.message}"
+                        errorMessage = s("Failed to load pending check-ins: ${e.message}", "تعذر تحميل تسجيلات الحضور المعلّقة: ${e.message}")
                     )
                 }
             }
@@ -216,7 +217,7 @@ class AdminReviewViewModel(
                             isReviewing = false,
                             pendingCheckins = state.pendingCheckins.filterNot { it.id == checkinId },
                             selectedCheckin = null,
-                            successMessage = "Check-in approved"
+                            successMessage = s("Check-in approved", "تم قبول تسجيل الحضور")
                         )
                     }
                 },
@@ -226,7 +227,7 @@ class AdminReviewViewModel(
                         _uiState.update {
                             it.copy(
                                 isReviewing = false,
-                                errorMessage = "Failed to approve: ${e.message}"
+                                errorMessage = s("Failed to approve: ${e.message}", "تعذر القبول: ${e.message}")
                             )
                         }
                     }
@@ -252,7 +253,7 @@ class AdminReviewViewModel(
                             selectedCheckin = null,
                             showCommentField = false,
                             rejectionComment = "",
-                            successMessage = "Check-in rejected"
+                            successMessage = s("Check-in rejected", "تم رفض تسجيل الحضور")
                         )
                     }
                 },
@@ -262,7 +263,7 @@ class AdminReviewViewModel(
                         _uiState.update {
                             it.copy(
                                 isReviewing = false,
-                                errorMessage = "Failed to reject: ${e.message}"
+                                errorMessage = s("Failed to reject: ${e.message}", "تعذر الرفض: ${e.message}")
                             )
                         }
                     }
@@ -334,9 +335,9 @@ class AdminReviewViewModel(
                     isBatchMode = false,
                     selectedIds = emptySet(),
                     successMessage = if (failCount == 0) {
-                        "$successCount check-ins approved"
+                        s("$successCount check-ins approved", "تم قبول $successCount تسجيلات حضور")
                     } else {
-                        "$successCount approved, $failCount failed"
+                        s("$successCount approved, $failCount failed", "تم قبول $successCount، وفشل $failCount")
                     },
                     pendingCheckins = state.pendingCheckins.filterNot { it.id in selectedIds }
                 )
@@ -375,9 +376,9 @@ class AdminReviewViewModel(
                     showCommentField = false,
                     rejectionComment = "",
                     successMessage = if (failCount == 0) {
-                        "$successCount check-ins rejected"
+                        s("$successCount check-ins rejected", "تم رفض $successCount تسجيلات حضور")
                     } else {
-                        "$successCount rejected, $failCount failed"
+                        s("$successCount rejected, $failCount failed", "تم رفض $successCount، وفشل $failCount")
                     },
                     pendingCheckins = state.pendingCheckins.filterNot { it.id in selectedIds }
                 )
@@ -486,7 +487,7 @@ fun AdminReviewScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Review Check-ins",
+                        text = s("Review Check-ins", "مراجعة تسجيلات الحضور"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -503,7 +504,7 @@ fun AdminReviewScreen(
                 actions = {
                     // Batch mode toggle
                     Text(
-                        text = if (uiState.isBatchMode) "Cancel" else "Batch",
+                        text = if (uiState.isBatchMode) s("Cancel", "إلغاء") else s("Batch", "متعدد"),
                         color = if (uiState.isBatchMode) AccentPrimary else themeTextSecondary,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier
@@ -524,7 +525,7 @@ fun AdminReviewScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Text(
-                            text = if (uiState.isBatchMode) "Cancel" else "Batch",
+                            text = if (uiState.isBatchMode) s("Cancel", "إلغاء") else s("Batch", "متعدد"),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             color = if (uiState.isBatchMode) AccentPrimary else themeTextSecondary,
                             fontWeight = FontWeight.SemiBold,
@@ -726,7 +727,7 @@ private fun CheckinReviewCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Day ${checkin.dayNumber}",
+                        text = s("Day ${checkin.dayNumber}", "اليوم ${checkin.dayNumber}"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = themeTextPrimary,
                             fontWeight = FontWeight.SemiBold
@@ -737,7 +738,7 @@ private fun CheckinReviewCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "User: ${checkin.userId.take(8)}...",
+                    text = s("User: ${checkin.userId.take(8)}...", "المستخدم: ${checkin.userId.take(8)}..."),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = themeTextSecondary,
                         fontFamily = FontFamily.Monospace,
@@ -748,7 +749,7 @@ private fun CheckinReviewCard(
                 )
 
                 Text(
-                    text = "Submitted: ${dateFormatter.format(checkin.submittedAt.toDate())}",
+                    text = s("Submitted: ${dateFormatter.format(checkin.submittedAt.toDate())}", "أُرسل: ${dateFormatter.format(checkin.submittedAt.toDate())}"),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = themeTextDisabled,
                         fontSize = 11.sp
@@ -795,7 +796,7 @@ private fun CheckinReviewCard(
                                 )
                             }
                             Text(
-                                text = "Approve",
+                                text = s("Approve", "قبول"),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = AccentPrimary,
                                     fontWeight = FontWeight.Bold,
@@ -831,7 +832,7 @@ private fun CheckinReviewCard(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "Reject",
+                                text = s("Reject", "رفض"),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = SemanticError,
                                     fontWeight = FontWeight.Bold,
@@ -877,7 +878,7 @@ private fun BatchActionBar(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "$selectedCount of $totalCount selected",
+                    text = s("$selectedCount of $totalCount selected", "تم تحديد $selectedCount من $totalCount"),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
@@ -892,7 +893,7 @@ private fun BatchActionBar(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Text(
-                            text = "All",
+                            text = s("All", "الكل"),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = AccentPrimary,
@@ -907,7 +908,7 @@ private fun BatchActionBar(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Text(
-                            text = "None",
+                            text = s("None", "لا شيء"),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = themeTextSecondary,
@@ -957,7 +958,7 @@ private fun BatchActionBar(
                     }
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Approve ($selectedCount)",
+                        text = s("Approve ($selectedCount)", "قبول ($selectedCount)"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
                     )
@@ -987,7 +988,7 @@ private fun BatchActionBar(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Reject ($selectedCount)",
+                        text = s("Reject ($selectedCount)", "رفض ($selectedCount)"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
                     )
@@ -1029,7 +1030,7 @@ private fun RejectionCommentSection(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "Rejection Reason (Optional)",
+                    text = s("Rejection Reason (Optional)", "سبب الرفض (اختياري)"),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
@@ -1049,7 +1050,7 @@ private fun RejectionCommentSection(
                     },
                 placeholder = {
                     Text(
-                        text = "Explain why this check-in was rejected...",
+                        text = s("Explain why this check-in was rejected...", "اشرح لماذا تم رفض تسجيل الحضور هذا..."),
                         color = themeTextDisabled
                     )
                 },
@@ -1085,7 +1086,7 @@ private fun RejectionCommentSection(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = "Cancel",
+                        text = s("Cancel", "إلغاء"),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp
                     )
@@ -1113,7 +1114,7 @@ private fun RejectionCommentSection(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Confirm Reject",
+                        text = s("Confirm Reject", "تأكيد الرفض"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
                     )
@@ -1141,7 +1142,7 @@ private fun AdminLoadingState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Loading pending check-ins...",
+                text = s("Loading pending check-ins...", "جارٍ تحميل تسجيلات الحضور المعلّقة..."),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
         }
@@ -1164,7 +1165,7 @@ private fun AdminEmptyState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "All Caught Up!",
+                text = s("All Caught Up!", "تم إنجاز كل شيء!"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -1172,7 +1173,7 @@ private fun AdminEmptyState() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "No pending check-ins to review",
+                text = s("No pending check-ins to review", "لا توجد تسجيلات حضور معلّقة للمراجعة"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
@@ -1198,7 +1199,7 @@ private fun AdminErrorState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Something went wrong",
+                text = s("Something went wrong", "حدث خطأ ما"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -1217,7 +1218,7 @@ private fun AdminErrorState(
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Text(
-                    text = "Try Again",
+                    text = s("Try Again", "حاول مجددًا"),
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                     color = themeBgPrimary,
                     fontWeight = FontWeight.Bold

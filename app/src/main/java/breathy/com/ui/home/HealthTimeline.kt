@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import breathy.com.data.models.HealthMilestone
 import breathy.com.ui.theme.*
+import breathy.com.utils.s
 import kotlinx.coroutines.delay
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -69,16 +70,18 @@ private data class RecoveryStage(
     val label: String,
     val emoji: String,
     val maxDay: Int,          // inclusive upper bound of the stage
-    val encouragement: String
+    val encouragement: String,
+    val labelAr: String,
+    val encouragementAr: String
 )
 
 private val RECOVERY_STAGES = listOf(
-    RecoveryStage("Seed", "🌰", 1, "You planted the seed. The first hours are the hardest — and you are doing them."),
-    RecoveryStage("Sprout", "🌱", 7, "Your first week of fresh air. Early healing is already underway."),
-    RecoveryStage("Leaf", "🍃", 30, "New growth every day. Breathing, taste and smell are returning."),
-    RecoveryStage("Plant", "🪴", 90, "Strong roots. Circulation and lung function keep improving."),
-    RecoveryStage("Tree", "🌳", 365, "A full ring of seasons. Your heart is measurably safer."),
-    RecoveryStage("Evergreen", "🌿", Int.MAX_VALUE, "A living testament. Your recovery keeps deepening year after year.")
+    RecoveryStage("Seed", "🌰", 1, "You planted the seed. The first hours are the hardest — and you are doing them.", "بذرة", "لقد زرعتَ البذرة. الساعات الأولى هي الأصعب — وأنت تتجاوزها."),
+    RecoveryStage("Sprout", "🌱", 7, "Your first week of fresh air. Early healing is already underway.", "برعم", "أسبوعك الأول من الهواء النقي. التعافي المبكر بدأ فعلًا."),
+    RecoveryStage("Leaf", "🍃", 30, "New growth every day. Breathing, taste and smell are returning.", "ورقة", "نموٌّ جديد كل يوم. التنفس والتذوق والشم تعود إليك تدريجيًا."),
+    RecoveryStage("Plant", "🪴", 90, "Strong roots. Circulation and lung function keep improving.", "نبتة", "جذور قوية. الدورة الدموية ووظائف الرئة تتحسن باستمرار."),
+    RecoveryStage("Tree", "🌳", 365, "A full ring of seasons. Your heart is measurably safer.", "شجرة", "دورة كاملة من الفصول. قلبك أصبح أكثر أمانًا بشكل ملموس."),
+    RecoveryStage("Evergreen", "🌿", Int.MAX_VALUE, "A living testament. Your recovery keeps deepening year after year.", "شجرة دائمة الخضرة", "شاهد حيّ على إرادتك. تعافيك يتعمق عامًا بعد عام.")
 )
 
 private fun stageForDay(day: Int): RecoveryStage =
@@ -215,7 +218,7 @@ private fun StageChapterHeader(stage: RecoveryStage, isCurrentStage: Boolean) {
     ) {
         Text(text = stage.emoji, fontSize = 14.sp)
         Text(
-            text = stage.label.uppercase(),
+            text = s(stage.label.uppercase(), stage.labelAr),
             style = MaterialTheme.typography.labelSmall.copy(
                 color = if (isCurrentStage) DeepForest else themeTextSecondary,
                 letterSpacing = 2.sp,
@@ -230,7 +233,7 @@ private fun StageChapterHeader(stage: RecoveryStage, isCurrentStage: Boolean) {
                     .padding(horizontal = 6.dp, vertical = 1.dp)
             ) {
                 Text(
-                    text = "CURRENT CHAPTER",
+                    text = s("CURRENT CHAPTER", "الفصل الحالي"),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = NaturalYellow,
                         fontSize = 8.sp,
@@ -274,7 +277,7 @@ private fun TodayCard(
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "TODAY",
+                        text = s("TODAY", "اليوم"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = SoftSand,
                             letterSpacing = 2.sp,
@@ -283,7 +286,7 @@ private fun TodayCard(
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
-                        text = "${(overallProgress * 100).toInt()}% recovered",
+                        text = s("%d%% recovered", "اكتمل %d%% من التعافي").format((overallProgress * 100).toInt()),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = NaturalYellow,
                             fontWeight = FontWeight.Bold
@@ -292,7 +295,7 @@ private fun TodayCard(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Day $daysSmokeFree smoke-free",
+                    text = s("Day %d smoke-free", "يوم %d بدون تدخين").format(daysSmokeFree),
                     style = MaterialTheme.typography.headlineSmall.copy(
                         color = PureWhite,
                         fontWeight = FontWeight.Bold
@@ -300,7 +303,9 @@ private fun TodayCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${stage.emoji} ${stage.label} stage · $achievedCount of $totalCount health milestones reached",
+                    text = s("%s %s stage · %d of %d health milestones reached", "%s مرحلة %s · تم بلوغ %d من %d معلم صحي").format(
+                        stage.emoji, s(stage.label, stage.labelAr), achievedCount, totalCount
+                    ),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = VeryLightSage
                     )
@@ -375,7 +380,7 @@ private fun CurrentStageCard(daysSmokeFree: Int) {
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "CURRENT STAGE",
+                    text = s("CURRENT STAGE", "المرحلة الحالية"),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = themeTextSecondary,
                         letterSpacing = 1.5.sp
@@ -384,7 +389,7 @@ private fun CurrentStageCard(daysSmokeFree: Int) {
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "${stage.emoji} ${stage.label}",
+                text = "${stage.emoji} ${s(stage.label, stage.labelAr)}",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = DarkBotanical
@@ -392,7 +397,7 @@ private fun CurrentStageCard(daysSmokeFree: Int) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = stage.encouragement,
+                text = s(stage.encouragement, stage.encouragementAr),
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = themeTextSecondary
                 )
@@ -411,7 +416,7 @@ private fun CurrentStageCard(daysSmokeFree: Int) {
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Next: ${nextStage.emoji} ${nextStage.label}",
+                        text = s("Next: ${nextStage.emoji} ${nextStage.label}", "التالي: ${nextStage.emoji} ${nextStage.labelAr}"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = NaturalGreen,
                             fontWeight = FontWeight.SemiBold
@@ -435,12 +440,12 @@ private fun NextMilestoneCard(
     val minutes = milestone.minutesAfterQuit
     val daysAway = (minutes / 1440.0) - daysSmokeFree
     val whenText = when {
-        daysAway <= 1.0 -> "Arriving within hours"
-        daysAway < 30 -> "In ${(kotlin.math.ceil(daysAway)).toInt()} days"
+        daysAway <= 1.0 -> s("Arriving within hours", "يصل خلال ساعات")
+        daysAway < 30 -> s("In %d days", "خلال %d يوم").format((kotlin.math.ceil(daysAway)).toInt())
         else -> {
             val months = (daysAway / 30.4)
-            if (months < 12) "In about ${kotlin.math.ceil(months).toInt()} months"
-            else "In about ${(kotlin.math.ceil(months / 12.0)).toInt()} year(s)"
+            if (months < 12) s("In about %d months", "خلال نحو %d شهرًا").format(kotlin.math.ceil(months).toInt())
+            else s("In about %d year(s)", "خلال نحو %d سنة").format((kotlin.math.ceil(months / 12.0)).toInt())
         }
     }
 
@@ -465,14 +470,14 @@ private fun NextMilestoneCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "NEXT MILESTONE",
+                        text = s("NEXT MILESTONE", "المعلم التالي"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             letterSpacing = 1.5.sp
                         )
                     )
                     Text(
-                        text = milestone.title,
+                        text = milestone.displayTitle(),
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = themeTextPrimary
@@ -492,7 +497,7 @@ private fun NextMilestoneCard(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = milestone.description,
+                text = milestone.displayDescription(),
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = themeTextSecondary
                 ),
@@ -510,7 +515,7 @@ private fun JourneySectionHeader(achievedCount: Int, total: Int) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "RECOVERY PATH",
+            text = s("RECOVERY PATH", "مسار التعافي"),
             style = MaterialTheme.typography.labelSmall.copy(
                 color = themeTextSecondary,
                 letterSpacing = 2.sp,
@@ -520,7 +525,7 @@ private fun JourneySectionHeader(achievedCount: Int, total: Int) {
         )
         Spacer(modifier = Modifier.weight(1f))
         Text(
-            text = "$achievedCount of $total reached",
+            text = s("%d of %d reached", "تم بلوغ %d من %d").format(achievedCount, total),
             style = MaterialTheme.typography.labelSmall.copy(
                 color = NaturalGreen,
                 fontWeight = FontWeight.Bold
@@ -543,7 +548,7 @@ private fun JourneyMilestoneCard(
     isCurrent: Boolean,
     isLast: Boolean
 ) {
-    val timeLabel = milestone.timeLabel()
+    val timeLabel = milestone.displayTimeLabel()
     val surfaceVariantColor = themeBgSurfaceVariant
 
     // Animated checkmark scale for achieved milestones
@@ -668,7 +673,7 @@ private fun JourneyMilestoneCard(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "YOU ARE HERE",
+                                    text = s("YOU ARE HERE", "أنت هنا الآن"),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = NaturalYellow,
                                         letterSpacing = 2.sp,
@@ -677,7 +682,7 @@ private fun JourneyMilestoneCard(
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
                                 Text(
-                                    text = "at $timeLabel",
+                                    text = s("at %s", "عند %s").format(timeLabel),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = VeryLightSage,
                                         fontWeight = FontWeight.SemiBold
@@ -686,7 +691,7 @@ private fun JourneyMilestoneCard(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = milestone.title,
+                                text = milestone.displayTitle(),
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     color = PureWhite,
                                     fontWeight = FontWeight.Bold
@@ -696,7 +701,7 @@ private fun JourneyMilestoneCard(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = milestone.description,
+                                text = milestone.displayDescription(),
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = VeryLightSage
                                 ),
@@ -723,7 +728,7 @@ private fun JourneyMilestoneCard(
                             Text(text = milestone.icon, fontSize = 17.sp)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = milestone.title,
+                                text = milestone.displayTitle(),
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     color = DarkBotanical,
                                     fontWeight = FontWeight.Bold
@@ -739,7 +744,7 @@ private fun JourneyMilestoneCard(
                                     .padding(horizontal = 6.dp, vertical = 1.dp)
                             ) {
                                 Text(
-                                    text = "REACHED",
+                                    text = s("REACHED", "تم بلوغه"),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = NaturalGreen,
                                         fontSize = 8.sp,
@@ -751,7 +756,7 @@ private fun JourneyMilestoneCard(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = milestone.description,
+                            text = milestone.displayDescription(),
                             style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -783,7 +788,7 @@ private fun JourneyMilestoneCard(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = milestone.title,
+                                text = milestone.displayTitle(),
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     color = themeTextSecondary,
                                     fontWeight = FontWeight.SemiBold
@@ -802,7 +807,7 @@ private fun JourneyMilestoneCard(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = milestone.description,
+                            text = milestone.displayDescription(),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = themeTextDisabled
                             ),

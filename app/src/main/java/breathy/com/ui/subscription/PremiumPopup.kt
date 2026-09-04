@@ -38,6 +38,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
+import breathy.com.utils.s
 
 @Composable
 fun PremiumPopup(
@@ -101,7 +102,7 @@ fun PremiumPopup(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Go Premium",
+                    text = s("Go Premium", "ترقَّ إلى بريميوم"),
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -111,7 +112,10 @@ fun PremiumPopup(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Tired of ads? Support Breathy and unlock premium benefits!",
+                    text = s(
+                        "Tired of ads? Support Breathy and unlock premium benefits!",
+                        "سئمت من الإعلانات؟ ادعم Breathy وافتح مزايا بريميوم!"
+                    ),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -126,17 +130,17 @@ fun PremiumPopup(
                 ) {
                     BenefitRow(
                         icon = Icons.Default.Block,
-                        text = "Remove all ads",
+                        text = s("Remove all ads", "إزالة جميع الإعلانات"),
                         color = AccentPrimary
                     )
                     BenefitRow(
                         icon = Icons.Default.EmojiEvents,
-                        text = "Premium badge",
+                        text = s("Premium badge", "شارة بريميوم"),
                         color = AccentPurple
                     )
                     BenefitRow(
                         icon = Icons.Default.Verified,
-                        text = "Support the mission",
+                        text = s("Support the mission", "ادعم المهمة"),
                         color = AccentPrimary
                     )
                 }
@@ -154,7 +158,7 @@ fun PremiumPopup(
                     )
                 ) {
                     Text(
-                        text = "Support Breathy",
+                        text = s("Support Breathy", "ادعم Breathy"),
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -170,7 +174,7 @@ fun PremiumPopup(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "Maybe later",
+                        text = s("Maybe later", "ربما لاحقاً"),
                         style = MaterialTheme.typography.labelMedium
                     )
                 }

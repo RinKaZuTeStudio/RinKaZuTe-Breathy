@@ -26,9 +26,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import breathy.com.utils.s
 import timber.log.Timber
 import java.util.Calendar
 import java.util.Date
@@ -319,7 +321,7 @@ class UserRepository(
 
     /** Create a new user document at users/{userId}. */
     suspend fun createUser(user: User): Result<Unit> = runCatching {
-        val uid = auth.currentUser?.uid ?: throw IllegalStateException("Not authenticated")
+        val uid = auth.currentUser?.uid ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             firestore.collection(USERS_COLLECTION).document(uid).set(user).await(); Unit
             Unit
@@ -330,7 +332,7 @@ class UserRepository(
 
     /** Overwrite the user document at users/{userId} with the given [user]. */
     suspend fun updateUser(user: User): Result<Unit> = runCatching {
-        val uid = auth.currentUser?.uid ?: throw IllegalStateException("Not authenticated")
+        val uid = auth.currentUser?.uid ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             firestore.collection(USERS_COLLECTION).document(uid).set(user).await(); Unit
             Unit
@@ -807,7 +809,7 @@ class UserRepository(
                     val sameDay = lastClaimCal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
                             lastClaimCal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)
                     if (sameDay) {
-                        throw IllegalStateException("Daily reward already claimed today")
+                        throw IllegalStateException(s("Daily reward already claimed today — come back tomorrow!", "تم استلام المكافأة اليومية بالفعل — عد غدًا!"))
                     }
                 }
 

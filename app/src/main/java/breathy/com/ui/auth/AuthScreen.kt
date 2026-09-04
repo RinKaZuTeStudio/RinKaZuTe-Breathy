@@ -89,6 +89,7 @@ import breathy.com.data.repository.AuthRepository
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
+import breathy.com.utils.s
 
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -284,8 +285,8 @@ class AuthViewModel(
         if (state.email.isBlank()) {
             _uiState.update {
                 it.copy(
-                    emailError = "Enter your email to reset your password.",
-                    errorMessage = "Please enter your email address to reset your password."
+                    emailError = s("Enter your email to reset your password.", "أدخل بريدك الإلكتروني لإعادة تعيين كلمة المرور."),
+                    errorMessage = s("Please enter your email address to reset your password.", "يُرجى إدخال بريدك الإلكتروني لإعادة تعيين كلمة المرور.")
                 )
             }
             return
@@ -294,8 +295,8 @@ class AuthViewModel(
         if (!EMAIL_REGEX.matches(state.email.trim())) {
             _uiState.update {
                 it.copy(
-                    emailError = "Enter a valid email address.",
-                    errorMessage = "Please enter a valid email address."
+                    emailError = s("Enter a valid email address.", "أدخل عنوان بريد إلكتروني صالحاً."),
+                    errorMessage = s("Please enter a valid email address.", "يُرجى إدخال عنوان بريد إلكتروني صالح.")
                 )
             }
             return
@@ -313,7 +314,7 @@ class AuthViewModel(
                 }
                 .onFailure {
                     _uiState.update {
-                        it.copy(errorMessage = "Failed to send reset email. Please check your email address.")
+                        it.copy(errorMessage = s("Failed to send reset email. Please check your email address.", "تعذّر إرسال بريد إعادة التعيين. يُرجى التحقق من بريدك الإلكتروني."))
                     }
                 }
         }
@@ -517,27 +518,27 @@ class AuthViewModel(
         var valid = true
 
         if (state.email.isBlank()) {
-            _uiState.update { it.copy(emailError = "Email is required.") }
+            _uiState.update { it.copy(emailError = s("Email is required.", "البريد الإلكتروني مطلوب.")) }
             valid = false
         } else if (!EMAIL_REGEX.matches(state.email.trim())) {
-            _uiState.update { it.copy(emailError = "Enter a valid email address.") }
+            _uiState.update { it.copy(emailError = s("Enter a valid email address.", "أدخل عنوان بريد إلكتروني صالحاً.")) }
             valid = false
         }
 
         if (state.password.isBlank()) {
-            _uiState.update { it.copy(passwordError = "Password is required.") }
+            _uiState.update { it.copy(passwordError = s("Password is required.", "كلمة المرور مطلوبة.")) }
             valid = false
         } else if (state.password.length < 6) {
-            _uiState.update { it.copy(passwordError = "Password must be at least 6 characters.") }
+            _uiState.update { it.copy(passwordError = s("Password must be at least 6 characters.", "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.")) }
             valid = false
         }
 
         if (isSignUp) {
             if (state.confirmPassword.isBlank()) {
-                _uiState.update { it.copy(confirmPasswordError = "Please confirm your password.") }
+                _uiState.update { it.copy(confirmPasswordError = s("Please confirm your password.", "يُرجى تأكيد كلمة المرور.")) }
                 valid = false
             } else if (state.password != state.confirmPassword) {
-                _uiState.update { it.copy(confirmPasswordError = "Passwords do not match.") }
+                _uiState.update { it.copy(confirmPasswordError = s("Passwords do not match.", "كلمتا المرور غير متطابقتين.")) }
                 valid = false
             }
         }
@@ -548,18 +549,18 @@ class AuthViewModel(
     private fun mapAuthError(exception: Throwable): String {
         return when (exception) {
             is FirebaseAuthInvalidUserException ->
-                "No account found with this email. Please sign up first."
+                s("No account found with this email. Please sign up first.", "لا يوجد حساب بهذا البريد الإلكتروني. يُرجى إنشاء حساب أولاً.")
             is FirebaseAuthInvalidCredentialsException ->
-                "Invalid email or password. Please try again."
+                s("Invalid email or password. Please try again.", "البريد الإلكتروني أو كلمة المرور غير صحيحة. حاول مرة أخرى.")
             is FirebaseAuthWeakPasswordException ->
-                "Password is too weak. Use at least 6 characters with a mix of letters and numbers."
+                s("Password is too weak. Use at least 6 characters with a mix of letters and numbers.", "كلمة المرور ضعيفة جداً. استخدم 6 أحرف على الأقل مع مزيج من الحروف والأرقام.")
             is FirebaseAuthUserCollisionException ->
-                "An account with this email already exists. Please sign in instead."
+                s("An account with this email already exists. Please sign in instead.", "يوجد حساب بهذا البريد الإلكتروني بالفعل. يُرجى تسجيل الدخول بدلاً من ذلك.")
             is IllegalArgumentException ->
-                exception.message ?: "Invalid input. Please check your details."
+                exception.message ?: s("Invalid input. Please check your details.", "بيانات غير صحيحة. يُرجى التحقق من المدخلات.")
             else -> {
                 Timber.e(exception, "$TAG: Unhandled auth error")
-                exception.localizedMessage ?: "Authentication failed. Please try again."
+                exception.localizedMessage ?: s("Authentication failed. Please try again.", "فشلت المصادقة. حاول مرة أخرى.")
             }
         }
     }
@@ -660,7 +661,7 @@ fun AuthScreen(
     LaunchedEffect(uiState.passwordResetSent) {
         if (uiState.passwordResetSent) {
             snackbarHostState.showSnackbar(
-                message = "Password reset email sent! Check your inbox.",
+                message = s("Password reset email sent! Check your inbox.", "تم إرسال بريد إعادة تعيين كلمة المرور! تحقّق من صندوق الوارد."),
                 duration = SnackbarDuration.Long
             )
             viewModel.dismissPasswordResetSent()
@@ -713,7 +714,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Breathy for your Health",
+                text = s("Breathy for your Health", "Breathy لصحتك"),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -722,7 +723,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = if (uiState.isSignUpMode) "Create your account" else "Welcome back",
+                text = if (uiState.isSignUpMode) s("Create your account", "أنشئ حسابك") else s("Welcome back", "مرحباً بعودتك"),
                 fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -746,7 +747,7 @@ fun AuthScreen(
                 onPasswordChanged = viewModel::onPasswordChanged,
                 isPasswordVisible = uiState.isPasswordVisible,
                 onToggleVisibility = viewModel::togglePasswordVisibility,
-                label = "Password",
+                label = s("Password", "كلمة المرور"),
                 error = uiState.passwordError,
                 imeAction = if (uiState.isSignUpMode) ImeAction.Next else ImeAction.Done,
                 onImeAction = {
@@ -772,7 +773,7 @@ fun AuthScreen(
                         onPasswordChanged = viewModel::onConfirmPasswordChanged,
                         isPasswordVisible = uiState.isConfirmPasswordVisible,
                         onToggleVisibility = viewModel::toggleConfirmPasswordVisibility,
-                        label = "Confirm Password",
+                        label = s("Confirm Password", "تأكيد كلمة المرور"),
                         error = uiState.confirmPasswordError,
                         imeAction = ImeAction.Done,
                         onImeAction = {
@@ -792,7 +793,7 @@ fun AuthScreen(
                 ) {
                     TextButton(onClick = viewModel::sendPasswordReset) {
                         Text(
-                            text = "Forgot Password?",
+                            text = s("Forgot Password?", "نسيت كلمة المرور؟"),
                             color = AccentPurple,
                             fontSize = 13.sp,
                             textDecoration = TextDecoration.Underline
@@ -805,7 +806,7 @@ fun AuthScreen(
 
             // ── Primary action button ─────────────────────────────────────
             GradientButton(
-                text = if (uiState.isSignUpMode) "Sign Up" else "Sign In",
+                text = if (uiState.isSignUpMode) s("Sign Up", "إنشاء حساب") else s("Sign In", "تسجيل الدخول"),
                 isLoading = uiState.isLoading,
                 onClick = if (uiState.isSignUpMode) viewModel::signUp else viewModel::signIn,
                 contentDescription = if (uiState.isSignUpMode) "Sign up button" else "Sign in button"
@@ -971,7 +972,7 @@ private fun EmailField(
         value = email,
         onValueChange = onEmailChanged,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("Email", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        label = { Text(s("Email", "البريد الإلكتروني"), color = MaterialTheme.colorScheme.onSurfaceVariant) },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Email,
@@ -1153,7 +1154,7 @@ private fun OrDivider() {
             thickness = 1.dp
         )
         Text(
-            text = "or",
+            text = s("or", "أو"),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp
         )
@@ -1211,7 +1212,7 @@ private fun GoogleSignInButton(
         }
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = "Continue with Google",
+            text = s("Continue with Google", "المتابعة عبر Google"),
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium
@@ -1233,12 +1234,12 @@ private fun SignUpToggle(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = if (isSignUpMode) "Already have an account? " else "Don't have an account? ",
+            text = if (isSignUpMode) s("Already have an account? ", "لديك حساب بالفعل؟ ") else s("Don't have an account? ", "ليس لديك حساب؟ "),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 14.sp
         )
         Text(
-            text = if (isSignUpMode) "Sign In" else "Sign Up",
+            text = if (isSignUpMode) s("Sign In", "تسجيل الدخول") else s("Sign Up", "إنشاء حساب"),
             color = AccentPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,

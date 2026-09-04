@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import breathy.com.utils.s
 import java.text.DecimalFormat
 import java.util.Calendar
 import java.util.Date
@@ -133,7 +134,7 @@ class HomeViewModel(
 
     private fun loadUserData() {
         val uid = userId ?: run {
-            _uiState.update { it.copy(isLoading = false, errorMessage = "Not authenticated") }
+            _uiState.update { it.copy(isLoading = false, errorMessage = s("Not authenticated", "غير مسجل الدخول")) }
             return
         }
 
@@ -168,8 +169,8 @@ class HomeViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        nickname = it.nickname.ifBlank { "Quitter" },
-                        errorMessage = "Could not load your data. Pull down to retry."
+                        nickname = it.nickname.ifBlank { s("Quitter", "مُقلّع") },
+                        errorMessage = s("Could not load your data. Pull down to retry.", "تعذر تحميل بياناتك. اسحب للأسفل لإعادة المحاولة.")
                     )
                 }
             }
@@ -271,17 +272,17 @@ class HomeViewModel(
 
     private fun formatTimeAgo(date: Date): String {
         val diffMillis = System.currentTimeMillis() - date.time
-        if (diffMillis < 0) return "just now"
+        if (diffMillis < 0) return s("just now", "الآن")
 
         val minutes = TimeUnit.MILLISECONDS.toMinutes(diffMillis)
         val hours = TimeUnit.MILLISECONDS.toHours(diffMillis)
         val days = TimeUnit.MILLISECONDS.toDays(diffMillis)
 
         return when {
-            days > 0 -> "${days}d ${hours % 24}h since last craving"
-            hours > 0 -> "${hours}h ${minutes % 60}m since last craving"
-            minutes > 0 -> "${minutes}m since last craving"
-            else -> "just now"
+            days > 0 -> s("%dd %dh since last craving", "منذ آخر رغبة تدخين: %d يوم و%d ساعة").format(days, hours % 24)
+            hours > 0 -> s("%dh %dm since last craving", "منذ آخر رغبة تدخين: %d ساعة و%d دقيقة").format(hours, minutes % 60)
+            minutes > 0 -> s("%dm since last craving", "منذ آخر رغبة تدخين: %d دقيقة").format(minutes)
+            else -> s("just now", "الآن")
         }
     }
 
@@ -337,10 +338,10 @@ class HomeViewModel(
                     }
                     _events.emit(HomeSingleEvent.ShowDailyReward(coinsAwarded))
                 }.onFailure { e ->
-                    _events.emit(HomeSingleEvent.ShowError(e.message ?: "Failed to claim reward"))
+                    _events.emit(HomeSingleEvent.ShowError(e.message ?: s("Failed to claim reward", "تعذّر استلام المكافأة")))
                 }
             } catch (e: Exception) {
-                _events.emit(HomeSingleEvent.ShowError(e.message ?: "Failed to claim reward"))
+                _events.emit(HomeSingleEvent.ShowError(e.message ?: s("Failed to claim reward", "تعذّر استلام المكافأة")))
             } finally {
                 isClaimingDailyReward = false
             }
@@ -365,10 +366,10 @@ class HomeViewModel(
                     // Refresh last craving time
                     loadLastCravingTime(uid)
                 }.onFailure { e ->
-                    _events.emit(HomeSingleEvent.ShowError(e.message ?: "Failed to log craving"))
+                    _events.emit(HomeSingleEvent.ShowError(e.message ?: s("Failed to log craving", "تعذّر تسجيل الرغبة")))
                 }
             } catch (e: Exception) {
-                _events.emit(HomeSingleEvent.ShowError(e.message ?: "Failed to log craving"))
+                _events.emit(HomeSingleEvent.ShowError(e.message ?: s("Failed to log craving", "تعذّر تسجيل الرغبة")))
             }
         }
     }

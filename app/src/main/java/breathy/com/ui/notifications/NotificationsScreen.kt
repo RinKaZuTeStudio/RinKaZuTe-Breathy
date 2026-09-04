@@ -50,6 +50,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import breathy.com.BreathyApplication
+import breathy.com.utils.s
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.themeAccentPrimary
@@ -87,11 +88,11 @@ data class BreathyNotification(
         val diff = System.currentTimeMillis() - createdAt.toDate().time
         val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
         return when {
-            minutes < 1 -> "Just now"
-            minutes < 60 -> "${minutes}m ago"
-            minutes < 1440 -> "${minutes / 60}h ago"
-            minutes < 10080 -> "${minutes / 1440}d ago"
-            else -> "${minutes / 10080}w ago"
+            minutes < 1 -> s("Just now", "الآن")
+            minutes < 60 -> s("${minutes}m ago", "قبل ${minutes} د")
+            minutes < 1440 -> s("${minutes / 60}h ago", "قبل ${minutes / 60} س")
+            minutes < 10080 -> s("${minutes / 1440}d ago", "قبل ${minutes / 1440} يوم")
+            else -> s("${minutes / 10080}w ago", "قبل ${minutes / 10080} أسبوع")
         }
     }
     
@@ -256,7 +257,7 @@ fun NotificationsScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Notifications",
+                        text = s("Notifications", "الإشعارات"),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -294,7 +295,7 @@ fun NotificationsScreen(
                 if (uiState.unreadCount > 0) {
                     TextButton(onClick = { viewModel.markAllAsRead() }) {
                         Text(
-                            text = "Mark all read",
+                            text = s("Mark all read", "تعليم الكل كمقروء"),
                             color = themeAccentPrimary,
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -444,14 +445,14 @@ private fun EmptyNotificationsState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "No notifications yet",
+                text = s("No notifications yet", "لا توجد إشعارات بعد"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                 )
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "When you get notifications, they'll show up here",
+                text = s("When you get notifications, they'll show up here", "عند وصول الإشعارات ستظهر هنا"),
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = themeTextSecondary
                 )

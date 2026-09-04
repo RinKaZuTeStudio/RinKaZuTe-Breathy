@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import breathy.com.data.repository.SafetyRepository
 import breathy.com.ui.theme.*
+import breathy.com.utils.s
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -61,10 +62,27 @@ fun ReportBlockSheet(
     var done by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    val targetLabel = when (targetType) {
-        SafetyRepository.TARGET_POST -> "post"
-        SafetyRepository.TARGET_MESSAGE -> "message"
-        else -> "user"
+    val reportTitle = when (targetType) {
+        SafetyRepository.TARGET_POST -> s("Report this post", "الإبلاغ عن هذا المنشور")
+        SafetyRepository.TARGET_MESSAGE -> s("Report this message", "الإبلاغ عن هذه الرسالة")
+        else -> s("Report this user", "الإبلاغ عن هذا المستخدم")
+    }
+    val reviewNote = when (targetType) {
+        SafetyRepository.TARGET_POST ->
+            s(
+                "Thank you for keeping Breathy safe. Our moderators will review this post.",
+                "شكراً للحفاظ على أمان Breathy. سيراجع فريق الإشراف هذا المنشور."
+            )
+        SafetyRepository.TARGET_MESSAGE ->
+            s(
+                "Thank you for keeping Breathy safe. Our moderators will review this message.",
+                "شكراً للحفاظ على أمان Breathy. سيراجع فريق الإشراف هذه الرسالة."
+            )
+        else ->
+            s(
+                "Thank you for keeping Breathy safe. Our moderators will review this user.",
+                "شكراً للحفاظ على أمان Breathy. سيراجع فريق الإشراف هذا المستخدم."
+            )
     }
 
     ModalBottomSheet(
@@ -80,7 +98,7 @@ fun ReportBlockSheet(
         ) {
             if (done) {
                 Text(
-                    text = "✅ Report submitted",
+                    text = s("✅ Report submitted", "✅ تم إرسال البلاغ"),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
@@ -88,18 +106,18 @@ fun ReportBlockSheet(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Thank you for keeping Breathy safe. Our moderators will review this $targetLabel.",
+                    text = reviewNote,
                     style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text("Done")
+                    Text(s("Done", "تم"))
                 }
                 return@Column
             }
 
             Text(
-                text = "Report this $targetLabel",
+                text = reportTitle,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -107,7 +125,10 @@ fun ReportBlockSheet(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Tell us what's wrong. Reports are private and reviewed by moderators.",
+                text = s(
+                    "Tell us what's wrong. Reports are private and reviewed by moderators.",
+                    "أخبرنا بما حدث. البلاغات خاصة ويطّلع عليها فريق الإشراف."
+                ),
                 style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -125,7 +146,7 @@ fun ReportBlockSheet(
                         colors = RadioButtonDefaults.colors(selectedColor = NaturalGreen)
                     )
                     Text(
-                        text = reason,
+                        text = reasonLabel(reason),
                         style = MaterialTheme.typography.bodyMedium.copy(color = themeTextPrimary)
                     )
                 }
@@ -135,7 +156,7 @@ fun ReportBlockSheet(
             OutlinedTextField(
                 value = details,
                 onValueChange = { if (it.length <= 300) details = it },
-                placeholder = { Text("Additional details (optional)") },
+                placeholder = { Text(s("Additional details (optional)", "تفاصيل إضافية (اختياري)")) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4,
@@ -172,7 +193,7 @@ fun ReportBlockSheet(
                                 throw e
                             } catch (e: Exception) {
                                 Timber.e(e, "report failed")
-                                error = "Couldn't submit the report. Try again."
+                                error = s("Couldn't submit the report. Try again.", "تعذّر إرسال البلاغ. حاول مجدداً.")
                             } finally {
                                 submitting = false
                             }
@@ -190,7 +211,7 @@ fun ReportBlockSheet(
                             color = PureWhite
                         )
                     } else {
-                        Text("Submit report", fontWeight = FontWeight.Bold)
+                        Text(s("Submit report", "إرسال البلاغ"), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -200,7 +221,7 @@ fun ReportBlockSheet(
                 if (!confirmingBlock) {
                     TextButton(onClick = { confirmingBlock = true }) {
                         Text(
-                            text = "🚫 Block this user",
+                            text = s("🚫 Block this user", "🚫 حظر هذا المستخدم"),
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -214,18 +235,21 @@ fun ReportBlockSheet(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "Block this user?",
+                                text = s("Block this user?", "حظر هذا المستخدم؟"),
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "They won't be able to message you, and their messages and posts will be hidden from you. You can unblock anytime in chat settings.",
+                                text = s(
+                                    "They won't be able to message you, and their messages and posts will be hidden from you. You can unblock anytime in chat settings.",
+                                    "لن يتمكّن من مراسلتك، وستُخفى رسائله ومنشوراته عنك. يمكنك إلغاء الحظر في أي وقت من إعدادات الدردشة."
+                                ),
                                 style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick = { confirmingBlock = false }) {
-                                    Text("Cancel")
+                                    Text(s("Cancel", "إلغاء"))
                                 }
                                 Button(
                                     onClick = {
@@ -238,7 +262,7 @@ fun ReportBlockSheet(
                                                 throw e
                                             } catch (e: Exception) {
                                                 Timber.e(e, "block failed")
-                                                error = "Couldn't block this user. Try again."
+                                                error = s("Couldn't block this user. Try again.", "تعذّر حظر هذا المستخدم. حاول مجدداً.")
                                                 confirmingBlock = false
                                             }
                                         }
@@ -248,7 +272,7 @@ fun ReportBlockSheet(
                                     ),
                                     shape = RoundedCornerShape(14.dp)
                                 ) {
-                                    Text("Block", fontWeight = FontWeight.Bold)
+                                    Text(s("Block", "حظر"), fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -276,7 +300,7 @@ fun BlockedUserBanner(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "You blocked this user",
+                text = s("You blocked this user", "لقد حظرت هذا المستخدم"),
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -284,17 +308,32 @@ fun BlockedUserBanner(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "They can't message you and their messages are hidden.",
+                text = s("They can't message you and their messages are hidden.", "لا يمكنه مراسلتك ورسائله مخفية."),
                 style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
             )
             Spacer(modifier = Modifier.height(6.dp))
             TextButton(onClick = onUnblock, enabled = !unblocking) {
                 Text(
-                    text = if (unblocking) "Unblocking…" else "Unblock",
+                    text = if (unblocking) s("Unblocking…", "جارٍ إلغاء الحظر…") else s("Unblock", "إلغاء الحظر"),
                     color = NaturalGreen,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
     }
+}
+
+/**
+ * Localized display label for a report reason. The canonical reason string
+ * (SafetyRepository.REPORT_REASONS) is still what gets stored in Firestore —
+ * only the visible label is translated.
+ */
+private fun reasonLabel(reason: String): String = when (reason) {
+    "Spam or scam" -> s("Spam or scam", "إزعاج أو احتيال")
+    "Harassment or bullying" -> s("Harassment or bullying", "تحرّش أو تنمّر")
+    "Inappropriate content" -> s("Inappropriate content", "محتوى غير لائق")
+    "Misinformation" -> s("Misinformation", "معلومات مضلّلة")
+    "Self-harm concern" -> s("Self-harm concern", "قلق من إيذاء النفس")
+    "Other" -> s("Other", "أخرى")
+    else -> reason
 }

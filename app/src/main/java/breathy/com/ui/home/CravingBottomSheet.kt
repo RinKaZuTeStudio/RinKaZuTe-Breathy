@@ -63,6 +63,7 @@ import breathy.com.ui.theme.themeBgSurface
 import breathy.com.ui.theme.themeBgSurfaceVariant
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -143,7 +144,7 @@ fun CravingBottomSheet(
             ) {
                 // Header
                 Text(
-                    text = "Stay Strong! You've got this 💪",
+                    text = s("Stay Strong! You've got this 💪", "حافظ على عزيمتك! أنت قادر 💪"),
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = themeTextPrimary,
                         fontWeight = FontWeight.Bold
@@ -164,7 +165,7 @@ fun CravingBottomSheet(
                     )
                 } else {
                     Text(
-                        text = "Your first craving — you can do this!",
+                        text = s("Your first craving — you can do this!", "رغبتك الأولى — أنت قادر على تجاوزها!"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = themeTextSecondary
                         )
@@ -174,7 +175,7 @@ fun CravingBottomSheet(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Choose a coping method to fight this craving",
+                    text = s("Choose a coping method to fight this craving", "اختر طريقة لمواجهة هذه الرغبة"),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = themeTextSecondary
                     )
@@ -191,8 +192,8 @@ fun CravingBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         CopingMethodCard(
-                            title = "Breathe",
-                            description = "4-7-8 breathing to calm cravings",
+                            title = s("Breathe", "تنفّس"),
+                            description = s("4-7-8 breathing to calm cravings", "تنفّس 4-7-8 لتهدئة الرغبة"),
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.Air,
@@ -210,8 +211,8 @@ fun CravingBottomSheet(
                         )
 
                         CopingMethodCard(
-                            title = "Distract",
-                            description = "Tap as fast as you can for 30s",
+                            title = s("Distract", "اشغل نفسك"),
+                            description = s("Tap as fast as you can for 30s", "اضغط بأسرع ما تستطيع لمدة 30 ثانية"),
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.Gamepad,
@@ -235,8 +236,8 @@ fun CravingBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         CopingMethodCard(
-                            title = "Pushups",
-                            description = "Do 10 pushups to redirect focus",
+                            title = s("Pushups", "تمارين الضغط"),
+                            description = s("Do 10 pushups to redirect focus", "قم بـ 10 تمارين ضغط لتغيير تركيزك"),
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.FitnessCenter,
@@ -254,8 +255,8 @@ fun CravingBottomSheet(
                         )
 
                         CopingMethodCard(
-                            title = "Squats",
-                            description = "Do 15 squats to burn the urge",
+                            title = s("Squats", "سكوات"),
+                            description = s("Do 15 squats to burn the urge", "قم بـ 15 سكوات لحرق الرغبة"),
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.SelfImprovement,
@@ -273,8 +274,8 @@ fun CravingBottomSheet(
                         )
 
                         CopingMethodCard(
-                            title = "Plank",
-                            description = "Hold a 30s plank for discipline",
+                            title = s("Plank", "بلانك"),
+                            description = s("Hold a 30s plank for discipline", "اثبت على وضعية البلانك لمدة 30 ثانية من الانضباط"),
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.FitnessCenter,
@@ -305,7 +306,7 @@ fun CravingBottomSheet(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Did it help?",
+                            text = s("Did it help?", "هل ساعدك هذا؟"),
                             style = MaterialTheme.typography.titleSmall.copy(
                                 color = themeTextPrimary,
                                 fontWeight = FontWeight.SemiBold
@@ -331,7 +332,7 @@ fun CravingBottomSheet(
                                 shape = RoundedCornerShape(24.dp)
                             ) {
                                 Text(
-                                    text = "Yes, I'm good 👍",
+                                    text = s("Yes, I'm good 👍", "نعم، أشعر بتحسّن 👍"),
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 8.dp)
                                 )
@@ -349,7 +350,7 @@ fun CravingBottomSheet(
                                 shape = RoundedCornerShape(24.dp)
                             ) {
                                 Text(
-                                    text = "Not really 😔",
+                                    text = s("Not really 😔", "ليس تمامًا 😔"),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -363,7 +364,7 @@ fun CravingBottomSheet(
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
                         Text(
-                            text = "I already tried something",
+                            text = s("I already tried something", "لقد جرّبت شيئًا آخر بالفعل"),
                             color = themeTextSecondary,
                             fontSize = 13.sp
                         )
@@ -451,7 +452,7 @@ private fun CopingMethodCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Tap to start",
+                text = s("Tap to start", "اضغط للبدء"),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = accentColor,
                     fontSize = 10.sp,

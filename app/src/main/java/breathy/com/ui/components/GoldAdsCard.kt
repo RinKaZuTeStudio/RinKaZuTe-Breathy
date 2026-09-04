@@ -38,6 +38,7 @@ import breathy.com.ui.theme.SoftSage
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
 import breathy.com.utils.AdManager
+import breathy.com.utils.s
 
 /**
  * GoldAdsCard — the LevelPlay rewarded placement ("Gold Ads" → +200 Gold).
@@ -84,7 +85,7 @@ fun GoldAdsCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Gold Ads",
+                    text = s("Gold Ads", "إعلانات الذهب"),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
@@ -103,9 +104,12 @@ fun GoldAdsCard(
             Spacer(modifier = Modifier.padding(top = 6.dp))
 
             Text(
-                text = "Watch a short sponsored video and earn 200 Gold. " +
-                    "No limits — watch as many as you like. Gold is credited " +
-                    "the moment the video completes.",
+                text = s(
+                    "Watch a short sponsored video and earn 200 Gold. " +
+                        "No limits — watch as many as you like. Gold is credited " +
+                        "the moment the video completes.",
+                    "شاهد فيديو قصيراً مموّلاً واكسب 200 ذهب. بلا حدود — شاهد ما تشاء من الإعلانات. يُضاف الذهب فور اكتمال الفيديو."
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = themeTextSecondary
             )
@@ -117,14 +121,14 @@ fun GoldAdsCard(
                     note = null
                     val act = activity
                     if (act == null || isShowing) {
-                        if (act == null) note = "Ad unavailable right now."
+                        if (act == null) note = s("Ad unavailable right now.", "الإعلان غير متاح حالياً.")
                         return@Button
                     }
                     isShowing = true
                     val started = adManager.showRewardedAd(act)
                     if (!started) {
                         isShowing = false
-                        note = "The ad is still preparing — try again in a few seconds."
+                        note = s("The ad is still preparing — try again in a few seconds.", "الإعلان قيد التحضير — حاول مجدداً بعد بضع ثوانٍ.")
                     }
                 },
                 enabled = !isShowing,
@@ -136,7 +140,7 @@ fun GoldAdsCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (isShowing) "Loading ad…" else "Watch Ad · Earn +200 Gold",
+                    text = if (isShowing) s("Loading ad…", "جارٍ تحميل الإعلان…") else s("Watch Ad · Earn +200 Gold", "شاهد إعلاناً · اكسب +200 ذهب"),
                     fontWeight = FontWeight.Bold
                 )
             }

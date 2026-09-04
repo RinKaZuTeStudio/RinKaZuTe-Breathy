@@ -82,6 +82,7 @@ import breathy.com.ui.theme.themeBgSurfaceVariant
 import breathy.com.ui.theme.themeTextDisabled
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CancellationException
@@ -130,7 +131,7 @@ fun AchievementsListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Achievements",
+                        text = s("Achievements", "الإنجازات"),
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = themeTextPrimary,
                             fontWeight = FontWeight.Bold
@@ -188,8 +189,13 @@ fun AchievementsListScreen(
                         selected = selectedFilter == filter,
                         onClick = { selectedFilter = filter },
                         label = {
+                            val filterLabel = when (filter) {
+                                AchievementFilter.ALL -> s("All", "الكل")
+                                AchievementFilter.UNLOCKED -> s("Unlocked", "مفتوحة")
+                                AchievementFilter.LOCKED -> s("Locked", "مُقفلة")
+                            }
                             Text(
-                                text = "${filter.label} ($count)",
+                                text = "$filterLabel ($count)",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = if (selectedFilter == filter) FontWeight.Bold else FontWeight.Normal
                                 )
@@ -239,7 +245,7 @@ fun AchievementsListScreen(
                         CircularProgressIndicator(color = AccentPrimary)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Loading achievements...",
+                            text = s("Loading achievements...", "جارٍ تحميل الإنجازات..."),
                             style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                         )
                     }
@@ -252,9 +258,9 @@ fun AchievementsListScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = when (selectedFilter) {
-                                AchievementFilter.UNLOCKED -> "Your journey has just begun — unlock achievements as you progress"
-                                AchievementFilter.LOCKED -> "All achievements unlocked! 🎉"
-                                else -> "Your journey has just begun"
+                                AchievementFilter.UNLOCKED -> s("Your journey has just begun — unlock achievements as you progress", "رحلتك بدأت للتو — افتح الإنجازات كلما تقدمت")
+                                AchievementFilter.LOCKED -> s("All achievements unlocked! 🎉", "فتحت كل الإنجازات! 🎉")
+                                else -> s("Your journey has just begun", "رحلتك بدأت للتو")
                             },
                             style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                             textAlign = TextAlign.Center
@@ -262,8 +268,8 @@ fun AchievementsListScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = when (selectedFilter) {
-                                AchievementFilter.UNLOCKED -> "Keep going to earn your first trophy!"
-                                AchievementFilter.LOCKED -> "You're amazing!"
+                                AchievementFilter.UNLOCKED -> s("Keep going to earn your first trophy!", "واصل التقدم لتحصل على كأسك الأولى!")
+                                AchievementFilter.LOCKED -> s("You're amazing!", "أنت مذهل!")
                                 else -> ""
                             },
                             style = MaterialTheme.typography.labelSmall.copy(
@@ -337,7 +343,7 @@ private fun AchievementStatsBar(
                         )
                     )
                     Text(
-                        text = "Achievements Unlocked",
+                        text = s("Achievements Unlocked", "إنجاز مفتوح"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             fontSize = 12.sp
@@ -346,14 +352,14 @@ private fun AchievementStatsBar(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "+$totalXpEarned XP",
+                        text = s("+%d XP", "+%d خبرة").format(totalXpEarned),
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = AccentPurple,
                             fontWeight = FontWeight.Bold
                         )
                     )
                     Text(
-                        text = "From Achievements",
+                        text = s("From Achievements", "من الإنجازات"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             fontSize = 12.sp
@@ -379,7 +385,7 @@ private fun AchievementStatsBar(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "${(progress * 100).toInt()}% complete",
+                text = s("%d%% complete", "اكتمل %d%%").format((progress * 100).toInt()),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = themeTextDisabled,
                     fontSize = 11.sp
@@ -493,7 +499,7 @@ private fun AchievementGridCard(
 
                 // Achievement name
                 Text(
-                    text = achievement.title,
+                    text = achievement.displayTitle(),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = if (achievement.unlocked) themeTextPrimary else themeTextDisabled,
                         fontWeight = FontWeight.SemiBold,
@@ -508,7 +514,7 @@ private fun AchievementGridCard(
 
                 // XP reward
                 Text(
-                    text = "+${achievement.xpReward} XP",
+                    text = s("+%d XP", "+%d خبرة").format(achievement.xpReward),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = if (achievement.unlocked) AccentPurple else themeTextDisabled,
                         fontWeight = FontWeight.Bold,
@@ -600,7 +606,7 @@ private fun AchievementDetailDialog(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = achievement.title,
+                    text = achievement.displayTitle(),
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = if (achievement.unlocked) themeTextPrimary else themeTextDisabled,
                         fontWeight = FontWeight.Bold
@@ -615,7 +621,7 @@ private fun AchievementDetailDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = achievement.description,
+                    text = achievement.displayDescription(),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = themeTextSecondary
                     ),
@@ -646,7 +652,7 @@ private fun AchievementDetailDialog(
                             fontSize = 14.sp
                         )
                         Text(
-                            text = if (achievement.unlocked) "Unlocked" else "Locked",
+                            text = if (achievement.unlocked) s("Unlocked", "مفتوح") else s("Locked", "مُقفل"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = if (achievement.unlocked) AccentPrimary else themeTextDisabled,
                                 fontWeight = FontWeight.SemiBold
@@ -663,13 +669,13 @@ private fun AchievementDetailDialog(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "Reward:",
+                        text = s("Reward:", "المكافأة:"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary
                         )
                     )
                     Text(
-                        text = "+${achievement.xpReward} XP",
+                        text = s("+%d XP", "+%d خبرة").format(achievement.xpReward),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = AccentPurple,
                             fontWeight = FontWeight.Bold
@@ -681,7 +687,7 @@ private fun AchievementDetailDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "Close",
+                    text = s("Close", "إغلاق"),
                     color = AccentPrimary,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -721,7 +727,12 @@ class AchievementsListViewModel(
         viewModelScope.launch {
             try {
                 rewardRepository.observeUnlockedAchievements(userId).collect { unlocked ->
-                    val allWithState = Achievement.ALL_DEFINITIONS.map { def ->
+                    // v1.0.10 FIX — build the grid from RewardRepository's own
+                    // definitions: unlocked ids stored in Firestore are the
+                    // RewardRepository ids (money_saver_100, three_months, …).
+                    // Achievement.ALL_DEFINITIONS uses a DIFFERENT id set, so
+                    // every unlocked achievement silently rendered as locked.
+                    val allWithState = rewardRepository.getAchievements().map { def ->
                         def.copy(unlocked = unlocked.any { it.id == def.id })
                     }
                     _uiState.update {
@@ -738,7 +749,7 @@ class AchievementsListViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load achievements"
+                        errorMessage = s("Failed to load achievements", "فشل تحميل الإنجازات")
                     )
                 }
             }

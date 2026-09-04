@@ -77,6 +77,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import breathy.com.BreathyApplication
+import breathy.com.utils.s
 import breathy.com.data.models.Event
 import breathy.com.data.models.EventParticipant
 import breathy.com.data.repository.EventRepository
@@ -198,7 +199,7 @@ class EventsViewModel(
 
     fun loadEvents() {
         val uid = currentUserId ?: run {
-            _uiState.update { it.copy(isLoading = false, errorMessage = "Not authenticated") }
+            _uiState.update { it.copy(isLoading = false, errorMessage = s("Not authenticated", "غير مسجل الدخول")) }
             return
         }
 
@@ -236,7 +237,7 @@ class EventsViewModel(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = e.localizedMessage ?: "Failed to load events"
+                                errorMessage = e.localizedMessage ?: s("Failed to load events", "تعذر تحميل الفعاليات")
                             )
                         }
                     }
@@ -252,7 +253,10 @@ class EventsViewModel(
         val target = _uiState.value.events.firstOrNull { it.event.id == eventId }
         if (target?.isLockedByPremium == true) {
             _uiState.update {
-                it.copy(errorMessage = "This is an exclusive Premium event. Upgrade to Breathy Premium to join.")
+                it.copy(errorMessage = s(
+                    "This is an exclusive Premium event. Upgrade to Breathy Premium to join.",
+                    "هذه فعالية حصرية لمشتركي بريميوم. قم بالترقية إلى Breathy بريميوم للانضمام."
+                ))
             }
             return
         }
@@ -281,9 +285,12 @@ class EventsViewModel(
                         Timber.e(e, "Failed to join event: %s", eventId)
                         val message = when (e) {
                             is breathy.com.data.repository.InsufficientGoldException ->
-                                "Not enough Gold — entry costs 500 Gold, you have ${e.available}."
-                            is IllegalStateException -> e.message ?: "Failed to join event"
-                            else -> e.localizedMessage ?: "Failed to join event"
+                                s(
+                                    "Not enough Gold — entry costs 500 Gold, you have ${e.available}.",
+                                    "رصيد الذهب غير كافٍ — رسوم الدخول 500 ذهب، ولديك ${e.available}."
+                                )
+                            is IllegalStateException -> e.message ?: s("Failed to join event", "تعذر الانضمام إلى الفعالية")
+                            else -> e.localizedMessage ?: s("Failed to join event", "تعذر الانضمام إلى الفعالية")
                         }
                         _uiState.update { it.copy(joiningEventId = null, errorMessage = message) }
                     }
@@ -376,7 +383,7 @@ fun EventsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Events & Challenges",
+                        text = s("Events & Challenges", "الفعاليات والتحديات"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -505,7 +512,7 @@ private fun EventHeroBanner(
                     colors = CardDefaults.cardColors(containerColor = DeepForest)
                 ) {
                     Text(
-                        text = "COMING SOON",
+                        text = s("COMING SOON", "قريبًا"),
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = NaturalYellow,
@@ -520,14 +527,17 @@ private fun EventHeroBanner(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "Push-Up Challenge",
+                    text = s("Push-Up Challenge", "تحدي تمارين الضغط"),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
                 )
                 Text(
-                    text = "Compete with the community. Daily push-up check-ins, live event leaderboard, exclusive rewards.",
+                    text = s(
+                        "Compete with the community. Daily push-up check-ins, live event leaderboard, exclusive rewards.",
+                        "نافس المجتمع. تسجيل حضور يومي لتمارين الضغط، ولوحة صدارة مباشرة للفعالية، ومكافآت حصرية."
+                    ),
                     style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary)
                 )
                 Spacer(modifier = Modifier.height(6.dp))
@@ -540,7 +550,7 @@ private fun EventHeroBanner(
                         colors = CardDefaults.cardColors(containerColor = VeryLightSage)
                     ) {
                         Text(
-                            text = "🪙 Entry 500 Gold",
+                            text = s("🪙 Entry 500 Gold", "🪙 رسوم الدخول 500 ذهب"),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = GoldDeep,
@@ -553,7 +563,7 @@ private fun EventHeroBanner(
                         colors = CardDefaults.cardColors(containerColor = VeryLightSage)
                     ) {
                         Text(
-                            text = "Your balance: %,d".format(goldBalance),
+                            text = s("Your balance: %,d", "رصيدك: %,d").format(goldBalance),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = themeTextSecondary,
@@ -655,7 +665,7 @@ private fun EventCard(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Text(
-                            text = "✦ Premium",
+                            text = s("✦ Premium", "✦ بريميوم"),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = breathy.com.ui.theme.SoftSand,
@@ -674,7 +684,7 @@ private fun EventCard(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Text(
-                            text = "\u2705 Completed",
+                            text = s("\u2705 Completed", "\u2705 مكتمل"),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = AccentPrimary,
@@ -737,7 +747,7 @@ private fun EventCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Starts in ${days}d ${hours}h ${minutes}m",
+                            text = s("Starts in ${days}d ${hours}h ${minutes}m", "يبدأ بعد ${days}ي ${hours}س ${minutes}د"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = AccentPrimary,
                                 fontWeight = FontWeight.Bold
@@ -787,7 +797,7 @@ private fun EventCard(
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "${event.dailyRequired}x daily",
+                        text = s("${event.dailyRequired}x daily", "${event.dailyRequired}x يوميًا"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextDisabled,
                             fontSize = 11.sp
@@ -817,7 +827,7 @@ private fun EventCard(
                                 fontSize = 14.sp
                             )
                             Text(
-                                text = "1st: $firstPrize",
+                                text = s("1st: $firstPrize", "المركز الأول: $firstPrize"),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = AccentPrimary,
                                     fontWeight = FontWeight.SemiBold,
@@ -834,7 +844,7 @@ private fun EventCard(
                 if (eventWithStatus.isCompleted) {
                     // Already completed
                     Text(
-                        text = "Finished",
+                        text = s("Finished", "انتهت"),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = themeTextDisabled,
                             fontWeight = FontWeight.SemiBold
@@ -847,7 +857,7 @@ private fun EventCard(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Text(
-                            text = "\u2705 Joined",
+                            text = s("\u2705 Joined", "\u2705 انضممت"),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = AccentPrimary,
@@ -884,9 +894,9 @@ private fun EventCard(
                             }
                             Text(
                                 text = when {
-                                    isJoining -> "Joining..."
-                                    isPremium -> "Join · FREE 👑"
-                                    else -> "Join · $entryFee \uD83E\uDE99"
+                                    isJoining -> s("Joining...", "جارٍ الانضمام...")
+                                    isPremium -> s("Join · FREE 👑", "انضم · مجانًا 👑")
+                                    else -> s("Join · $entryFee \uD83E\uDE99", "انضم · $entryFee \uD83E\uDE99")
                                 },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
@@ -894,7 +904,10 @@ private fun EventCard(
                         }
                         if (!canAfford) {
                             Text(
-                                text = "Need ${(entryFee - goldBalance).coerceAtLeast(0)} more \uD83E\uDE99",
+                                text = s(
+                                    "Need ${(entryFee - goldBalance).coerceAtLeast(0)} more \uD83E\uDE99",
+                                    "تحتاج إلى ${(entryFee - goldBalance).coerceAtLeast(0)} \uD83E\uDE99 إضافية"
+                                ),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = themeTextSecondary,
                                     fontSize = 10.sp
@@ -903,7 +916,7 @@ private fun EventCard(
                             )
                         } else if (isPremium) {
                             Text(
-                                text = "Premium perk — free entry",
+                                text = s("Premium perk — free entry", "ميزة بريميوم — دخول مجاني"),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = AccentPrimary,
                                     fontSize = 10.sp,
@@ -934,7 +947,7 @@ private fun EventCard(
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
                             Text(
-                                text = "${days}d ${hours}h ${minutes}m",
+                                text = s("${days}d ${hours}h ${minutes}m", "${days}ي ${hours}س ${minutes}د"),
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     color = AccentPrimary,
@@ -945,7 +958,7 @@ private fun EventCard(
                         }
                     } else {
                         Text(
-                            text = "Coming Soon",
+                            text = s("Coming Soon", "قريبًا"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = themeTextDisabled
                             )
@@ -975,7 +988,7 @@ private fun EventsLoadingState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Loading events...",
+                text = s("Loading events...", "جارٍ تحميل الفعاليات..."),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
         }
@@ -990,9 +1003,12 @@ private fun EventsEmptyState(featured: Boolean = true) {
     ) {
         breathy.com.ui.components.BreathyEmptyState(
             icon = "\uD83C\uDFCB\uFE0F",
-            title = "Exclusive events are coming soon",
-            subtitle = "Compete, complete challenges, and earn rewards. " +
-                "Premium members get first access to every event."
+            title = s("Exclusive events are coming soon", "فعاليات حصرية قريبًا"),
+            subtitle = s(
+                "Compete, complete challenges, and earn rewards. " +
+                    "Premium members get first access to every event.",
+                "نافس وأكمل التحديات واحصل على مكافآت. يحصل أعضاء بريميوم على أولوية الوصول إلى كل فعالية."
+            )
         )
     }
 }
@@ -1015,7 +1031,7 @@ private fun EventsErrorState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Something went wrong",
+                text = s("Something went wrong", "حدث خطأ ما"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -1034,7 +1050,7 @@ private fun EventsErrorState(
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Text(
-                    text = "Try Again",
+                    text = s("Try Again", "حاول مجددًا"),
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                     color = themeBgPrimary,
                     fontWeight = FontWeight.Bold

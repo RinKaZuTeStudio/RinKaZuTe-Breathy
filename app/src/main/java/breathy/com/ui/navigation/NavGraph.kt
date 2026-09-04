@@ -71,6 +71,7 @@ import breathy.com.ui.profile.ProfileScreen
 import breathy.com.ui.subscription.PremiumPopup
 import breathy.com.ui.subscription.SubscriptionScreen
 import breathy.com.ui.theme.AccentPrimary
+import breathy.com.utils.s
 import com.google.firebase.auth.FirebaseAuth
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -133,12 +134,12 @@ private data class BottomNavItem(
     val unselectedIcon: ImageVector
 )
 
-private val bottomNavItems = listOf(
-    BottomNavItem(BreathyRoutes.HOME, "Home", Icons.Filled.Home, Icons.Outlined.Home),
-    BottomNavItem(BreathyRoutes.COMMUNITY, "Community", Icons.Filled.People, Icons.Outlined.People),
-    BottomNavItem(BreathyRoutes.EVENTS, "Events", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth),
-    BottomNavItem(BreathyRoutes.LEADERBOARD, "Leaderboard", Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents),
-    BottomNavItem(BreathyRoutes.PROFILE, "Profile", Icons.Filled.Person, Icons.Outlined.Person)
+private fun bottomNavItems() = listOf(
+    BottomNavItem(BreathyRoutes.HOME, s("Home", "الرئيسية"), Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem(BreathyRoutes.COMMUNITY, s("Community", "المجتمع"), Icons.Filled.People, Icons.Outlined.People),
+    BottomNavItem(BreathyRoutes.EVENTS, s("Events", "الفعاليات"), Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth),
+    BottomNavItem(BreathyRoutes.LEADERBOARD, s("Leaderboard", "لوحة الصدارة"), Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents),
+    BottomNavItem(BreathyRoutes.PROFILE, s("Profile", "الملف الشخصي"), Icons.Filled.Person, Icons.Outlined.Person)
 )
 
 private val noBottomBarRoutes = setOf(
@@ -612,7 +613,7 @@ private fun BreathyBottomBar(
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
-        bottomNavItems.forEach { item ->
+        bottomNavItems().forEach { item ->
             val isSelected = currentDestination?.hierarchy?.any {
                 it.route == item.route
             } == true

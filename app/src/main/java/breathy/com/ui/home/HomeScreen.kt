@@ -95,6 +95,7 @@ import breathy.com.data.models.CopingMethod
 import breathy.com.ui.theme.AccentOrange
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
+import breathy.com.utils.s
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -154,19 +155,19 @@ fun HomeScreen(
             when (event) {
                 is HomeSingleEvent.ShowDailyReward -> {
                     snackbarHostState.showSnackbar(
-                        "🎉 Reward Claimed! +${event.coins} coins",
+                        s("🎉 Reward Claimed! +%d coins", "🎉 تم استلام المكافأة! +%d عملة").format(event.coins),
                         duration = SnackbarDuration.Short
                     )
                 }
                 is HomeSingleEvent.ShowCravingXP -> {
                     snackbarHostState.showSnackbar(
-                        "💪 +${event.xp} XP earned!",
+                        s("💪 +%d XP earned!", "💪 ربحت %d نقطة XP!").format(event.xp),
                         duration = SnackbarDuration.Short
                     )
                 }
                 is HomeSingleEvent.ShowAchievementUnlock -> {
                     snackbarHostState.showSnackbar(
-                        "🏆 Achievement: ${event.achievement.title}!",
+                        s("🏆 Achievement: %s!", "🏆 إنجاز جديد: %s!").format(event.achievement.displayTitle()),
                         duration = SnackbarDuration.Long
                     )
                 }
@@ -496,7 +497,7 @@ fun HomeScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Loading your progress...",
+                        text = s("Loading your progress...", "جارٍ تحميل تقدّمك..."),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -528,7 +529,7 @@ fun HomeScreen(
                         shape = RoundedCornerShape(24.dp)
                     ) {
                         Text(
-                            text = "Retry",
+                            text = s("Retry", "إعادة المحاولة"),
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                             color = MaterialTheme.colorScheme.background,
                             fontWeight = FontWeight.Bold
@@ -595,7 +596,7 @@ private fun TopBar(
                     )
                 )
                 Text(
-                    text = nickname.ifBlank { "there" },
+                    text = nickname.ifBlank { s("there", "صديقي") },
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold
@@ -698,7 +699,7 @@ private fun FeaturedEventCard(
                     colors = CardDefaults.cardColors(containerColor = DeepForest)
                 ) {
                     Text(
-                        text = "COMING SOON",
+                        text = s("COMING SOON", "قريبًا"),
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = NaturalYellow,
@@ -710,7 +711,7 @@ private fun FeaturedEventCard(
             }
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
-                    text = "Push-Up Challenge",
+                    text = s("Push-Up Challenge", "تحدي تمارين الضغط"),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -718,7 +719,7 @@ private fun FeaturedEventCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Build your streak, one push-up at a time. Daily check-ins, real progress, community glory.",
+                    text = s("Build your streak, one push-up at a time. Daily check-ins, real progress, community glory.", "ابنِ سلسلتك، تمرين ضغط واحد في كل مرة. تسجيل يومي، تقدّم حقيقي، ومنافسة ودية مع المجتمع."),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
@@ -730,7 +731,7 @@ private fun FeaturedEventCard(
                     Text(text = "🏆", fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Entry 500 Gold · Exclusive rewards for top performers",
+                        text = s("Entry 500 Gold · Exclusive rewards for top performers", "المشاركة 500 ذهب · مكافآت حصرية لأفضل المشاركين"),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = GoldDeep,
                             fontWeight = FontWeight.SemiBold
@@ -746,10 +747,10 @@ private fun FeaturedEventCard(
 private fun getGreeting(): String {
     val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
     return when (hour) {
-        in 5..11 -> "Good morning ☀️"
-        in 12..16 -> "Good afternoon 🌤️"
-        in 17..20 -> "Good evening 🌅"
-        else -> "Good night 🌙"
+        in 5..11 -> s("Good morning ☀️", "صباح الخير ☀️")
+        in 12..16 -> s("Good afternoon 🌤️", "طاب يومك 🌤️")
+        in 17..20 -> s("Good evening 🌅", "مساء الخير 🌅")
+        else -> s("Good night 🌙", "ليلة سعيدة 🌙")
     }
 }
 
@@ -815,7 +816,7 @@ private fun HeroStatCard(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Days Smoke-Free",
+                    text = s("Days Smoke-Free", "أيام بدون تدخين"),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp
@@ -852,7 +853,7 @@ private fun HeroStatCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Level $level",
+                            text = s("Level %d", "المستوى %d").format(level),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = AccentPurple,
                                 fontWeight = FontWeight.SemiBold,
@@ -860,7 +861,7 @@ private fun HeroStatCard(
                             )
                         )
                         Text(
-                            text = "$xpForNextLevel XP to next",
+                            text = s("%d XP to next", "%d نقطة XP للمستوى التالي").format(xpForNextLevel),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f),
                                 fontSize = 11.sp
@@ -929,14 +930,14 @@ private fun DailyRewardBanner(
                 )
                 Column {
                     Text(
-                        text = "Claim your daily reward!",
+                        text = s("Claim your daily reward!", "استلم مكافأتك اليومية!"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
-                        text = "Tap to earn coins + XP",
+                        text = s("Tap to earn coins + XP", "اضغط لتربح عملات + XP"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
@@ -951,7 +952,7 @@ private fun DailyRewardBanner(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Text(
-                    text = "Claim",
+                    text = s("Claim", "استلم"),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = MaterialTheme.colorScheme.background,
@@ -990,14 +991,14 @@ private fun DailyRewardCountdown(
             )
             Column {
                 Text(
-                    text = "Daily reward claimed!",
+                    text = s("Daily reward claimed!", "تم استلام المكافأة اليومية!"),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
                 Text(
-                    text = "Next reward in $countdownText",
+                    text = s("Next reward in %s", "المكافأة التالية بعد %s").format(countdownText),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
@@ -1040,7 +1041,7 @@ private fun CravingStreakCard(
                 )
                 Column {
                     Text(
-                        text = "$successfulCount cravings defeated",
+                        text = s("%d cravings defeated", "تغلبت على %d من رغبات التدخين").format(successfulCount),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
@@ -1122,7 +1123,7 @@ private fun CravingFAB(
                 Text(text = "🔥", fontSize = 20.sp)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Breathe Through a Craving",
+                    text = s("Breathe Through a Craving", "تنفّس لتجاوز الرغبة"),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1157,7 +1158,7 @@ private fun ConfettiMessage(
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Text(
-                text = "🎉 Reward Claimed! +$coinsAwarded coins",
+                text = s("🎉 Reward Claimed! +%d coins", "🎉 تم استلام المكافأة! +%d عملة").format(coinsAwarded),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.titleSmall.copy(
                     color = AccentPrimary,

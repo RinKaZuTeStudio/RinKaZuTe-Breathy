@@ -351,7 +351,7 @@ fun ProfileScreen(
                     CircularProgressIndicator(color = themeAccentPrimary)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Loading profile...",
+                        text = s("Loading profile...", "جارٍ تحميل الملف الشخصي..."),
                         style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
@@ -368,7 +368,7 @@ fun ProfileScreen(
             onDismissRequest = { showEditNicknameDialog = false },
             title = {
                 Text(
-                    text = "Edit Nickname",
+                    text = s("Edit Nickname", "تعديل الاسم المستعار"),
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
@@ -378,9 +378,9 @@ fun ProfileScreen(
                     value = nicknameText,
                     onValueChange = {
                         nicknameText = it
-                        nicknameError = if (it.isBlank()) "Nickname cannot be empty" else null
+                        nicknameError = if (it.isBlank()) s("Nickname cannot be empty", "لا يمكن ترك الاسم المستعار فارغاً") else null
                     },
-                    label = { Text("Nickname") },
+                    label = { Text(s("Nickname", "الاسم المستعار")) },
                     singleLine = true,
                     isError = nicknameError != null,
                     supportingText = nicknameError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -406,12 +406,12 @@ fun ProfileScreen(
                     },
                     enabled = nicknameText.isNotBlank()
                 ) {
-                    Text(text = "Save", color = themeAccentPrimary, fontWeight = FontWeight.Bold)
+                    Text(text = s("Save", "حفظ"), color = themeAccentPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditNicknameDialog = false }) {
-                    Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = s("Cancel", "إلغاء"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface
@@ -429,7 +429,7 @@ fun ProfileScreen(
             onDismissRequest = { showEditAgeDialog = false },
             title = {
                 Text(
-                    text = "Edit Age",
+                    text = s("Edit Age", "تعديل العمر"),
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
@@ -442,12 +442,12 @@ fun ProfileScreen(
                         val age = it.toIntOrNull()
                         ageError = when {
                             it.isBlank() -> null // optional field
-                            age == null -> "Enter a valid number"
-                            age < 13 || age > 120 -> "Age must be 13–120"
+                            age == null -> s("Enter a valid number", "أدخل رقماً صحيحاً")
+                            age < 13 || age > 120 -> s("Age must be 13–120", "يجب أن يكون العمر بين 13 و120")
                             else -> null
                         }
                     },
-                    label = { Text("Age (optional)") },
+                    label = { Text(s("Age (optional)", "العمر (اختياري)")) },
                     singleLine = true,
                     isError = ageError != null,
                     supportingText = ageError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -472,12 +472,12 @@ fun ProfileScreen(
                     },
                     enabled = ageError == null
                 ) {
-                    Text(text = "Save", color = themeAccentPrimary, fontWeight = FontWeight.Bold)
+                    Text(text = s("Save", "حفظ"), color = themeAccentPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditAgeDialog = false }) {
-                    Text(text = "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = s("Cancel", "إلغاء"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface
@@ -670,7 +670,7 @@ private fun ProfileHeader(
         ) {
             // v1.0.9 — subscriber's own name glows neon (Premium Glow Text).
             breathy.com.ui.components.PremiumGlowText(
-                text = nickname.ifBlank { "Quitter" },
+                text = nickname.ifBlank { s("Quitter", "مُقلّع") },
                 enabled = isPremium,
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold
@@ -730,7 +730,7 @@ private fun ProfileHeader(
                 onClick = onChangeFrame
             ) {
                 Text(
-                    text = "Change frame",
+                    text = s("Change frame", "تغيير الإطار"),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -748,7 +748,7 @@ private fun ProfileHeader(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "Age: $age",
+                    text = s("Age: %d", "العمر: %d").format(age),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
@@ -779,7 +779,7 @@ private fun ProfileHeader(
                 onClick = onEditAge
             ) {
                 Text(
-                    text = "+ Add age",
+                    text = s("+ Add age", "+ إضافة العمر"),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = AccentPrimary,
@@ -800,14 +800,14 @@ private fun ProfileHeader(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "XP: $xp",
+                    text = s("XP: %d", "خبرة: %d").format(xp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = AccentPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
                 Text(
-                    text = "Level $level",
+                    text = s("Level %d", "المستوى %d").format(level),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = AccentPurple,
                         fontWeight = FontWeight.SemiBold
@@ -872,14 +872,14 @@ private fun GoldSection(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Gold",
+                    text = s("Gold", "ذهب"),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                 )
                 Text(
-                    text = "Earned from check-ins, achievements & events",
+                    text = s("Earned from check-ins, achievements & events", "مكتسب من التسجيلات اليومية والإنجازات والفعاليات"),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -895,7 +895,7 @@ private fun GoldSection(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "History",
+                        text = s("History", "السجل"),
                         style = MaterialTheme.typography.labelSmall.copy(color = themeAccentPrimary)
                     )
                     Icon(
@@ -922,21 +922,21 @@ private fun ProfileStatsSection(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         StatMiniCard(
-            label = "Smoke Free",
-            value = if (daysSmokeFree == 0) "Day 1" else "${daysSmokeFree}d",
+            label = s("Smoke Free", "بدون تدخين"),
+            value = if (daysSmokeFree == 0) s("Day 1", "اليوم 1") else s("%dd", "%d يوم").format(daysSmokeFree),
             icon = "🌬️",
             accentColor = themeAccentPrimary,
             modifier = Modifier.weight(1f)
         )
         StatMiniCard(
-            label = "Saved",
+            label = s("Saved", "الموفّرة"),
             value = formatMoney(moneySaved),
             icon = "💰",
             accentColor = themeAccentPrimary,
             modifier = Modifier.weight(1f)
         )
         StatMiniCard(
-            label = "Level",
+            label = s("Level", "المستوى"),
             value = "$level",
             icon = "⭐",
             accentColor = themeAccentPurple,
@@ -1017,14 +1017,14 @@ private fun QuitDateSection(
                 Text(text = "📅", fontSize = 20.sp)
                 Column {
                     Text(
-                        text = "Quit Date",
+                        text = s("Quit Date", "تاريخ الإقلاع"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     )
                     Text(
-                        text = quitDate?.let { formatQuitDate(it) } ?: "Not set",
+                        text = quitDate?.let { formatQuitDate(it) } ?: s("Not set", "غير محدد"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
@@ -1051,7 +1051,7 @@ private fun QuitDateSection(
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "Change",
+                        text = s("Change", "تغيير"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeAccentPrimary,
                             fontWeight = FontWeight.SemiBold,
@@ -1083,7 +1083,7 @@ private fun AchievementsPreviewSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Achievements",
+                text = s("Achievements", "الإنجازات"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
@@ -1096,7 +1096,7 @@ private fun AchievementsPreviewSection(
                 onClick = onViewAll
             ) {
                 Text(
-                    text = "View All ($lockedCount locked)",
+                    text = s("View All (%d locked)", "عرض الكل (%d مُقفل)").format(lockedCount),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = themeAccentPrimary,
@@ -1117,7 +1117,7 @@ private fun AchievementsPreviewSection(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "Keep going to unlock your first achievement! 🏆",
+                    text = s("Keep going to unlock your first achievement! 🏆", "واصل التقدم لفتح إنجازك الأول! 🏆"),
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1152,7 +1152,7 @@ private fun AchievementChip(achievement: Achievement) {
             Text(text = achievement.icon, fontSize = 24.sp)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = achievement.title,
+                text = achievement.displayTitle(),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = themeAccentPrimary,
                     fontWeight = FontWeight.SemiBold,
@@ -1201,7 +1201,7 @@ private fun SettingsSection(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "Settings",
+                    text = s("Settings", "الإعدادات"),
                     style = MaterialTheme.typography.titleSmall.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold
@@ -1214,8 +1214,8 @@ private fun SettingsSection(
             // Notifications toggle
             SettingsToggleRow(
                 icon = Icons.Default.Notifications,
-                label = "Notifications",
-                description = "Reminders and motivation",
+                label = s("Notifications", "الإشعارات"),
+                description = s("Reminders and motivation", "تذكيرات وتحفيز"),
                 checked = notificationsEnabled,
                 onCheckedChange = onNotificationsToggle
             )
@@ -1225,8 +1225,8 @@ private fun SettingsSection(
             // Privacy toggle
             SettingsToggleRow(
                 icon = Icons.Default.PrivacyTip,
-                label = "Private Profile",
-                description = "Hide from leaderboard",
+                label = s("Private Profile", "ملف شخصي خاص"),
+                description = s("Hide from leaderboard", "إخفاء من لوحة الصدارة"),
                 checked = privacyEnabled,
                 onCheckedChange = onPrivacyToggle
             )
@@ -1330,14 +1330,14 @@ private fun SettingsSection(
                     )
                     Column {
                         Text(
-                            text = "Friends",
+                            text = s("Friends", "الأصدقاء"),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onBackground,
                                 fontWeight = FontWeight.Medium
                             )
                         )
                         Text(
-                            text = "View and manage friends",
+                            text = s("View and manage friends", "عرض وإدارة الأصدقاء"),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp
@@ -1353,7 +1353,7 @@ private fun SettingsSection(
                     onClick = onNavigateToFriends
                 ) {
                     Text(
-                        text = "View",
+                        text = s("View", "عرض"),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeAccentPrimary,
@@ -1388,14 +1388,14 @@ private fun SettingsSection(
                     )
                     Column {
                         Text(
-                            text = "Payment / Payout Setup",
+                            text = s("Payment / Payout Setup", "إعداد الدفع والسحب"),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onBackground,
                                 fontWeight = FontWeight.Medium
                             )
                         )
                         Text(
-                            text = "PayPal email for prize payouts",
+                            text = s("PayPal email for prize payouts", "بريد PayPal لاستلام جوائزك"),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp
@@ -1514,14 +1514,14 @@ private fun SubscriptionStatusSection(
                 )
                 Column {
                     Text(
-                        text = if (subscription?.isActive() == true) "Breathy Premium ✦" else "Breathy Premium",
+                        text = if (subscription?.isActive() == true) s("Breathy Premium ✦", "Breathy بريميوم ✦") else s("Breathy Premium", "Breathy بريميوم"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
-                        text = if (subscription?.isActive() == true) "Ad-free + exclusive events — active" else "Ad-free experience + exclusive events",
+                        text = if (subscription?.isActive() == true) s("Ad-free + exclusive events — active", "بدون إعلانات + فعاليات حصرية — مُفعّل") else s("Ad-free experience + exclusive events", "تجربة بدون إعلانات + فعاليات حصرية"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
@@ -1576,7 +1576,7 @@ private fun ActionButtonsSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Sign Out",
+                    text = s("Sign Out", "تسجيل الخروج"),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = AccentWarning,
                         fontWeight = FontWeight.SemiBold
@@ -1608,14 +1608,14 @@ private fun ActionButtonsSection(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Account & Privacy",
+                        text = s("Account & Privacy", "الحساب والخصوصية"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Medium
                         )
                     )
                     Text(
-                        text = "How your data is stored and protected",
+                        text = s("How your data is stored and protected", "كيف تُخزَّن بياناتك وكيف تُحمى"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1654,7 +1654,7 @@ private fun AccountPrivacySheet(
                 .padding(bottom = 28.dp)
         ) {
             Text(
-                text = "Account & Privacy",
+                text = s("Account & Privacy", "الحساب والخصوصية"),
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -1662,9 +1662,14 @@ private fun AccountPrivacySheet(
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Your recovery data (streaks, milestones, achievements) belongs to you. " +
-                    "Signing out keeps your data safe on this account. You can sign back in " +
-                    "at any time with the same Google account.",
+                text = s(
+                    "Your recovery data (streaks, milestones, achievements) belongs to you. " +
+                        "Signing out keeps your data safe on this account. You can sign back in " +
+                        "at any time with the same Google account.",
+                    "بيانات تعافيك (سلسلتك، محطاتك، إنجازاتك) ملك لك. " +
+                        "تسجيل الخروج يحفظ بياناتك بأمان على حسابك، ويمكنك العودة " +
+                        "في أي وقت بالحساب نفسه عبر Google."
+                ),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1727,7 +1732,7 @@ class ProfileViewModel(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     private val uid: String
-        get() = auth.currentUser?.uid ?: throw IllegalStateException("Not authenticated")
+        get() = auth.currentUser?.uid ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
 
     init {
         // Read saved preferences to initialize state correctly
@@ -1774,13 +1779,13 @@ class ProfileViewModel(
                 _uiState.update { it.copy(justPurchasedFrame = frame, errorMessage = null) }
             } catch (e: breathy.com.data.repository.InsufficientGoldException) {
                 _uiState.update {
-                    it.copy(errorMessage = "Not enough Gold — the ${frame.label} frame costs ${frame.goldPrice} Gold.")
+                    it.copy(errorMessage = s("Not enough Gold — the ${frame.displayLabel()} frame costs ${frame.goldPrice} Gold.", "ذهب غير كافٍ — إطار ${frame.displayLabel()} يكلف ${frame.goldPrice} ذهباً."))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to purchase frame")
-                _uiState.update { it.copy(errorMessage = "Purchase failed. Please try again.") }
+                _uiState.update { it.copy(errorMessage = s("Purchase failed. Please try again.", "فشل الشراء. حاول مجدداً.")) }
             }
         }
     }
@@ -1841,8 +1846,8 @@ class ProfileViewModel(
                 _uiState.update {
                     it.copy(
                         errorMessage = s(
-                            "Not enough Gold — the ${picture.label} picture costs ${picture.goldPrice} Gold.",
-                            "ذهب غير كافٍ — صورة ${picture.label} تكلف ${picture.goldPrice} ذهباً."
+                            "Not enough Gold — the ${picture.displayLabel()} picture costs ${picture.goldPrice} Gold.",
+                            "ذهب غير كافٍ — صورة ${picture.displayLabel()} تكلف ${picture.goldPrice} ذهباً."
                         )
                     )
                 }
@@ -1914,7 +1919,7 @@ class ProfileViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update avatar frame")
                 _uiState.update {
-                    it.copy(errorMessage = "This frame isn't unlocked yet")
+                    it.copy(errorMessage = s("This frame isn't unlocked yet", "هذا الإطار غير مفتوح بعد"))
                 }
             }
         }
@@ -1922,7 +1927,7 @@ class ProfileViewModel(
 
     private fun loadProfile() {
         val userId = auth.currentUser?.uid ?: run {
-            _uiState.update { it.copy(isLoading = false, errorMessage = "Not authenticated") }
+            _uiState.update { it.copy(isLoading = false, errorMessage = s("Not authenticated", "غير مسجّل الدخول")) }
             return
         }
         viewModelScope.launch {
@@ -1940,7 +1945,7 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to load profile")
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load profile") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = s("Failed to load profile", "فشل تحميل الملف الشخصي")) }
             }
         }
     }
@@ -1950,7 +1955,9 @@ class ProfileViewModel(
         viewModelScope.launch {
             try {
                 rewardRepository.observeUnlockedAchievements(userId).collect { unlocked ->
-                    val allWithState = Achievement.ALL_DEFINITIONS.map { def ->
+                    // v1.0.10 FIX — use RewardRepository definitions so the
+                    // unlocked ids (stored in Firestore) actually match.
+                    val allWithState = rewardRepository.getAchievements().map { def ->
                         def.copy(unlocked = unlocked.any { it.id == def.id })
                     }
                     _uiState.update { it.copy(achievements = allWithState) }
@@ -1989,7 +1996,7 @@ class ProfileViewModel(
                 // Check nickname uniqueness before updating
                 val isAvailable = userRepository.isNicknameAvailable(nickname, excludeUserId = userId)
                 if (!isAvailable) {
-                    _uiState.update { it.copy(errorMessage = "This nickname is already taken by another user.") }
+                    _uiState.update { it.copy(errorMessage = s("This nickname is already taken by another user.", "هذا الاسم المستعار محجوز لمستخدم آخر.")) }
                     return@launch
                 }
                 userRepository.updateUserFields(userId, mapOf("nickname" to nickname))
@@ -1999,7 +2006,7 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update nickname")
-                _uiState.update { it.copy(errorMessage = "Failed to update nickname") }
+                _uiState.update { it.copy(errorMessage = s("Failed to update nickname", "فشل تحديث الاسم المستعار")) }
             }
         }
     }
@@ -2015,7 +2022,7 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update age")
-                _uiState.update { it.copy(errorMessage = "Failed to update age") }
+                _uiState.update { it.copy(errorMessage = s("Failed to update age", "فشل تحديث العمر")) }
             }
         }
     }
@@ -2031,7 +2038,7 @@ class ProfileViewModel(
                 throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to update quit date")
-                _uiState.update { it.copy(errorMessage = "Failed to update quit date") }
+                _uiState.update { it.copy(errorMessage = s("Failed to update quit date", "فشل تحديث تاريخ الإقلاع")) }
             }
         }
     }
@@ -2059,7 +2066,7 @@ class ProfileViewModel(
             } catch (e: Exception) {
                 _uiState.update { it.copy(isPhotoUploading = false) }
                 Timber.e(e, "Failed to update photo")
-                _uiState.update { it.copy(errorMessage = "Failed to update photo") }
+                _uiState.update { it.copy(errorMessage = s("Failed to update photo", "فشل تحديث الصورة")) }
             }
         }
     }
@@ -2346,7 +2353,7 @@ private fun ProfilePictureCard(
         Box(contentAlignment = Alignment.Center) {
             Image(
                 painter = androidx.compose.ui.res.painterResource(pictureDrawable(picture)),
-                contentDescription = picture.label,
+                contentDescription = picture.displayLabel(),
                 modifier = Modifier
                     .size(84.dp)
                     .clip(RoundedCornerShape(14.dp)),
@@ -2371,7 +2378,7 @@ private fun ProfilePictureCard(
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = picture.label,
+            text = picture.displayLabel(),
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
@@ -2539,14 +2546,14 @@ private fun FrameCard(
                 frame = frame,
                 rankTier = breathy.com.data.models.RankTier.forLevel(level),
                 size = 52.dp,
-                contentDescription = frame.label
+                contentDescription = frame.displayLabel()
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = frame.label,
+            text = frame.displayLabel(),
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
@@ -2591,7 +2598,17 @@ private fun FrameCard(
             )
             Spacer(modifier = Modifier.width(3.dp))
             Text(
-                text = frame.rarity.label.uppercase(),
+                text = s(
+                    frame.rarity.displayLabel(),
+                    when (frame.rarity) {
+                        breathy.com.data.models.FrameRarity.COMMON -> "شائع"
+                        breathy.com.data.models.FrameRarity.UNCOMMON -> "غير شائع"
+                        breathy.com.data.models.FrameRarity.RARE -> "نادر"
+                        breathy.com.data.models.FrameRarity.EPIC -> "ملحمي"
+                        breathy.com.data.models.FrameRarity.LEGENDARY -> "أسطوري"
+                        breathy.com.data.models.FrameRarity.PREMIUM -> "بريميوم"
+                    }
+                ).uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontSize = 8.sp,
                     letterSpacing = 1.sp,
@@ -2603,15 +2620,15 @@ private fun FrameCard(
 
         Text(
             text = when {
-                unlocked -> if (isSelected) "Equipped" else "Owned"
-                frame.goldPrice != null -> "${frame.goldPrice} Gold"
-                frame == breathy.com.data.models.AvatarFrame.NATURE -> "Day 7"
-                frame == breathy.com.data.models.AvatarFrame.LEAF -> "Day 30"
-                frame == breathy.com.data.models.AvatarFrame.RANK -> "Level 9 · Tree"
-                frame == breathy.com.data.models.AvatarFrame.PREMIUM -> "Premium"
-                frame == breathy.com.data.models.AvatarFrame.EVENT -> "Win an event"
-                frame == breathy.com.data.models.AvatarFrame.ACHIEVEMENT -> "Any achievement"
-                else -> "Locked"
+                unlocked -> if (isSelected) s("Equipped", "مُستخدم") else s("Owned", "مملوك")
+                frame.goldPrice != null -> s("%d Gold", "%d ذهب").format(frame.goldPrice)
+                frame == breathy.com.data.models.AvatarFrame.NATURE -> s("Day 7", "اليوم 7")
+                frame == breathy.com.data.models.AvatarFrame.LEAF -> s("Day 30", "اليوم 30")
+                frame == breathy.com.data.models.AvatarFrame.RANK -> s("Level 9 · Tree", "المستوى 9 · شجرة")
+                frame == breathy.com.data.models.AvatarFrame.PREMIUM -> s("Premium", "بريميوم")
+                frame == breathy.com.data.models.AvatarFrame.EVENT -> s("Win an event", "افز بفعالية")
+                frame == breathy.com.data.models.AvatarFrame.ACHIEVEMENT -> s("Any achievement", "أي إنجاز")
+                else -> s("Locked", "مُقفل")
             },
             style = MaterialTheme.typography.labelSmall,
             color = if (unlocked) MaterialTheme.colorScheme.primary
@@ -2634,13 +2651,13 @@ private fun FrameCard(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                 modifier = Modifier.semantics {
                     contentDescription = if (canAfford)
-                        "Buy ${frame.label} frame for ${frame.goldPrice} Gold"
+                        "Buy ${frame.displayLabel()} frame for ${frame.goldPrice} Gold"
                     else
-                        "${frame.label} frame costs ${frame.goldPrice} Gold, you have $goldBalance"
+                        "${frame.displayLabel()} frame costs ${frame.goldPrice} Gold, you have $goldBalance"
                 }
             ) {
                 Text(
-                    text = "🪙 Buy",
+                    text = "🪙 " + s("Buy", "اشترِ"),
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                     maxLines = 1
                 )

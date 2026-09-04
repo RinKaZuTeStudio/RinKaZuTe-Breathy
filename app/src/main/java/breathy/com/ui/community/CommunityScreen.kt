@@ -72,6 +72,7 @@ import breathy.com.data.repository.StoryRepository
 import breathy.com.ui.navigation.BreathyRoutes
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentSecondary
+import breathy.com.utils.s
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -213,7 +214,7 @@ private fun CommunityTopBar(onNavigateToFriends: () -> Unit = {}) {
     TopAppBar(
         title = {
             Text(
-                text = "Community",
+                text = s("Community", "المجتمع"),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -258,7 +259,7 @@ private fun SearchBar(
         },
         placeholder = {
             Text(
-                text = "Search stories or users...",
+                text = s("Search stories or users...", "ابحث في القصص أو المستخدمين..."),
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
             )
         },
@@ -382,7 +383,7 @@ private fun StoryList(
                 if (!uiState.hasMore && uiState.stories.isNotEmpty()) {
                     item {
                         Text(
-                            text = "You've reached the end",
+                            text = s("You've reached the end", "وصلت إلى النهاية"),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
@@ -442,7 +443,7 @@ private fun EmptyState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = if (hasSearch) "No stories found" else "No stories yet",
+                text = if (hasSearch) s("No stories found", "لا توجد نتائج") else s("No stories yet", "لا توجد قصص بعد"),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -450,9 +451,9 @@ private fun EmptyState(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = if (hasSearch)
-                    "Try different keywords"
+                    s("Try different keywords", "جرّب كلمات بحث مختلفة")
                 else
-                    "Be the first to share your quit-smoking journey!",
+                    s("Be the first to share your quit-smoking journey!", "كن أول من يشارك رحلته للإقلاع عن التدخين!"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -478,7 +479,7 @@ private fun EmptyState(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Share Your Story",
+                        text = s("Share Your Story", "شارك قصتك"),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -508,7 +509,7 @@ private fun ErrorState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Something went wrong",
+                text = s("Something went wrong", "حدث خطأ ما"),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -540,7 +541,7 @@ private fun ErrorState(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Try Again",
+                    text = s("Try Again", "حاول مجددًا"),
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -612,7 +613,7 @@ class CommunityViewModel(
                         Timber.e(e, "Failed to load stories")
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = e.localizedMessage ?: "Failed to load stories"
+                            error = e.localizedMessage ?: s("Failed to load stories", "تعذر تحميل القصص")
                         )
                     }
                 }
@@ -677,7 +678,7 @@ class CommunityViewModel(
                         Timber.e(e, "Failed to refresh stories")
                         _uiState.value = _uiState.value.copy(
                             isRefreshing = false,
-                            error = e.localizedMessage ?: "Failed to refresh"
+                            error = e.localizedMessage ?: s("Failed to refresh", "تعذر التحديث")
                         )
                     }
                 }

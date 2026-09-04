@@ -100,6 +100,7 @@ import breathy.com.BreathyApplication
 import breathy.com.data.models.PublicProfile
 import breathy.com.data.repository.EventRepository
 import breathy.com.data.repository.UserRepository
+import breathy.com.utils.s
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
@@ -210,7 +211,7 @@ class LeaderboardViewModel(
 
     fun loadLeaderboard() {
         val uid = currentUserId ?: run {
-            _uiState.update { it.copy(isLoading = false, errorMessage = "Not authenticated") }
+            _uiState.update { it.copy(isLoading = false, errorMessage = s("Not authenticated", "غير مسجل الدخول")) }
             return
         }
 
@@ -294,7 +295,7 @@ class LeaderboardViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Failed to load leaderboard")
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = "Failed to load leaderboard: ${e.message}")
+                    it.copy(isLoading = false, errorMessage = s("Failed to load leaderboard: ${e.message}", "فشل تحميل قائمة المتصدرين: ${e.message}"))
                 }
             }
         }
@@ -448,14 +449,14 @@ fun LeaderboardScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Leaderboard",
+                            text = s("Leaderboard", "المتصدرون"),
                             fontWeight = FontWeight.Bold,
                             color = themeTextPrimary
                         )
                         // REAL member count — calculated from actual accounts.
                         if (uiState.memberCount > 0) {
                             Text(
-                                text = "%,d member%s".format(
+                                text = s("%,d member%s", "%,d عضو").format(
                                     uiState.memberCount,
                                     if (uiState.memberCount == 1) "" else "s"
                                 ),
@@ -502,9 +503,10 @@ fun LeaderboardScreen(
                 uiState.entries.isEmpty() && !uiState.isLoading -> {
                     // Polished empty state — real users only, never fake entries.
                     breathy.com.ui.components.BreathyEmptyState(
-                        title = "Your community is just getting started",
-                        subtitle = "Be one of the first to make your mark. " +
-                            "Earn XP to appear on the board.",
+                        title = s("Your community is just getting started", "مجتمعك بدأ للتو"),
+                        subtitle = s("Be one of the first to make your mark. " +
+                            "Earn XP to appear on the board.", "كن من أوائل من يتركون أثرهم. " +
+                            "اجمع نقاط الخبرة لتظهر في القائمة."),
                         icon = "\uD83C\uDF3F"
                     )
                 }
@@ -570,9 +572,9 @@ fun LeaderboardScreen(
                             item(key = "others_header") {
                                 Text(
                                     text = when (uiState.selectedPeriod) {
-                                        breathy.com.data.models.LeaderboardPeriod.WEEKLY -> "WEEKLY RANKINGS"
-                                        breathy.com.data.models.LeaderboardPeriod.MONTHLY -> "MONTHLY RANKINGS"
-                                        breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> "ALL RANKINGS"
+                                        breathy.com.data.models.LeaderboardPeriod.WEEKLY -> s("WEEKLY RANKINGS", "ترتيب أسبوعي")
+                                        breathy.com.data.models.LeaderboardPeriod.MONTHLY -> s("MONTHLY RANKINGS", "ترتيب شهري")
+                                        breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> s("ALL RANKINGS", "كل الترتيبات")
                                     },
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = themeTextSecondary,
@@ -600,7 +602,7 @@ fun LeaderboardScreen(
                         } else if (uiState.entries.size in 1..3) {
                             item(key = "podium_hint") {
                                 Text(
-                                    text = "More ranks join as the community grows",
+                                    text = s("More ranks join as the community grows", "المزيد من المتصدرين مع نمو المجتمع"),
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = themeTextSecondary
                                     ),
@@ -658,8 +660,8 @@ private fun YourPositionPanel(
                 .fillMaxWidth()
                 .semantics {
                     contentDescription = entry?.let {
-                        "Your position ${it.rank}, score ${it.xp} XP"
-                    } ?: "You are not ranked yet"
+                        s("Your position ${it.rank}, score ${it.xp} XP", "مركزك ${it.rank}، بنتيجة ${it.xp} خبرة")
+                    } ?: s("You are not ranked yet", "لست مصنفاً بعد")
                 },
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -682,7 +684,7 @@ private fun YourPositionPanel(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "YOUR POSITION",
+                                text = s("YOUR POSITION", "ترتيبك"),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = SoftSand,
                                     letterSpacing = 2.sp,
@@ -713,7 +715,7 @@ private fun YourPositionPanel(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "YOUR SCORE",
+                                    text = s("YOUR SCORE", "نقاطك"),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = SoftSand,
                                         letterSpacing = 1.5.sp,
@@ -728,7 +730,7 @@ private fun YourPositionPanel(
                                     )
                                 )
                                 Text(
-                                    text = "XP",
+                                    text = s("XP", "نقاط خبرة"),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = VeryLightSage
                                     )
@@ -739,7 +741,7 @@ private fun YourPositionPanel(
                 } else {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "YOU'RE NOT RANKED YET",
+                            text = s("YOU'RE NOT RANKED YET", "لست ضمن الترتيب بعد"),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = SoftSand,
                                 letterSpacing = 2.sp,
@@ -748,7 +750,7 @@ private fun YourPositionPanel(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Earn XP by staying smoke-free and completing achievements to join the board.",
+                            text = s("Earn XP by staying smoke-free and completing achievements to join the board.", "اجمع نقاط الخبرة بالبقاء بعيدًا عن التدخين وإكمال الإنجازات للانضمام إلى القائمة."),
                             style = MaterialTheme.typography.bodySmall.copy(color = VeryLightSage)
                         )
                     }
@@ -908,7 +910,7 @@ private fun PodiumColumn(
         )
 
         Text(
-            text = "${entry.xp} XP",
+            text = s("%d XP", "%d نقاط خبرة").format(entry.xp),
             style = MaterialTheme.typography.labelSmall.copy(
                 color = GoldDeep,
                 fontWeight = FontWeight.ExtraBold
@@ -1054,7 +1056,7 @@ private fun LeaderboardRow(
                                 .padding(horizontal = 5.dp, vertical = 1.dp)
                         ) {
                             Text(
-                                text = "YOU",
+                                text = s("YOU", "أنت"),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = DeepForest,
                                     fontWeight = FontWeight.SemiBold,
@@ -1076,7 +1078,7 @@ private fun LeaderboardRow(
                     }
                 }
                 Text(
-                    text = "${entry.daysSmokeFree} days smoke-free",
+                    text = s("%d days smoke-free", "%d يوم بدون تدخين").format(entry.daysSmokeFree),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = themeTextSecondary,
                         fontSize = 11.sp
@@ -1092,7 +1094,7 @@ private fun LeaderboardRow(
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Text(
-                    text = "${entry.xp} XP",
+                    text = s("%d XP", "%d نقاط خبرة").format(entry.xp),
                     style = TextStyle(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -1147,7 +1149,7 @@ private fun CurrentUserBottomBar(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "YOUR POSITION",
+                        text = s("YOUR POSITION", "ترتيبك"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             letterSpacing = 1.5.sp,
@@ -1166,7 +1168,7 @@ private fun CurrentUserBottomBar(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "You",
+                            text = s("You", "أنت"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = AccentPrimary,
                                 fontWeight = FontWeight.Bold
@@ -1183,7 +1185,7 @@ private fun CurrentUserBottomBar(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "YOUR SCORE",
+                            text = s("YOUR SCORE", "نقاطك"),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = themeTextSecondary,
                                 letterSpacing = 1.sp,
@@ -1192,7 +1194,7 @@ private fun CurrentUserBottomBar(
                             )
                         )
                         Text(
-                            text = "${entry.xp} XP",
+                            text = s("%d XP", "%d نقاط خبرة").format(entry.xp),
                             style = TextStyle(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 16.sp,
@@ -1225,7 +1227,7 @@ private fun LoadingState() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Loading leaderboard...",
+                text = s("Loading leaderboard...", "جارٍ تحميل قائمة المتصدرين..."),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
         }
@@ -1250,7 +1252,7 @@ private fun ErrorState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Something went wrong",
+                text = s("Something went wrong", "حدث خطأ ما"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -1269,7 +1271,7 @@ private fun ErrorState(
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Text(
-                    text = "Try Again",
+                    text = s("Try Again", "حاول مجددًا"),
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                     color = MaterialTheme.colorScheme.background,
                     fontWeight = FontWeight.Bold
@@ -1311,7 +1313,11 @@ private fun PeriodTabsRow(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = period.label,
+                    text = when (period) {
+                        breathy.com.data.models.LeaderboardPeriod.WEEKLY -> s("Weekly", "أسبوعي")
+                        breathy.com.data.models.LeaderboardPeriod.MONTHLY -> s("Monthly", "شهري")
+                        breathy.com.data.models.LeaderboardPeriod.ALL_TIME -> s("All-Time", "كل الأوقات")
+                    },
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                     ),

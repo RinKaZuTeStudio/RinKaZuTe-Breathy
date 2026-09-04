@@ -94,6 +94,7 @@ import breathy.com.data.models.PublicProfile
 import breathy.com.data.repository.ChatRepository
 import breathy.com.data.repository.FriendRepository
 import breathy.com.data.repository.UserRepository
+import breathy.com.utils.s
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentSecondary
 import breathy.com.ui.theme.DeepForest
@@ -237,8 +238,8 @@ class FriendsViewModel(
                 onSuccess = {
                     _events.emit(
                         FriendsSingleEvent.ShowSnackbar(
-                            if (isFollowing) "Unfollowed ${profile.nickname}"
-                            else "You now follow ${profile.nickname}"
+                            if (isFollowing) s("Unfollowed ${profile.nickname}", "تم إلغاء متابعة ${profile.nickname}")
+                            else s("You now follow ${profile.nickname}", "أنت تتابع الآن ${profile.nickname}")
                         )
                     )
                 },
@@ -253,10 +254,10 @@ class FriendsViewModel(
                         } catch (_: Exception) { "unknown" }
                         val message = when (code) {
                             com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                                "Follow blocked (PERMISSION_DENIED) — publish the v6 Firestore rules on project \"$projectId\"."
+                                s("Follow blocked (PERMISSION_DENIED) — publish the v7 Firestore rules (Console → Firestore → database dropdown: ai-studio-breathy-… → Rules).", "تم حظر المتابعة (PERMISSION_DENIED) — انشر قواعد Firestore الإصدار 7 (Console → Firestore → قائمة قواعد البيانات: ai-studio-breathy-… → Rules).")
                             com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE ->
-                                "Action failed — check your connection and try again"
-                            else -> "Action failed — try again"
+                                s("Action failed — check your connection and try again", "فشل الإجراء — تحقق من اتصالك وحاول مجددًا")
+                            else -> s("Action failed — try again", "فشل الإجراء — حاول مجددًا")
                         }
                         _events.emit(FriendsSingleEvent.ShowSnackbar(message))
                     }
@@ -400,7 +401,7 @@ class FriendsViewModel(
                         _uiState.update { it.copy(isSendingRequest = false) }
                         _events.emit(
                             FriendsSingleEvent.ShowSnackbar(
-                                e.localizedMessage ?: "Failed to send request"
+                                e.localizedMessage ?: s("Failed to send request", "فشل إرسال الطلب")
                             )
                         )
                     }
@@ -419,7 +420,7 @@ class FriendsViewModel(
                         Timber.e(e, "Failed to accept friend request")
                         _events.emit(
                             FriendsSingleEvent.ShowSnackbar(
-                                e.localizedMessage ?: "Failed to accept request"
+                                e.localizedMessage ?: s("Failed to accept request", "فشل قبول الطلب")
                             )
                         )
                     }
@@ -438,7 +439,7 @@ class FriendsViewModel(
                         Timber.e(e, "Failed to reject friend request")
                         _events.emit(
                             FriendsSingleEvent.ShowSnackbar(
-                                e.localizedMessage ?: "Failed to reject request"
+                                e.localizedMessage ?: s("Failed to reject request", "فشل رفض الطلب")
                             )
                         )
                     }
@@ -457,7 +458,7 @@ class FriendsViewModel(
                         Timber.e(e, "Failed to remove friend")
                         _events.emit(
                             FriendsSingleEvent.ShowSnackbar(
-                                e.localizedMessage ?: "Failed to remove friend"
+                                e.localizedMessage ?: s("Failed to remove friend", "فشل إزالة الصديق")
                             )
                         )
                     }
@@ -546,25 +547,25 @@ fun FriendsScreen(
                 }
                 is FriendsSingleEvent.RequestSent -> {
                     snackbarHostState.showSnackbar(
-                        "Friend request sent to ${event.nickname}!",
+                        s("Friend request sent to ${event.nickname}!", "تم إرسال طلب الصداقة إلى ${event.nickname}!"),
                         duration = SnackbarDuration.Short
                     )
                 }
                 is FriendsSingleEvent.RequestAccepted -> {
                     snackbarHostState.showSnackbar(
-                        "Friend request accepted!",
+                        s("Friend request accepted!", "تم قبول طلب الصداقة!"),
                         duration = SnackbarDuration.Short
                     )
                 }
                 is FriendsSingleEvent.RequestRejected -> {
                     snackbarHostState.showSnackbar(
-                        "Friend request rejected",
+                        s("Friend request rejected", "تم رفض طلب الصداقة"),
                         duration = SnackbarDuration.Short
                     )
                 }
                 is FriendsSingleEvent.FriendRemoved -> {
                     snackbarHostState.showSnackbar(
-                        "${event.nickname} removed from friends",
+                        s("${event.nickname} removed from friends", "تمت إزالة ${event.nickname} من الأصدقاء"),
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -577,7 +578,13 @@ fun FriendsScreen(
         onDispose { Timber.d("FriendsScreen: disposed") }
     }
 
-    val tabs = listOf("Chats", "Friends", "Requests", "Followers", "Following")
+    val tabs = listOf(
+        s("Chats", "المحادثات"),
+        s("Friends", "الأصدقاء"),
+        s("Requests", "الطلبات"),
+        s("Followers", "المتابعون"),
+        s("Following", "أتابعهم")
+    )
     val incomingCount = uiState.incomingRequests.size
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -590,7 +597,7 @@ fun FriendsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Friends",
+                        text = s("Friends", "الأصدقاء"),
                         style = MaterialTheme.typography.headlineSmall.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Bold
@@ -718,9 +725,9 @@ fun FriendsScreen(
                 )
 
                 3 -> FollowListTab(
-                    title = "Followers",
+                    title = s("Followers", "المتابعون"),
                     emptyIcon = "\uD83C\uDF3F",
-                    emptyMessage = "When people follow you, they'll appear here.",
+                    emptyMessage = s("When people follow you, they'll appear here.", "عندما يتابعك الناس، سيظهرون هنا."),
                     profiles = uiState.followers,
                     followingIds = uiState.followingIds,
                     isBusy = uiState.isFollowBusy,
@@ -729,9 +736,9 @@ fun FriendsScreen(
                 )
 
                 4 -> FollowListTab(
-                    title = "Following",
+                    title = s("Following", "أتابعهم"),
                     emptyIcon = "\uD83C\uDF31",
-                    emptyMessage = "Follow people from their profile to fill your feed.",
+                    emptyMessage = s("Follow people from their profile to fill your feed.", "تابع الأشخاص من ملفهم الشخصي لتملأ خلاصتك."),
                     profiles = uiState.following,
                     followingIds = uiState.followingIds,
                     isBusy = uiState.isFollowBusy,
@@ -763,16 +770,21 @@ fun FriendsScreen(
                 onDismissRequest = { friendToRemove = null },
                 title = {
                     Text(
-                        text = "Remove Friend",
+                        text = s("Remove Friend", "إزالة صديق"),
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to remove " +
+                        text = s(
+                            "Are you sure you want to remove " +
                                 "${friend.profile.nickname} from your friends? " +
                                 "You can always send them a new request later.",
+                            "هل أنت متأكد أنك تريد إزالة " +
+                                "${friend.profile.nickname} من أصدقائك؟ " +
+                                "يمكنك دائمًا إرسال طلب جديد لاحقًا."
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
@@ -786,12 +798,12 @@ fun FriendsScreen(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Remove", color = MaterialTheme.colorScheme.onBackground)
+                        Text(s("Remove", "إزالة"), color = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { friendToRemove = null }) {
-                        Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(s("Cancel", "إلغاء"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -945,9 +957,9 @@ private fun FollowUserCard(
                         val tier = breathy.com.data.models.RankTier.forLevel(
                             breathy.com.data.models.User.computeLevel(profile.xp)
                         )
-                        "${tier.icon} ${tier.label}"
-                    } + " · ${profile.daysSmokeFree} days smoke-free" +
-                        " · ${profile.followerCount.coerceAtLeast(0)} followers",
+                        "${tier.icon} ${tier.displayLabel()}"
+                    } + s(" · %d days smoke-free", " · %d يوم بدون تدخين").format(profile.daysSmokeFree) +
+                        s(" · %d followers", " · %d متابع").format(profile.followerCount.coerceAtLeast(0)),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
@@ -978,7 +990,7 @@ private fun FollowUserCard(
                 }
             ) {
                 Text(
-                    text = if (isFollowing) "Following ✓" else "Follow",
+                    text = if (isFollowing) s("Following ✓", "أتابعه ✓") else s("Follow", "متابعة"),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold
                     ),
@@ -1026,14 +1038,14 @@ private fun ChatsListTab(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "No conversations yet",
+                    text = s("No conversations yet", "لا محادثات بعد"),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Start a chat from the Friends tab",
+                    text = s("Start a chat from the Friends tab", "ابدأ محادثة من تبويب الأصدقاء"),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
@@ -1104,7 +1116,7 @@ private fun ChatListItem(
             // Info Column
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = profile?.nickname ?: "User",
+                    text = profile?.nickname ?: s("User", "مستخدم"),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = if (unreadCount > 0) FontWeight.Bold else FontWeight.SemiBold
@@ -1114,7 +1126,7 @@ private fun ChatListItem(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = chat.lastMessage.ifBlank { "No messages yet" },
+                    text = chat.lastMessage.ifBlank { s("No messages yet", "لا رسائل بعد") },
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = if (unreadCount > 0) MaterialTheme.colorScheme.onBackground
                         else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1271,7 +1283,7 @@ private fun FriendItem(
                         color = AccentPrimary.copy(alpha = 0.12f)
                     ) {
                         Text(
-                            text = "${profile.daysSmokeFree}d smoke-free",
+                            text = s("%dd smoke-free", "%d يوم بدون تدخين").format(profile.daysSmokeFree),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = AccentPrimary,
@@ -1287,7 +1299,7 @@ private fun FriendItem(
                         color = AccentSecondary.copy(alpha = 0.12f)
                     ) {
                         Text(
-                            text = "Lv.$level",
+                            text = s("Lv.%d", "مستوى %d").format(level),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = AccentSecondary,
@@ -1421,7 +1433,7 @@ private fun EmptyFriendsState() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "No Friends Yet",
+                text = s("No Friends Yet", "لا أصدقاء بعد"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
@@ -1431,7 +1443,7 @@ private fun EmptyFriendsState() {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Add friends to support each other\non your quit-smoking journey!",
+                text = s("Add friends to support each other\non your quit-smoking journey!", "أضف أصدقاء لتتساعدوا\nفي رحلة الإقلاع عن التدخين!"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                 textAlign = TextAlign.Center
             )
@@ -1487,7 +1499,7 @@ private fun RequestsTab(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "Incoming (${incomingRequests.size})",
+                        text = s("Incoming (%d)", "الواردة (%d)").format(incomingRequests.size),
                         style = MaterialTheme.typography.labelLarge.copy(
                             color = AccentPrimary,
                             fontWeight = FontWeight.Bold
@@ -1524,7 +1536,7 @@ private fun RequestsTab(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "Outgoing (${outgoingRequests.size})",
+                        text = s("Outgoing (%d)", "الصادرة (%d)").format(outgoingRequests.size),
                         style = MaterialTheme.typography.labelLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold
@@ -1587,7 +1599,7 @@ private fun IncomingRequestItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "User #${request.fromUserId.take(6)}",
+                    text = s("User #%s", "مستخدم #%s").format(request.fromUserId.take(6)),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
@@ -1688,7 +1700,7 @@ private fun OutgoingRequestItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "User #${request.toUserId.take(6)}",
+                    text = s("User #%s", "مستخدم #%s").format(request.toUserId.take(6)),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
@@ -1697,7 +1709,7 @@ private fun OutgoingRequestItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Pending \u00B7 ${formatRequestTime(request)}",
+                    text = s("Pending \u00B7 %s", "قيد الانتظار \u00B7 %s").format(formatRequestTime(request)),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
@@ -1711,7 +1723,7 @@ private fun OutgoingRequestItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
             ) {
                 Text(
-                    text = "Pending",
+                    text = s("Pending", "قيد الانتظار"),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1796,7 +1808,7 @@ private fun EmptyRequestsState() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "No Friend Requests",
+                text = s("No Friend Requests", "لا طلبات صداقة"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
@@ -1806,7 +1818,7 @@ private fun EmptyRequestsState() {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "When someone sends you a friend\nrequest, it will appear here.",
+                text = s("When someone sends you a friend\nrequest, it will appear here.", "عندما يرسل لك أحد طلب صداقة،\nسيظهر هنا."),
                 style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                 textAlign = TextAlign.Center
             )
@@ -1832,7 +1844,7 @@ private fun SearchUserDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Add Friend",
+                text = s("Add Friend", "إضافة صديق"),
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold
             )
@@ -1843,7 +1855,7 @@ private fun SearchUserDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Search by nickname to find and add friends",
+                    text = s("Search by nickname to find and add friends", "ابحث بالاسم المستعار للعثور على أصدقاء وإضافتهم"),
                     style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 )
 
@@ -1851,7 +1863,7 @@ private fun SearchUserDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = onQueryChanged,
-                    label = { Text("Nickname") },
+                    label = { Text(s("Nickname", "الاسم المستعار")) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -1908,7 +1920,7 @@ private fun SearchUserDialog(
                     }
                 } else if (searchQuery.isNotBlank() && !isSearching && searchResults.isEmpty()) {
                     Text(
-                        text = "No users found with that nickname",
+                        text = s("No users found with that nickname", "لا يوجد مستخدمون بهذا الاسم المستعار"),
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
                         ),
@@ -1920,7 +1932,7 @@ private fun SearchUserDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = AccentPrimary)
+                Text(s("Close", "إغلاق"), color = AccentPrimary)
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
@@ -1980,7 +1992,7 @@ private fun SearchResultItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${profile.daysSmokeFree}d smoke-free",
+                    text = s("%dd smoke-free", "%d يوم بدون تدخين").format(profile.daysSmokeFree),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 10.sp
@@ -2026,10 +2038,10 @@ private fun formatRequestTime(request: FriendRequest): String {
     val diffMillis = System.currentTimeMillis() - sentMillis
     val minutes = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(diffMillis)
     return when {
-        minutes < 1 -> "Just now"
-        minutes < 60 -> "${minutes}m ago"
-        minutes < 1440 -> "${minutes / 60}h ago"
-        minutes < 10080 -> "${minutes / 1440}d ago"
-        else -> "${minutes / 10080}w ago"
+        minutes < 1 -> s("Just now", "الآن")
+        minutes < 60 -> s("%dm ago", "قبل %d دقيقة").format(minutes)
+        minutes < 1440 -> s("%dh ago", "قبل %d ساعة").format(minutes / 60)
+        minutes < 10080 -> s("%dd ago", "قبل %d يوم").format(minutes / 1440)
+        else -> s("%dw ago", "قبل %d أسبوع").format(minutes / 10080)
     }
 }

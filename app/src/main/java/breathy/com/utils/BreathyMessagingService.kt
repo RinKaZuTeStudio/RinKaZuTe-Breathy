@@ -109,8 +109,8 @@ class BreathyMessagingService : FirebaseMessagingService() {
                     )
                 }
                 "daily_reminder" -> {
-                    val title = data["title"] ?: "Stay Strong!"
-                    val body = data["body"] ?: "Keep going, you're doing great!"
+                    val title = data["title"] ?: breathy.com.utils.s("Stay Strong!", "ابقَ قوياً!")
+                    val body = data["body"] ?: breathy.com.utils.s("Keep going, you're doing great!", "استمر، أنت تصمد بشكل رائع!")
                     val daysFree = data["daysSmokeFree"]?.toIntOrNull() ?: 0
                     notificationHelper.showDailyReminderNotification(
                         title = title,

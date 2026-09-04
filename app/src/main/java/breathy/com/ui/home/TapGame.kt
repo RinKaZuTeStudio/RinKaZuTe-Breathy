@@ -54,6 +54,7 @@ import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeBgSurface
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlinx.coroutines.delay
 
 /**
@@ -141,7 +142,7 @@ fun TapGame(
                     if (!isComplete) {
                         // Game instructions
                         Text(
-                            text = "Tap as fast as you can!",
+                            text = s("Tap as fast as you can!", "اضغط بأسرع ما تستطيع!"),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 color = themeTextPrimary,
                                 fontWeight = FontWeight.Bold
@@ -162,7 +163,7 @@ fun TapGame(
                         )
 
                         Text(
-                            text = "seconds left",
+                            text = s("seconds left", "ثانية متبقية"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = themeTextSecondary
                             )
@@ -216,7 +217,7 @@ fun TapGame(
                             }
 
                             Text(
-                                text = "TAP!",
+                                text = s("TAP!", "اضغط!"),
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     color = themeBgPrimary,
                                     fontWeight = FontWeight.ExtraBold,
@@ -239,7 +240,7 @@ fun TapGame(
                         )
 
                         Text(
-                            text = "taps",
+                            text = s("taps", "نقرة"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = themeTextSecondary
                             )
@@ -249,7 +250,7 @@ fun TapGame(
                     // Result screen
                     if (isComplete) {
                         Text(
-                            text = "Time's up! 🎯",
+                            text = s("Time's up! 🎯", "انتهى الوقت! 🎯"),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 color = themeTextPrimary,
                                 fontWeight = FontWeight.Bold
@@ -284,7 +285,7 @@ fun TapGame(
                                 Spacer(modifier = Modifier.height(4.dp))
 
                                 Text(
-                                    text = "taps in 30 seconds",
+                                    text = s("taps in 30 seconds", "نقرة في 30 ثانية"),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         color = themeTextSecondary
                                     )
@@ -293,10 +294,10 @@ fun TapGame(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 val feedbackMessage = when {
-                                    tapCount >= 150 -> "Incredible! That craving doesn't stand a chance! 💪"
-                                    tapCount >= 100 -> "Nice! You're faster than the craving! 🔥"
-                                    tapCount >= 50 -> "Good work! Keep that energy up! ⚡"
-                                    else -> "Every tap counts! You've got this! 🌟"
+                                    tapCount >= 150 -> s("Incredible! That craving doesn't stand a chance! 💪", "مذهل! تلك الرغبة لا فرصة لها أمامك! 💪")
+                                    tapCount >= 100 -> s("Nice! You're faster than the craving! 🔥", "رائع! أنت أسرع من الرغبة! 🔥")
+                                    tapCount >= 50 -> s("Good work! Keep that energy up! ⚡", "عمل جيد! حافظ على هذا الحماس! ⚡")
+                                    else -> s("Every tap counts! You've got this! 🌟", "كل نقرة تصنع الفرق! أنت قادر! 🌟")
                                 }
 
                                 Text(
@@ -324,7 +325,7 @@ fun TapGame(
                                 shape = RoundedCornerShape(24.dp)
                             ) {
                                 Text(
-                                    text = "I feel better 👍",
+                                    text = s("I feel better 👍", "أشعر بتحسّن 👍"),
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -338,7 +339,7 @@ fun TapGame(
                                 shape = RoundedCornerShape(24.dp)
                             ) {
                                 Text(
-                                    text = "Still craving 😔",
+                                    text = s("Still craving 😔", "ما زلت أشعر بالرغبة 😔"),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -347,7 +348,7 @@ fun TapGame(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "+5 XP for completing the game",
+                            text = s("+5 XP for completing the game", "+5 نقاط XP لإكمال اللعبة"),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = AccentPrimary,
                                 fontWeight = FontWeight.Medium

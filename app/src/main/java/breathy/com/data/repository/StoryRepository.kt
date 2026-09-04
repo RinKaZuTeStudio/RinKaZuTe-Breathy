@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
+import breathy.com.utils.s
 import timber.log.Timber
 
 /**
@@ -148,7 +149,7 @@ class StoryRepository(
         content: String,
         lifeChanges: List<String>
     ): Result<Story> = runCatching {
-        val uid = currentUserId ?: throw IllegalStateException("Not authenticated")
+        val uid = currentUserId ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             // Fetch current user data for denormalized fields
@@ -201,7 +202,7 @@ class StoryRepository(
      * Also deletes images from Firebase Storage if the story has a photoURL.
      */
     suspend fun deleteStory(storyId: String): Result<Unit> = runCatching {
-        val uid = currentUserId ?: throw IllegalStateException("Not authenticated")
+        val uid = currentUserId ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             // Verify ownership
@@ -215,7 +216,7 @@ class StoryRepository(
             }
             val storyUserId = storyDoc.getString("userId")
             if (storyUserId != uid) {
-                throw SecurityException("You can only delete your own stories")
+                throw SecurityException(s("You can only delete your own stories", "يمكنك حذف قصصك أنت فقط"))
             }
 
             // Delete images from Firebase Storage if the URL is a Firebase Storage URL
@@ -398,7 +399,7 @@ class StoryRepository(
         content: String,
         parentReplyId: String? = null
     ): Result<Reply> = runCatching {
-        val uid = currentUserId ?: throw IllegalStateException("Not authenticated")
+        val uid = currentUserId ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             // Fetch current user data for denormalized fields

@@ -100,6 +100,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import breathy.com.ui.components.NetworkImage
 import breathy.com.BreathyApplication
+import breathy.com.utils.s
 import breathy.com.data.models.Event
 import breathy.com.data.models.EventParticipant
 import breathy.com.data.repository.EventRepository
@@ -196,7 +197,7 @@ class EventChallengeViewModel(
 
     fun loadEventData() {
         val uid = currentUserId ?: run {
-            _uiState.update { it.copy(isLoading = false, errorMessage = "Not authenticated") }
+            _uiState.update { it.copy(isLoading = false, errorMessage = s("Not authenticated", "غير مسجل الدخول")) }
             return
         }
 
@@ -215,7 +216,7 @@ class EventChallengeViewModel(
                     eventRepository.canonicalFeaturedEvent()
                 }
                 val event = resolved.getOrNull() ?: run {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Event not found") }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = s("Event not found", "الفعالية غير موجودة")) }
                     return@launch
                 }
                 // Coming Soon preview only when NO live document was resolved AND
@@ -260,7 +261,7 @@ class EventChallengeViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Failed to load event data")
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = "Failed to load event: ${e.message}")
+                    it.copy(isLoading = false, errorMessage = s("Failed to load event: ${e.message}", "تعذر تحميل الفعالية: ${e.message}"))
                 }
             }
         }
@@ -307,9 +308,12 @@ class EventChallengeViewModel(
                         Timber.e(e, "Failed to join event")
                         val message = when (e) {
                             is breathy.com.data.repository.InsufficientGoldException ->
-                                "Not enough Gold — entry costs 500 Gold, you have ${e.available}."
-                            is IllegalStateException -> e.message ?: "Failed to join event"
-                            else -> e.localizedMessage ?: "Failed to join event"
+                                s(
+                                    "Not enough Gold — entry costs 500 Gold, you have ${e.available}.",
+                                    "رصيد الذهب غير كافٍ — رسوم الدخول 500 ذهب، ولديك ${e.available}."
+                                )
+                            is IllegalStateException -> e.message ?: s("Failed to join event", "تعذر الانضمام إلى الفعالية")
+                            else -> e.localizedMessage ?: s("Failed to join event", "تعذر الانضمام إلى الفعالية")
                         }
                         _uiState.update { it.copy(errorMessage = message) }
                     }
@@ -369,7 +373,7 @@ fun EventChallengeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Details", "Leaderboard")
+    val tabs = listOf(s("Details", "التفاصيل"), s("Leaderboard", "لوحة الصدارة"))
 
     // Countdown timer
     var countdownSeconds by remember { mutableStateOf(uiState.countdownSeconds) }
@@ -400,7 +404,7 @@ fun EventChallengeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = uiState.event?.title ?: "Event",
+                        text = uiState.event?.title ?: s("Event", "الفعالية"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary,
                         maxLines = 1,
@@ -460,7 +464,7 @@ fun EventChallengeScreen(
                             shape = RoundedCornerShape(24.dp)
                         ) {
                             Text(
-                                text = "Retry",
+                                text = s("Retry", "إعادة المحاولة"),
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                                 color = themeBgPrimary,
                                 fontWeight = FontWeight.Bold
@@ -594,7 +598,7 @@ private fun DetailsTab(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "COMING SOON",
+                                text = s("COMING SOON", "قريبًا"),
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.ExtraBold,
                                     letterSpacing = 1.5.sp,
@@ -602,7 +606,10 @@ private fun DetailsTab(
                                 )
                             )
                             Text(
-                                text = "The next challenge hasn't opened yet. Review the rewards, rules and entry details below so you're ready when it goes live.",
+                                text = s(
+                                    "The next challenge hasn't opened yet. Review the rewards, rules and entry details below so you're ready when it goes live.",
+                                    "لم يبدأ التحدي القادم بعد. اطلع على المكافآت والقواعد وتفاصيل الدخول أدناه لتكون جاهزًا عند انطلاقه."
+                                ),
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = themeTextSecondary
                                 )
@@ -734,7 +741,7 @@ private fun LeaderboardTab(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Loading leaderboard...",
+                        text = s("Loading leaderboard...", "جارٍ تحميل لوحة الصدارة..."),
                         style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                     )
                 } else {
@@ -742,7 +749,7 @@ private fun LeaderboardTab(
                     Text(text = "🏅", fontSize = 44.sp)
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "NO PARTICIPANTS YET",
+                        text = s("NO PARTICIPANTS YET", "لا يوجد مشاركون بعد"),
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.5.sp,
@@ -751,7 +758,10 @@ private fun LeaderboardTab(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "The leaderboard fills in as participants join and their check-ins are approved. Join the challenge and claim the top spot.",
+                        text = s(
+                            "The leaderboard fills in as participants join and their check-ins are approved. Join the challenge and claim the top spot.",
+                            "تمتلئ لوحة الصدارة كلما انضم المشاركون وتم قبول تسجيلات حضورهم. انضم إلى التحدي واحتل المركز الأول."
+                        ),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = themeTextSecondary
                         ),
@@ -779,7 +789,7 @@ private fun LeaderboardTab(
                         rank = me.rank,
                         score = if (me.participant.totalPushups > 0)
                             me.participant.totalPushups else me.participant.totalApprovedDays,
-                        scoreUnit = if (me.participant.totalPushups > 0) "push-ups" else "days"
+                        scoreUnit = if (me.participant.totalPushups > 0) s("push-ups", "تمارين ضغط") else s("days", "أيام")
                     )
                 }
             }
@@ -827,7 +837,7 @@ private fun EventYourPositionPanel(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "YOUR POSITION",
+                    text = s("YOUR POSITION", "مركزك"),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = SoftSand,
                         letterSpacing = 1.5.sp,
@@ -850,7 +860,7 @@ private fun EventYourPositionPanel(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "YOUR SCORE",
+                        text = s("YOUR SCORE", "نتيجتك"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = SoftSand,
                             letterSpacing = 1.sp,
@@ -946,7 +956,7 @@ private fun EventPodiumColumn(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = profile?.nickname ?: "Unknown",
+            text = profile?.nickname ?: s("Unknown", "غير معروف"),
             style = MaterialTheme.typography.labelSmall.copy(
                 color = DarkBotanical,
                 fontWeight = FontWeight.Bold
@@ -956,8 +966,8 @@ private fun EventPodiumColumn(
         )
         Text(
             text = if (entry.participant.totalPushups > 0)
-                "${entry.participant.totalPushups} push-ups"
-            else "${entry.participant.totalApprovedDays} days",
+                s("${entry.participant.totalPushups} push-ups", "${entry.participant.totalPushups} تمارين ضغط")
+            else s("${entry.participant.totalApprovedDays} days", "${entry.participant.totalApprovedDays} أيام"),
             style = MaterialTheme.typography.labelSmall.copy(
                 color = GoldDeep,
                 fontWeight = FontWeight.ExtraBold
@@ -1072,7 +1082,7 @@ private fun EventLeaderboardRow(
             // Name and streak
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = profile?.nickname ?: "Unknown",
+                    text = profile?.nickname ?: s("Unknown", "غير معروف"),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = themeTextPrimary,
                         fontWeight = FontWeight.SemiBold
@@ -1082,9 +1092,9 @@ private fun EventLeaderboardRow(
                 )
                 Text(
                     text = if (entry.participant.totalPushups > 0) {
-                        "\uD83D\uDCAA ${entry.participant.totalPushups} pushups"
+                        s("\uD83D\uDCAA ${entry.participant.totalPushups} pushups", "\uD83D\uDCAA ${entry.participant.totalPushups} تمارين ضغط")
                     } else {
-                        "\uD83D\uDD25 ${entry.participant.currentStreak} day streak"
+                        s("\uD83D\uDD25 ${entry.participant.currentStreak} day streak", "\uD83D\uDD25 سلسلة ${entry.participant.currentStreak} يوم")
                     },
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = AccentPrimary,
@@ -1140,7 +1150,7 @@ private fun EventStartCountdownCard(startMillis: Long) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Event Starts In",
+                text = s("Event Starts In", "تبدأ الفعالية بعد"),
                 style = MaterialTheme.typography.labelMedium.copy(
                     color = themeTextSecondary,
                     fontWeight = FontWeight.SemiBold
@@ -1152,7 +1162,7 @@ private fun EventStartCountdownCard(startMillis: Long) {
             val minutes = (startCountdownSeconds % 3600) / 60
             val seconds = startCountdownSeconds % 60
             Text(
-                text = "${days}d ${hours}h ${minutes}m ${seconds}s",
+                text = s("${days}d ${hours}h ${minutes}m ${seconds}s", "${days}ي ${hours}س ${minutes}د ${seconds}ث"),
                 style = TextStyle(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 28.sp,
@@ -1178,7 +1188,7 @@ private fun EventInfoCard(event: Event) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "About This Challenge",
+                text = s("About This Challenge", "عن هذا التحدي"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
@@ -1226,7 +1236,7 @@ private fun EventInfoCard(event: Event) {
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "Daily requirement: ${event.dailyRequired}x per day",
+                    text = s("Daily requirement: ${event.dailyRequired}x per day", "المطلوب يوميًا: ${event.dailyRequired}x في اليوم"),
                     style = MaterialTheme.typography.labelMedium.copy(color = themeTextSecondary)
                 )
             }
@@ -1245,7 +1255,7 @@ private fun EventInfoCard(event: Event) {
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "Duration: ${event.totalDays()} days",
+                    text = s("Duration: ${event.totalDays()} days", "المدة: ${event.totalDays()} يومًا"),
                     style = MaterialTheme.typography.labelMedium.copy(color = themeTextSecondary)
                 )
             }
@@ -1274,7 +1284,7 @@ private fun CountdownCard(countdownSeconds: Long) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Time Remaining",
+                text = s("Time Remaining", "الوقت المتبقي"),
                 style = MaterialTheme.typography.labelMedium.copy(
                     color = themeTextSecondary,
                     fontWeight = FontWeight.SemiBold
@@ -1285,7 +1295,7 @@ private fun CountdownCard(countdownSeconds: Long) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CountdownUnit(value = days, label = "Days")
+                CountdownUnit(value = days, label = s("Days", "أيام"))
                 Text(
                     text = ":",
                     style = TextStyle(
@@ -1295,7 +1305,7 @@ private fun CountdownCard(countdownSeconds: Long) {
                         color = AccentPrimary
                     )
                 )
-                CountdownUnit(value = hours, label = "Hrs")
+                CountdownUnit(value = hours, label = s("Hrs", "ساعات"))
                 Text(
                     text = ":",
                     style = TextStyle(
@@ -1305,7 +1315,7 @@ private fun CountdownCard(countdownSeconds: Long) {
                         color = AccentPrimary
                     )
                 )
-                CountdownUnit(value = minutes, label = "Min")
+                CountdownUnit(value = minutes, label = s("Min", "دقائق"))
                 Text(
                     text = ":",
                     style = TextStyle(
@@ -1315,7 +1325,7 @@ private fun CountdownCard(countdownSeconds: Long) {
                         color = AccentPrimary
                     )
                 )
-                CountdownUnit(value = seconds, label = "Sec")
+                CountdownUnit(value = seconds, label = s("Sec", "ثوانٍ"))
             }
         }
     }
@@ -1362,7 +1372,7 @@ private fun ProgressStatsCard(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Your Progress",
+                text = s("Your Progress", "تقدمك"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
@@ -1391,7 +1401,7 @@ private fun ProgressStatsCard(
                         )
                     )
                     Text(
-                        text = "Day Streak",
+                        text = s("Day Streak", "سلسلة أيام"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             fontSize = 11.sp
@@ -1415,7 +1425,7 @@ private fun ProgressStatsCard(
                         )
                     )
                     Text(
-                        text = "Days Approved",
+                        text = s("Days Approved", "أيام مقبولة"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             fontSize = 11.sp
@@ -1439,7 +1449,7 @@ private fun ProgressStatsCard(
                         )
                     )
                     Text(
-                        text = "of $totalDays Days",
+                        text = s("of $totalDays Days", "من أصل $totalDays يومًا"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             fontSize = 11.sp
@@ -1467,7 +1477,7 @@ private fun ProgressStatsCard(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "${(progress * 100).toInt()}% complete",
+                text = s("${(progress * 100).toInt()}% complete", "اكتمل ${(progress * 100).toInt()}%"),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = themeTextSecondary,
                     fontSize = 11.sp
@@ -1497,7 +1507,7 @@ private fun PrizeBreakdownCard(prizes: Map<String, String>) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "\uD83C\uDFC6 Prizes",
+                text = s("\uD83C\uDFC6 Prizes", "\uD83C\uDFC6 الجوائز"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
@@ -1550,7 +1560,8 @@ private fun PrizeBreakdownCard(prizes: Map<String, String>) {
                                 )
                             )
                             Text(
-                                text = "${sortedRanks.size} winner${if (sortedRanks.size > 1) "s" else ""}",
+                                text = if (sortedRanks.size > 1) s("${sortedRanks.size} winners", "${sortedRanks.size} فائزين")
+                                       else s("${sortedRanks.size} winner", "فائز واحد"),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = themeTextSecondary,
                                     fontSize = 11.sp
@@ -1623,7 +1634,7 @@ private fun CheckinButton(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "Check In - Day $currentDayNumber",
+            text = s("Check In - Day $currentDayNumber", "تسجيل الحضور - اليوم $currentDayNumber"),
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp
         )
@@ -1660,7 +1671,7 @@ private fun PushupCheckinButton(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$currentPushups / $targetPushups pushups",
+                text = s("$currentPushups / $targetPushups pushups", "$currentPushups / $targetPushups تمارين ضغط"),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = AccentPrimary,
                     fontWeight = FontWeight.SemiBold,
@@ -1695,7 +1706,7 @@ private fun PushupCheckinButton(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Do Pushups",
+                text = s("Do Pushups", "قم بتمارين الضغط"),
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
@@ -1731,14 +1742,14 @@ private fun JoinEventButton(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "ENTRY FEE",
+                        text = s("ENTRY FEE", "رسوم الدخول"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             letterSpacing = 1.sp
                         )
                     )
                     Text(
-                        text = "$entryFee Gold",
+                        text = s("$entryFee Gold", "$entryFee ذهب"),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = themeTextPrimary
@@ -1747,14 +1758,14 @@ private fun JoinEventButton(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "YOUR BALANCE",
+                        text = s("YOUR BALANCE", "رصيدك"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextSecondary,
                             letterSpacing = 1.sp
                         )
                     )
                     Text(
-                        text = "%,d Gold".format(goldBalance),
+                        text = s("%,d Gold", "%,d ذهب").format(goldBalance),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = if (canAfford) themeTextPrimary else MaterialTheme.colorScheme.error
@@ -1772,9 +1783,9 @@ private fun JoinEventButton(
                 .height(56.dp)
                 .semantics {
                     contentDescription = when {
-                        !eventOpen -> "Entry opens when the event starts"
-                        canJoin -> "Join this event for $entryFee Gold"
-                        else -> "Need $entryFee Gold to join — your balance is $goldBalance"
+                        !eventOpen -> s("Entry opens when the event starts", "يفتح الاشتراك عند بداية الفعالية")
+                        canJoin -> s("Join this event for $entryFee Gold", "اشترك في هذه الفعالية مقابل $entryFee ذهب")
+                        else -> s("Need $entryFee Gold to join — your balance is $goldBalance", "تحتاج $entryFee ذهب للاشتراك — رصيدك $goldBalance")
                     }
                     role = Role.Button
                 },
@@ -1793,9 +1804,9 @@ private fun JoinEventButton(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = when {
-                    !eventOpen -> "Entry Opens Soon"
-                    canAfford -> "Enter Challenge · $entryFee Gold"
-                    else -> "Need ${(entryFee - goldBalance).coerceAtLeast(0)} more Gold"
+                    !eventOpen -> s("Entry Opens Soon", "يفتح الدخول قريبًا")
+                    canAfford -> s("Enter Challenge · $entryFee Gold", "ادخل التحدي · $entryFee ذهب")
+                    else -> s("Need ${(entryFee - goldBalance).coerceAtLeast(0)} more Gold", "تحتاج إلى ${(entryFee - goldBalance).coerceAtLeast(0)} ذهب إضافي")
                 },
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
@@ -1803,7 +1814,10 @@ private fun JoinEventButton(
         }
         if (!eventOpen) {
             Text(
-                text = "COMING SOON — entry opens when the event starts. Your Gold is only charged when you join an open event.",
+                text = s(
+                    "COMING SOON — entry opens when the event starts. Your Gold is only charged when you join an open event.",
+                    "قريبًا — يفتح الدخول عند بدء الفعالية. لا يُخصم الذهب إلا عند الانضمام إلى فعالية مفتوحة."
+                ),
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = themeTextSecondary
                 ),
@@ -1837,14 +1851,14 @@ private fun CompletionBadgeCard() {
             )
             Column {
                 Text(
-                    text = "Challenge Completed!",
+                    text = s("Challenge Completed!", "تم إكمال التحدي!"),
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = AccentPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 )
                 Text(
-                    text = "Congratulations on finishing this challenge!",
+                    text = s("Congratulations on finishing this challenge!", "مبروك على إكمالك هذا التحدي!"),
                     style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
                 )
             }
@@ -1871,7 +1885,7 @@ private fun EventRewardsInfoCard() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "REWARDS",
+                text = s("REWARDS", "المكافآت"),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = themeTextSecondary,
                     letterSpacing = 2.sp,
@@ -1879,19 +1893,32 @@ private fun EventRewardsInfoCard() {
                 )
             )
             val rewardLines = listOf(
-                "🏆 Reward type: PayPal gift cards + Gold + the exclusive Event Avatar Frame + Champion Badge.",
-                "🥇 1st place: $50 PayPal Gift Card + 10,000 Gold + Event Avatar Frame + Champion Badge.",
-                "🥈 2nd place: $50 PayPal Gift Card + 6,000 Gold + Event Avatar Frame.",
-                "🥉 3rd place: $50 PayPal Gift Card + 3,000 Gold + Event Avatar Frame.",
-                "🏅 4th–5th place: $30 PayPal Gift Card + 1,500 Gold each.",
-                "⭐ 6th–10th place: $15 PayPal Gift Card + 1,000 Gold each.",
-                "💳 Payout: the monetary prize is a PayPal gift card, delivered to the PayPal email saved in Settings → Payment / Payout Setup.",
-                "👥 Winners: the top performers on the event leaderboard.",
-                "✅ Requirement: approved daily check-ins during the event window determine your score.",
-                "⏱️ Distribution: rewards are granted after the event ends and all check-ins are reviewed.",
-                "🎯 Eligibility: one entry per account; entry fee (500 Gold) is paid once at join.",
-                "⚖️ Ties are broken by the earliest date the top score was reached.",
-                "🛡️ Verified cheating, automated check-ins, or manipulated videos lead to disqualification and forfeited rewards."
+                s("🏆 Reward type: PayPal gift cards + Gold + the exclusive Event Avatar Frame + Champion Badge.",
+                  "🏆 نوع المكافأة: بطاقات هدايا PayPal + ذهب + إطار الصورة الحصري للفعالية + شارة البطل."),
+                s("🥇 1st place: $50 PayPal Gift Card + 10,000 Gold + Event Avatar Frame + Champion Badge.",
+                  "🥇 المركز الأول: بطاقة هدايا PayPal بقيمة 50$ + 10,000 ذهب + إطار الصورة الخاص بالفعالية + شارة البطل."),
+                s("🥈 2nd place: $50 PayPal Gift Card + 6,000 Gold + Event Avatar Frame.",
+                  "🥈 المركز الثاني: بطاقة هدايا PayPal بقيمة 50$ + 6,000 ذهب + إطار الصورة الخاص بالفعالية."),
+                s("🥉 3rd place: $50 PayPal Gift Card + 3,000 Gold + Event Avatar Frame.",
+                  "🥉 المركز الثالث: بطاقة هدايا PayPal بقيمة 50$ + 3,000 ذهب + إطار الصورة الخاص بالفعالية."),
+                s("🏅 4th–5th place: $30 PayPal Gift Card + 1,500 Gold each.",
+                  "🏅 المركز الرابع–الخامس: بطاقة هدايا PayPal بقيمة 30$ + 1,500 ذهب لكل منهما."),
+                s("⭐ 6th–10th place: $15 PayPal Gift Card + 1,000 Gold each.",
+                  "⭐ المركز السادس–العاشر: بطاقة هدايا PayPal بقيمة 15$ + 1,000 ذهب لكل منهم."),
+                s("💳 Payout: the monetary prize is a PayPal gift card, delivered to the PayPal email saved in Settings → Payment / Payout Setup.",
+                  "💳 الصرف: الجائزة المالية هي بطاقة هدايا PayPal، تُرسل إلى بريد PayPal المحفوظ في الإعدادات ← الدفع / إعداد الصرف."),
+                s("👥 Winners: the top performers on the event leaderboard.",
+                  "👥 الفائزون: الأعلى أداءً في لوحة صدارة الفعالية."),
+                s("✅ Requirement: approved daily check-ins during the event window determine your score.",
+                  "✅ الشرط: تسجيلات الحضور اليومية المقبولة خلال فترة الفعالية هي التي تحدد نتيجتك."),
+                s("⏱️ Distribution: rewards are granted after the event ends and all check-ins are reviewed.",
+                  "⏱️ التوزيع: تُمنح المكافآت بعد انتهاء الفعالية ومراجعة جميع تسجيلات الحضور."),
+                s("🎯 Eligibility: one entry per account; entry fee (500 Gold) is paid once at join.",
+                  "🎯 الأهلية: مشاركة واحدة لكل حساب؛ وتُدفع رسوم الدخول (500 ذهب) مرة واحدة عند الانضمام."),
+                s("⚖️ Ties are broken by the earliest date the top score was reached.",
+                  "⚖️ في حالة التعادل، تُفضّل النتيجة التي تحققت في تاريخ أبكر."),
+                s("🛡️ Verified cheating, automated check-ins, or manipulated videos lead to disqualification and forfeited rewards.",
+                  "🛡️ الغش المؤكد أو تسجيلات الحضور الآلية أو مقاطع الفيديو المعدّلة يؤدي إلى الاستبعاد ومصادرة المكافآت.")
             )
             rewardLines.forEach { line ->
                 Text(
@@ -1907,7 +1934,7 @@ private fun EventRewardsInfoCard() {
             HorizontalDivider(color = SoftSage.copy(alpha = 0.5f), thickness = 1.dp)
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "PAYOUT STATUS",
+                text = s("PAYOUT STATUS", "حالة الصرف"),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = themeTextSecondary,
                     letterSpacing = 2.sp,
@@ -1923,7 +1950,7 @@ private fun EventRewardsInfoCard() {
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "PENDING PAYOUT",
+                        text = s("PENDING PAYOUT", "الصرف قيد الانتظار"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = AccentSecondary,
                             fontWeight = FontWeight.Bold,
@@ -1934,9 +1961,12 @@ private fun EventRewardsInfoCard() {
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "All prizes are pending until the event is finalized and " +
-                        "check-in reviews complete. Gift cards are then delivered to " +
-                        "the winner's saved PayPal email.",
+                    text = s(
+                        "All prizes are pending until the event is finalized and " +
+                            "check-in reviews complete. Gift cards are then delivered to " +
+                            "the winner's saved PayPal email.",
+                        "جميع الجوائز معلّقة حتى إقفال الفعالية واكتمال مراجعة تسجيلات الحضور. بعد ذلك تُسلّم بطاقات الهدايا إلى بريد PayPal المحفوظ للفائز."
+                    ),
                     style = MaterialTheme.typography.bodySmall.copy(color = themeTextSecondary),
                     modifier = Modifier.weight(1f)
                 )
@@ -1953,16 +1983,26 @@ private fun EventRewardsInfoCard() {
 private fun EventRulesCard(event: Event) {
     val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     val rules = listOf(
-        "👤 Eligibility: any Breathy account in good standing. Minimum age: 13 (or the minimum digital-consent age in your country).",
-        "📅 Event dates: ${dateFormatter.format(event.startDate.toDate())} → ${dateFormatter.format(event.endDate.toDate())}.",
-        "🪙 Entry: 500 Gold, charged once when you join. Entry is not refundable after the event starts.",
-        "📈 Scoring: each approved daily check-in (verified push-up video) adds to your approved days and event score.",
-        "🏅 Leaderboard: ranked by approved days; ties broken by earliest achievement of the score.",
-        "🛡️ Anti-cheat: submissions are human-reviewed. Automated, reused, or manipulated content is rejected.",
-        "🚫 Disqualification: cheating, multiple accounts, or abusive behavior. Forfeits all event rewards.",
-        "🎁 Rewards: distributed to eligible winners within days after review completes — PayPal gift cards (1st–3rd: $50, 4th–5th: $30, 6th–10th: $15) plus Gold, the Event Avatar Frame, and the Champion Badge. Gift cards are delivered to the winner's saved PayPal email (Settings → Payment / Payout Setup).",
-        "🤝 Prohibited: harassment, inappropriate content, or any attempt to game the challenge.",
-        "🔒 Privacy: check-in videos are reviewed by moderators for verification and are not shared publicly without your action. You keep ownership of your content."
+        s("👤 Eligibility: any Breathy account in good standing. Minimum age: 13 (or the minimum digital-consent age in your country).",
+          "👤 الأهلية: أي حساب Breathy بحالة سليمة. الحد الأدنى للعمر: 13 عامًا (أو الحد الأدنى لعمر الموافقة الرقمية في بلدك)."),
+        s("📅 Event dates: ${dateFormatter.format(event.startDate.toDate())} → ${dateFormatter.format(event.endDate.toDate())}.",
+          "📅 تواريخ الفعالية: ${dateFormatter.format(event.startDate.toDate())} ← ${dateFormatter.format(event.endDate.toDate())}."),
+        s("🪙 Entry: 500 Gold, charged once when you join. Entry is not refundable after the event starts.",
+          "🪙 الدخول: 500 ذهب، تُخصم مرة واحدة عند الانضمام. رسوم الدخول غير قابلة للاسترداد بعد بدء الفعالية."),
+        s("📈 Scoring: each approved daily check-in (verified push-up video) adds to your approved days and event score.",
+          "📈 النقاط: كل تسجيل حضور يومي مقبول (فيديو تمارين ضغط موثّق) يضيف إلى أيامك المقبولة ونتيجتك في الفعالية."),
+        s("🏅 Leaderboard: ranked by approved days; ties broken by earliest achievement of the score.",
+          "🏅 لوحة الصدارة: الترتيب حسب الأيام المقبولة؛ ويُحسم التعادل لمن حقق النتيجة أولًا."),
+        s("🛡️ Anti-cheat: submissions are human-reviewed. Automated, reused, or manipulated content is rejected.",
+          "🛡️ مكافحة الغش: تخضع جميع المشاركات لمراجعة بشرية. يُرفض المحتوى الآلي أو المُعاد استخدامه أو المعدّل."),
+        s("🚫 Disqualification: cheating, multiple accounts, or abusive behavior. Forfeits all event rewards.",
+          "🚫 الاستبعاد: الغش أو استخدام حسابات متعددة أو السلوك المسيء. يؤدي إلى مصادرة جميع مكافآت الفعالية."),
+        s("🎁 Rewards: distributed to eligible winners within days after review completes — PayPal gift cards (1st–3rd: $50, 4th–5th: $30, 6th–10th: $15) plus Gold, the Event Avatar Frame, and the Champion Badge. Gift cards are delivered to the winner's saved PayPal email (Settings → Payment / Payout Setup).",
+          "🎁 المكافآت: تُوزّع على الفائزين المؤهلين خلال أيام بعد اكتمال المراجعة — بطاقات هدايا PayPal (الأول–الثالث: 50$، الرابع–الخامس: 30$، السادس–العاشر: 15$) إضافة إلى الذهب وإطار الصورة الخاص بالفعالية وشارة البطل. تُسلّم بطاقات الهدايا إلى بريد PayPal المحفوظ للفائز (الإعدادات ← الدفع / إعداد الصرف)."),
+        s("🤝 Prohibited: harassment, inappropriate content, or any attempt to game the challenge.",
+          "🤝 الممنوعات: التحرش أو المحتوى غير اللائق أو أي محاولة للتحايل على التحدي."),
+        s("🔒 Privacy: check-in videos are reviewed by moderators for verification and are not shared publicly without your action. You keep ownership of your content.",
+          "🔒 الخصوصية: يراجع المشرفون فيديوهات تسجيل الحضور للتحقق فقط، ولا تُنشر علنًا دون إجراء منك. تبقى ملكيتك لمحتواك محفوظة.")
     )
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1975,7 +2015,7 @@ private fun EventRulesCard(event: Event) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "RULES & TERMS",
+                text = s("RULES & TERMS", "القواعد والشروط"),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = DarkBotanical,
                     letterSpacing = 2.sp,
@@ -1989,7 +2029,7 @@ private fun EventRulesCard(event: Event) {
                 )
             }
             Text(
-                text = "Joining the event means you accept these rules.",
+                text = s("Joining the event means you accept these rules.", "انضمامك إلى الفعالية يعني موافقتك على هذه القواعد."),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = DarkBotanical,
                     fontWeight = FontWeight.SemiBold

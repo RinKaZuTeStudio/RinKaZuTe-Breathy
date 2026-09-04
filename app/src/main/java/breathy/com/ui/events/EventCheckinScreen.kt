@@ -97,6 +97,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import breathy.com.BreathyApplication
+import breathy.com.utils.s
 import breathy.com.data.models.EventCheckin
 import breathy.com.data.repository.EventRepository
 import breathy.com.ui.theme.AccentPrimary
@@ -187,11 +188,11 @@ class EventCheckinViewModel(
                         )
                     }
                 } else {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Event not found") }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = s("Event not found", "الفعالية غير موجودة")) }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to load event info")
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load event info") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = s("Failed to load event info", "تعذر تحميل معلومات الفعالية")) }
             }
         }
     }
@@ -274,7 +275,7 @@ class EventCheckinViewModel(
                             it.copy(
                                 isUploading = false,
                                 uploadProgress = 0f,
-                                errorMessage = e.localizedMessage ?: "Failed to submit check-in"
+                                errorMessage = e.localizedMessage ?: s("Failed to submit check-in", "تعذر إرسال تسجيل الحضور")
                             )
                         }
                     }
@@ -410,7 +411,7 @@ fun EventCheckinScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Check In - Day ${uiState.dayNumber}",
+                        text = s("Check In - Day ${uiState.dayNumber}", "تسجيل الحضور - اليوم ${uiState.dayNumber}"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -682,7 +683,7 @@ private fun CameraViewScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Text(
-                    text = "Day $dayNumber",
+                    text = s("Day $dayNumber", "اليوم $dayNumber"),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = themeBgPrimary,
@@ -704,7 +705,7 @@ private fun CameraViewScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (isRecording) "Recording your check-in..." else "Tap to start recording",
+                    text = if (isRecording) s("Recording your check-in...", "جارٍ تسجيل حضورك...") else s("Tap to start recording", "اضغط لبدء التسجيل"),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = themeTextSecondary
                     )
@@ -774,7 +775,7 @@ private fun CameraViewScreen(
                 if (isRecording) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Max 60 seconds",
+                        text = s("Max 60 seconds", "بحد أقصى 60 ثانية"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = themeTextDisabled,
                             fontSize = 11.sp
@@ -828,14 +829,14 @@ private fun VideoPreviewScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Video Preview",
+                            text = s("Video Preview", "معاينة الفيديو"),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = themeTextPrimary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
                         Text(
-                            text = "Day $dayNumber check-in recorded",
+                            text = s("Day $dayNumber check-in recorded", "تم تسجيل حضور اليوم $dayNumber"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = themeTextSecondary
                             )
@@ -879,7 +880,7 @@ private fun VideoPreviewScreen(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Discard",
+                        text = s("Discard", "تجاهل"),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -907,7 +908,7 @@ private fun VideoPreviewScreen(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Submit",
+                        text = s("Submit", "إرسال"),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -960,7 +961,7 @@ private fun UploadProgressScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Uploading Day $dayNumber Check-in",
+                text = s("Uploading Day $dayNumber Check-in", "جارٍ رفع تسجيل حضور اليوم $dayNumber"),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
@@ -970,7 +971,7 @@ private fun UploadProgressScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Please wait while your video is being uploaded...",
+                text = s("Please wait while your video is being uploaded...", "يرجى الانتظار أثناء رفع الفيديو الخاص بك..."),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
@@ -1045,7 +1046,7 @@ private fun UploadCompleteScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Check-in Submitted!",
+                text = s("Check-in Submitted!", "تم إرسال تسجيل الحضور!"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     color = AccentPrimary,
                     fontWeight = FontWeight.Bold
@@ -1055,7 +1056,7 @@ private fun UploadCompleteScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Day $dayNumber of $eventTitle",
+                text = s("Day $dayNumber of $eventTitle", "اليوم $dayNumber من $eventTitle"),
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = themeTextPrimary,
                     fontWeight = FontWeight.SemiBold
@@ -1065,7 +1066,7 @@ private fun UploadCompleteScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Your video will be reviewed shortly",
+                text = s("Your video will be reviewed shortly", "ستتم مراجعة الفيديو قريبًا"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
@@ -1088,7 +1089,7 @@ private fun UploadCompleteScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
-                    text = "Done",
+                    text = s("Done", "تم"),
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
@@ -1119,7 +1120,7 @@ private fun NoPermissionScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Camera Permission Required",
+                text = s("Camera Permission Required", "إذن الكاميرا مطلوب"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -1127,7 +1128,7 @@ private fun NoPermissionScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "We need camera access to record your check-in video",
+                text = s("We need camera access to record your check-in video", "نحتاج إلى إذن الكاميرا لتسجيل فيديو حضورك"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
@@ -1145,7 +1146,7 @@ private fun NoPermissionScreen(
                 }
             ) {
                 Text(
-                    text = "Grant Permission",
+                    text = s("Grant Permission", "منح الإذن"),
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -1203,7 +1204,7 @@ private fun SuccessAnimationOverlay(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "\u2728 Submitted! \u2728",
+                    text = s("\u2728 Submitted! \u2728", "\u2728 تم الإرسال! \u2728"),
                     style = TextStyle(
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,

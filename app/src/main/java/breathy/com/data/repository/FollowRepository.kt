@@ -178,7 +178,7 @@ class FollowRepository(
                     Timber.i("FollowRepository: counter skip — publicProfiles/%s missing", profileUid)
                     return@withTimeoutOrNull
                 }
-                ref.set(mapOf(field to FieldValue.increment(delta)), SetOptions.merge()).await()
+                ref.set(mapOf(field to FieldValue.increment(delta.toLong())), com.google.firebase.firestore.SetOptions.merge()).await()
             }
         }.onFailure { e ->
             Timber.w(e, "FollowRepository: counter %s%+d failed (non-fatal)", field, delta)

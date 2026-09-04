@@ -1,7 +1,21 @@
 rules_version = '2';
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  BREATHY — PRODUCTION FIRESTORE RULES (v6, 2026-09)
+//  BREATHY — PRODUCTION FIRESTORE RULES (v7, 2026-09)
+//
+//  ⚠️ WHERE TO PUBLISH (critical):
+//  Firebase Console → Firestore Database → use the DATABASE DROPDOWN at the
+//  top-left and select: ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7
+//  (this is the database the app has ALWAYS used — all user data lives
+//  there). Then open Rules, paste this file, and press Publish. Rules are
+//  per-database: publishing to a different database does nothing for the app.
+//
+//  v7 vs v6: onlyUpdatingFollowCounters() now also accepts 'updatedAt' (the
+//  developer's own published edit — kept as the baseline so this file is a
+//  superset of everything published before). Everything else is identical
+//  to v6. The v1.0.10 app writes follow counters as single-field
+//  existence-aware updates and guards the daily-reward ledger write, so it
+//  complies with this ruleset out of the box.
 //  Paste this entire file into Firebase Console → Firestore → Rules → Publish
 //  (or deploy with: firebase deploy --only firestore:rules)
 //
@@ -84,7 +98,7 @@ service cloud.firestore {
     function onlyUpdatingFollowCounters() {
       return request.resource.data.diff(resource.data)
         .affectedKeys()
-        .hasOnly(['followerCount', 'followingCount']);
+        .hasOnly(['followerCount', 'followingCount', 'updatedAt']);
     }
 
     function chatParticipants(chatId) {

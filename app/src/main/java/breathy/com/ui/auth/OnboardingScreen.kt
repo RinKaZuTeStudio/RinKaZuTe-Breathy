@@ -109,6 +109,7 @@ import breathy.com.data.models.User
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
+import breathy.com.utils.s
 
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -299,7 +300,7 @@ class OnboardingViewModel(
 
         if (currentUser == null) {
             _uiState.update {
-                it.copy(errorMessage = "You must be signed in to complete onboarding.")
+                it.copy(errorMessage = s("You must be signed in to complete onboarding.", "يجب تسجيل الدخول لإكمال الإعداد."))
             }
             return
         }
@@ -308,8 +309,8 @@ class OnboardingViewModel(
         if (state.nickname.isBlank() || state.nickname.length < 2) {
             _uiState.update {
                 it.copy(
-                    nicknameError = "Nickname must be at least 2 characters.",
-                    errorMessage = "Please enter a valid nickname."
+                    nicknameError = s("Nickname must be at least 2 characters.", "يجب أن يتضمن الاسم المستعار حرفين على الأقل."),
+                    errorMessage = s("Please enter a valid nickname.", "يرجى إدخال اسم مستعار صالح.")
                 )
             }
             return
@@ -337,8 +338,8 @@ class OnboardingViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            nicknameError = "This nickname is already taken.",
-                            errorMessage = "Please choose a different nickname."
+                            nicknameError = s("This nickname is already taken.", "هذا الاسم المستعار مستخدم بالفعل."),
+                            errorMessage = s("Please choose a different nickname.", "يرجى اختيار اسم مستعار مختلف.")
                         )
                     }
                     return@launch
@@ -713,7 +714,7 @@ fun OnboardingScreen(
 
             // Step indicator text
             Text(
-                text = "Step ${uiState.currentStep + 1} of ${uiState.totalSteps}",
+                text = s("Step %d of %d", "الخطوة %d من %d").format(uiState.currentStep + 1, uiState.totalSteps),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth(),
@@ -843,7 +844,7 @@ private fun WelcomeStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Your Journey Starts Here",
+            text = s("Your Journey Starts Here", "رحلتك تبدأ من هنا"),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -853,7 +854,7 @@ private fun WelcomeStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Every breath is a step toward freedom.\nLet's set your quit date.",
+            text = s("Every breath is a step toward freedom.\nLet's set your quit date.", "كل نفس خطوة نحو الحرية.\nلنحدد تاريخ إقلاعك."),
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -863,7 +864,7 @@ private fun WelcomeStep(
         Spacer(modifier = Modifier.height(36.dp))
 
         Text(
-            text = "When did you quit (or plan to quit)?",
+            text = s("When did you quit (or plan to quit)?", "متى أقلعت عن التدخين (أو تخطط للإقلاع)؟"),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -897,7 +898,7 @@ private fun WelcomeStep(
                     onClick = { showDatePicker(context, quitDate, onQuitDateSelected) }
                 ) {
                     Text(
-                        text = "Change",
+                        text = s("Change", "تغيير"),
                         color = AccentPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
@@ -917,7 +918,7 @@ private fun WelcomeStep(
 
         // Helpful note
         Text(
-            text = "You can set today's date if you're just starting,\nor a past date if you've already quit.",
+            text = s("You can set today's date if you're just starting,\nor a past date if you've already quit.", "يمكنك تحديد تاريخ اليوم إذا كنت تبدأ للتو،\nأو تاريخًا ماضيًا إذا كنت قد أقلعت بالفعل."),
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -951,7 +952,7 @@ private fun QuitTypeStep(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "How Are You Quitting?",
+            text = s("How Are You Quitting?", "كيف ستقلع عن التدخين؟"),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -961,7 +962,7 @@ private fun QuitTypeStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Choose the approach that works best for you.\nYou can change this later.",
+            text = s("Choose the approach that works best for you.\nYou can change this later.", "اختر الطريقة الأنسب لك.\nيمكنك تغييرها لاحقًا."),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -972,9 +973,9 @@ private fun QuitTypeStep(
 
         // ── Instant quit card ────────────────────────────────────────────
         QuitTypeCard(
-            title = "Instant Quit",
-            subtitle = "Cold Turkey",
-            description = "Stop smoking immediately. Strong and decisive \u2014 we'll help you power through cravings with breathing exercises and distractions.",
+            title = s("Instant Quit", "إقلاع فوري"),
+            subtitle = s("Cold Turkey", "التوقف التام"),
+            description = s("Stop smoking immediately. Strong and decisive \u2014 we'll help you power through cravings with breathing exercises and distractions.", "توقف عن التدخين فورًا. نهج حاسم وقوي \u2014 سنساعدك على تجاوز الرغبات العنيدة بتمارين التنفس وعوامل التشتيت."),
             icon = Icons.Default.Speed,
             isSelected = quitType == QuitType.INSTANT,
             accentColor = AccentPrimary,
@@ -985,9 +986,9 @@ private fun QuitTypeStep(
 
         // ── Gradual quit card ────────────────────────────────────────────
         QuitTypeCard(
-            title = "Gradual Reduction",
-            subtitle = "Step by Step",
-            description = "Reduce your daily intake over time. We'll create a tapering schedule to help you ease into a smoke-free life at your own pace.",
+            title = s("Gradual Reduction", "التقليل التدريجي"),
+            subtitle = s("Step by Step", "خطوة بخطوة"),
+            description = s("Reduce your daily intake over time. We'll create a tapering schedule to help you ease into a smoke-free life at your own pace.", "قلل استهلاكك اليومي تدريجيًا. سنضع لك جدولًا متدرجًا يساعدك على الانتقال إلى حياة خالية من التدخين وبإيقاعك الخاص."),
             icon = Icons.Default.TrendingDown,
             isSelected = quitType == QuitType.GRADUAL,
             accentColor = AccentSecondary,
@@ -1105,7 +1106,7 @@ private fun SmokingHabitsStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Your Smoking Habits",
+            text = s("Your Smoking Habits", "عاداتك التدخينية"),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -1115,7 +1116,7 @@ private fun SmokingHabitsStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "This helps us calculate your savings\nand track your progress.",
+            text = s("This helps us calculate your savings\nand track your progress.", "يساعدنا هذا في حساب مدخراتك\nوتتبع تقدمك."),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -1126,7 +1127,7 @@ private fun SmokingHabitsStep(
 
         // ── Cigarettes per day stepper ───────────────────────────────────
         Text(
-            text = "Cigarettes per day",
+            text = s("Cigarettes per day", "السجائر في اليوم"),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1146,7 +1147,7 @@ private fun SmokingHabitsStep(
 
         // ── Price per pack ───────────────────────────────────────────────
         Text(
-            text = "Price per pack",
+            text = s("Price per pack", "سعر العلبة"),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1199,7 +1200,7 @@ private fun SmokingHabitsStep(
 
         // ── Cigarettes per pack ──────────────────────────────────────────
         Text(
-            text = "Cigarettes per pack",
+            text = s("Cigarettes per pack", "السجائر في العلبة"),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1224,7 +1225,7 @@ private fun SmokingHabitsStep(
             },
             modifier = Modifier.fillMaxWidth(),
             suffix = {
-                Text("cigs", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Text(s("cigs", "سيجارة"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
@@ -1257,7 +1258,7 @@ private fun SmokingHabitsStep(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Your Potential Savings",
+                    text = s("Your Potential Savings", "مدخراتك المحتملة"),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AccentPrimary
@@ -1269,9 +1270,9 @@ private fun SmokingHabitsStep(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    SavingsItem(label = "Daily", value = "$${String.format("%.2f", dailySavings)}")
-                    SavingsItem(label = "Monthly", value = "$${String.format("%.2f", monthlySavings)}")
-                    SavingsItem(label = "Yearly", value = "$${String.format("%.0f", yearlySavings)}")
+                    SavingsItem(label = s("Daily", "يومي"), value = "$${String.format("%.2f", dailySavings)}")
+                    SavingsItem(label = s("Monthly", "شهري"), value = "$${String.format("%.2f", monthlySavings)}")
+                    SavingsItem(label = s("Yearly", "سنوي"), value = "$${String.format("%.0f", yearlySavings)}")
                 }
             }
         }
@@ -1374,7 +1375,7 @@ private fun AgeStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "How old are you?",
+            text = s("How old are you?", "كم عمرك؟"),
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground
@@ -1383,8 +1384,7 @@ private fun AgeStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "This helps us personalize your journey. " +
-                "You'll only be asked this once.",
+            text = s("This helps us personalize your journey. You'll only be asked this once.", "يساعدنا هذا في تخصيص رحلتك. سيُطلب منك هذا مرة واحدة فقط."),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1430,7 +1430,7 @@ private fun AgeStep(
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "years",
+                        text = s("years", "سنة"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1452,8 +1452,8 @@ private fun AgeStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = if (age == null) "Please select your age to continue"
-            else "Tap + / − to adjust",
+            text = if (age == null) s("Please select your age to continue", "يرجى اختيار عمرك للمتابعة")
+            else s("Tap + / − to adjust", "اضغط + / − للتعديل"),
             style = MaterialTheme.typography.bodySmall,
             color = if (age == null) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1482,12 +1482,11 @@ private fun ProfileStep(
         label = "profileGlow"
     )
 
-    // Image picker launcher — uses Android Photo Picker (no permissions required)
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        onPhotoUriChanged(uri)
-    }
+    // v1.0.10 — the Android Photo Picker launcher was REMOVED from the
+    // sign-up flow (developer request: no "Add/Change Profile Picture"
+    // anywhere, including onboarding). Every account starts with the
+    // official Day One avatar; pictures change later via the Avatar
+    // Collection only.
 
     Column(
         modifier = Modifier
@@ -1532,7 +1531,7 @@ private fun ProfileStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Set Your Profile",
+            text = s("Set Your Profile", "أنشئ ملفك الشخصي"),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -1542,7 +1541,7 @@ private fun ProfileStep(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "Choose a nickname for the community.\nYour avatar collection grows as you progress!",
+            text = s("Choose a nickname for the community.\nYour avatar collection grows as you progress!", "اختر اسمًا مستعارًا للمجتمع.\nوتنمو مجموعتك من الصور الرمزية كلما تقدمت!"),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -1553,7 +1552,7 @@ private fun ProfileStep(
 
         // ── Nickname field ───────────────────────────────────────────────
         Text(
-            text = "Nickname",
+            text = s("Nickname", "الاسم المستعار"),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1568,7 +1567,7 @@ private fun ProfileStep(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    text = "e.g. BreathyBree",
+                    text = s("e.g. BreathyBree", "مثال: BreathyBree"),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             },
@@ -1629,14 +1628,14 @@ private fun ProfileStep(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Almost there!",
+                text = s("Almost there!", "أوشكنا على الانتهاء!"),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = AccentPurple
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Your nickname will be visible to other community members. You can change it anytime in your profile settings.",
+                text = s("Your nickname will be visible to other community members. You can change it anytime in your profile settings.", "سيكون اسمك المستعار مرئيًا لبقية أعضاء المجتمع. يمكنك تغييره في أي وقت من إعدادات ملفك الشخصي."),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -1714,7 +1713,7 @@ private fun OnboardingNavigation(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Back", fontSize = 14.sp)
+                Text(s("Back", "رجوع"), fontSize = 14.sp)
             }
         } else {
             // Spacer to maintain layout on first step
@@ -1728,7 +1727,7 @@ private fun OnboardingNavigation(
                 modifier = Modifier.height(48.dp)
             ) {
                 Text(
-                    text = "Skip",
+                    text = s("Skip", "تخطي"),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
@@ -1748,7 +1747,7 @@ private fun OnboardingNavigation(
                     contentColor = MaterialTheme.colorScheme.background
                 )
             ) {
-                Text("Next", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(s("Next", "التالي"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
@@ -1790,7 +1789,7 @@ private fun OnboardingNavigation(
                         )
                     } else {
                         Text(
-                            text = "Let's Go!",
+                            text = s("Let's Go!", "هيا بنا!"),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.background

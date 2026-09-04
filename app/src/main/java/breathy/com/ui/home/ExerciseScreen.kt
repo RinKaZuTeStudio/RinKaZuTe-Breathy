@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlinx.coroutines.delay
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -95,6 +96,26 @@ enum class ExerciseType(
 }
 
 private enum class WorkoutPhase { GET_READY, WORKING, DONE }
+
+// Localized display strings for [ExerciseType]. Resolved at render time (NOT
+// inside the enum) so an in-app language switch re-resolves immediately.
+private fun exerciseTitle(exercise: ExerciseType): String = when (exercise) {
+    ExerciseType.PUSHUPS -> s("Pushups", "تمارين الضغط")
+    ExerciseType.SQUATS -> s("Squats", "سكوات")
+    ExerciseType.PLANK -> s("Plank", "بلانك")
+}
+
+private fun exercisePrepInstruction(exercise: ExerciseType): String = when (exercise) {
+    ExerciseType.PUSHUPS -> s("Get into pushup position", "اتخذ وضعية تمرين الضغط")
+    ExerciseType.SQUATS -> s("Stand with feet shoulder-width apart", "قف مع إبعاد قدميك بمقدار عرض الكتفين")
+    ExerciseType.PLANK -> s("Get into plank position", "اتخذ وضعية البلانك")
+}
+
+private fun exerciseWorkingInstruction(exercise: ExerciseType): String = when (exercise) {
+    ExerciseType.PUSHUPS -> s("Do one pushup, then tap +1", "قم بتكرار واحد ثم اضغط +1")
+    ExerciseType.SQUATS -> s("Do one squat, then tap +1", "قم بتكرار واحد ثم اضغط +1")
+    ExerciseType.PLANK -> s("Hold it! Don't give up 💪", "اثبت! لا تستسلم 💪")
+}
 
 /**
  * Full-screen guided exercise with a 5-second "Get Ready" countdown
@@ -207,7 +228,7 @@ fun ExerciseWorkout(
             when (phase) {
                 WorkoutPhase.GET_READY -> {
                     Text(
-                        text = "Get Ready!",
+                        text = s("Get Ready!", "استعد!"),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             color = themeTextPrimary,
                             fontWeight = FontWeight.Bold
@@ -217,7 +238,7 @@ fun ExerciseWorkout(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = exercise.title,
+                        text = exerciseTitle(exercise),
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = accent,
                             fontWeight = FontWeight.SemiBold
@@ -227,7 +248,7 @@ fun ExerciseWorkout(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = exercise.prepInstruction,
+                        text = exercisePrepInstruction(exercise),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = themeTextSecondary
                         ),
@@ -239,7 +260,7 @@ fun ExerciseWorkout(
 
                     // Giant 5 → 1 countdown (then GO!)
                     Text(
-                        text = if (showGo) "GO! 🔥" else countdown.toString(),
+                        text = if (showGo) s("GO! 🔥", "انطلق! 🔥") else countdown.toString(),
                         style = MaterialTheme.typography.displayLarge.copy(
                             color = if (showGo) accent else themeTextPrimary,
                             fontWeight = FontWeight.Black,
@@ -251,7 +272,7 @@ fun ExerciseWorkout(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Starting in ${countdown.coerceAtLeast(0)}...",
+                        text = s("Starting in %d...", "يبدأ بعد %d...").format(countdown.coerceAtLeast(0)),
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = themeTextSecondary
                         )
@@ -260,7 +281,7 @@ fun ExerciseWorkout(
 
                 WorkoutPhase.WORKING -> {
                     Text(
-                        text = exercise.title,
+                        text = exerciseTitle(exercise),
                         style = MaterialTheme.typography.headlineSmall.copy(
                             color = themeTextPrimary,
                             fontWeight = FontWeight.Bold
@@ -270,7 +291,7 @@ fun ExerciseWorkout(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = exercise.workingInstruction,
+                        text = exerciseWorkingInstruction(exercise),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = themeTextSecondary
                         ),
@@ -342,7 +363,7 @@ fun ExerciseWorkout(
                                     )
                                 )
                                 Text(
-                                    text = "of $target reps",
+                                    text = s("of %d reps", "من أصل %d تكرار").format(target),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         color = themeTextSecondary
                                     )
@@ -351,7 +372,7 @@ fun ExerciseWorkout(
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "${secondsLeft.coerceAtLeast(0)}s",
+                                    text = s("%ds", "%d ث").format(secondsLeft.coerceAtLeast(0)),
                                     style = MaterialTheme.typography.displayMedium.copy(
                                         color = themeTextPrimary,
                                         fontWeight = FontWeight.Black
@@ -359,7 +380,7 @@ fun ExerciseWorkout(
                                     modifier = Modifier.scale(pulseScale)
                                 )
                                 Text(
-                                    text = "hold it!",
+                                    text = s("hold it!", "اثبت!"),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         color = themeTextSecondary
                                     )
@@ -397,7 +418,7 @@ fun ExerciseWorkout(
                             )
                             Spacer(modifier = Modifier.size(10.dp))
                             Text(
-                                text = "+1 Rep",
+                                text = s("+1 Rep", "+1 تكرار"),
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -414,7 +435,7 @@ fun ExerciseWorkout(
                         shape = RoundedCornerShape(24.dp)
                     ) {
                         Text(
-                            text = "Give up 😓",
+                            text = s("Give up 😓", "استسلم 😓"),
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -422,7 +443,7 @@ fun ExerciseWorkout(
 
                 WorkoutPhase.DONE -> {
                     Text(
-                        text = "Awesome! 🎉",
+                        text = s("Awesome! 🎉", "رائع! 🎉"),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             color = themeTextPrimary,
                             fontWeight = FontWeight.Bold
@@ -433,9 +454,9 @@ fun ExerciseWorkout(
 
                     Text(
                         text = if (exercise.targetReps != null) {
-                            "${exercise.title} — $target reps done!"
+                            s("%s — %d reps done!", "%s — أكملت %d تكرارًا!").format(exerciseTitle(exercise), target)
                         } else {
-                            "${exercise.title} — $totalHold seconds held!"
+                            s("%s — %d seconds held!", "%s — صمدت %d ثانية!").format(exerciseTitle(exercise), totalHold)
                         },
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = accent,

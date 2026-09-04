@@ -23,6 +23,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import breathy.com.BreathyApplication
 import breathy.com.utils.AdManager
+import breathy.com.utils.s
 import com.ironsource.mediationsdk.ads.nativead.LevelPlayMediaView
 import com.ironsource.mediationsdk.ads.nativead.LevelPlayNativeAd
 import com.ironsource.mediationsdk.ads.nativead.NativeAdLayout
@@ -167,7 +168,7 @@ private fun buildBreathyNativeAdView(activity: Activity, ad: LevelPlayNativeAd):
     content.addView(badgeRow)
 
     val adPill = TextView(ctx).apply {
-        text = "AD"
+        text = s("AD", "إعلان")
         textSize = 9f
         setTypeface(typeface, Typeface.BOLD)
         setTextColor(Color.WHITE)
@@ -177,7 +178,7 @@ private fun buildBreathyNativeAdView(activity: Activity, ad: LevelPlayNativeAd):
     badgeRow.addView(adPill)
 
     val sponsored = TextView(ctx).apply {
-        text = "Sponsored"
+        text = s("Sponsored", "مموَّل")
         textSize = 11f
         setTextColor(textSecondary)
         val l = dp(ctx, 6)
@@ -255,10 +256,10 @@ private fun buildBreathyNativeAdView(activity: Activity, ad: LevelPlayNativeAd):
     content.addView(ctaView)
 
     // ── Bind real native content + register with the SDK ────────────────────
-    advertiserView.text = ad.advertiser?.takeIf { it.isNotBlank() } ?: "Sponsored"
+    advertiserView.text = ad.advertiser?.takeIf { it.isNotBlank() } ?: s("Sponsored", "مموَّل")
     titleView.text = ad.title ?: ""
     bodyView.text = ad.body ?: ""
-    ctaView.text = ad.callToAction?.takeIf { it.isNotBlank() } ?: "Learn more"
+    ctaView.text = ad.callToAction?.takeIf { it.isNotBlank() } ?: s("Learn more", "اعرف المزيد")
 
     ad.icon?.let { image ->
         val drawable = image.drawable

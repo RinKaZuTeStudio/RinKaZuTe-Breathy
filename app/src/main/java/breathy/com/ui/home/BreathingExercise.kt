@@ -51,6 +51,7 @@ import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeBgSurface
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlinx.coroutines.delay
 
 private enum class BreathingPhase {
@@ -113,10 +114,10 @@ fun BreathingExercise(
     }
 
     val phaseText = when (currentPhase) {
-        BreathingPhase.INHALE -> "Breathe In..."
-        BreathingPhase.HOLD -> "Hold..."
-        BreathingPhase.EXHALE -> "Breathe Out..."
-        BreathingPhase.DONE -> "Complete!"
+        BreathingPhase.INHALE -> s("Breathe In...", "شهيق...")
+        BreathingPhase.HOLD -> s("Hold...", "احبس...")
+        BreathingPhase.EXHALE -> s("Breathe Out...", "زفير...")
+        BreathingPhase.DONE -> s("Complete!", "اكتمل!")
     }
 
     // Phase timer
@@ -189,7 +190,7 @@ fun BreathingExercise(
                 ) {
                     // Cycle indicator
                     Text(
-                        text = "Cycle $currentCycle of $totalCycles",
+                        text = s("Cycle %d of %d", "الدورة %d من %d").format(currentCycle, totalCycles),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = themeTextSecondary,
                             fontWeight = FontWeight.Medium
@@ -327,7 +328,7 @@ fun BreathingExercise(
                         Spacer(modifier = Modifier.height(32.dp))
 
                         Text(
-                            text = "Great job! You completed the exercise 🎉",
+                            text = s("Great job! You completed the exercise 🎉", "أحسنت! لقد أكملت التمرين 🎉"),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = themeTextPrimary,
                                 fontWeight = FontWeight.Medium
@@ -347,7 +348,7 @@ fun BreathingExercise(
                                 shape = RoundedCornerShape(24.dp)
                             ) {
                                 Text(
-                                    text = "I feel better 👍",
+                                    text = s("I feel better 👍", "أشعر بتحسّن 👍"),
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -361,7 +362,7 @@ fun BreathingExercise(
                                 shape = RoundedCornerShape(24.dp)
                             ) {
                                 Text(
-                                    text = "Still craving 😔",
+                                    text = s("Still craving 😔", "ما زلت أشعر بالرغبة 😔"),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -370,7 +371,7 @@ fun BreathingExercise(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "+5 XP for completing the exercise",
+                            text = s("+5 XP for completing the exercise", "+5 نقاط XP لإكمال التمرين"),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = AccentPrimary,
                                 fontWeight = FontWeight.Medium
@@ -391,7 +392,7 @@ fun BreathingExercise(
                                 contentColor = themeTextSecondary
                             )
                         ) {
-                            Text(text = "Cancel", fontWeight = FontWeight.Medium)
+                            Text(text = s("Cancel", "إلغاء"), fontWeight = FontWeight.Medium)
                         }
                     }
                 }

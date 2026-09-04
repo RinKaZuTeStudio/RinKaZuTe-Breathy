@@ -63,6 +63,7 @@ import breathy.com.ui.theme.themeBgSurfaceVariant
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
 import breathy.com.ui.theme.themeTextDisabled
+import breathy.com.utils.s
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  StoryCard — Reusable card component for community feed stories
@@ -197,14 +198,17 @@ fun StoryCard(
                     onDismissRequest = { showDeleteDialog = false },
                     title = {
                         Text(
-                            text = "Delete Story",
+                            text = s("Delete Story", "حذف القصة"),
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Bold
                         )
                     },
                     text = {
                         Text(
-                            text = "Are you sure you want to delete this story? This action cannot be undone.",
+                            text = s(
+                                "Are you sure you want to delete this story? This action cannot be undone.",
+                                "هل أنت متأكد من حذف هذه القصة؟ لا يمكن التراجع عن هذا الإجراء."
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
@@ -215,12 +219,12 @@ fun StoryCard(
                                 onDeleteClick?.invoke()
                             }
                         ) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                            Text(s("Delete", "حذف"), color = MaterialTheme.colorScheme.error)
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { showDeleteDialog = false }) {
-                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(s("Cancel", "إلغاء"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.surface
@@ -320,7 +324,7 @@ private fun DaysSmokeFreeBadge(days: Int) {
         }
     ) {
         Text(
-            text = if (days == 0) "Day 1" else "${days}d free",
+            text = if (days == 0) s("Day 1", "اليوم الأول") else s("%dd free", "%d يومًا بلا تدخين").format(days),
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             color = AccentPrimary,
             style = MaterialTheme.typography.labelSmall,
@@ -359,7 +363,7 @@ private fun ExpandableText(
         if (canExpand || isExpanded) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = if (isExpanded) "Show less" else "Read more",
+                text = if (isExpanded) s("Show less", "إظهار أقل") else s("Read more", "اقرأ المزيد"),
                 color = AccentPrimary,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,

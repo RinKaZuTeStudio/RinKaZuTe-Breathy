@@ -79,6 +79,7 @@ import breathy.com.ui.theme.themeBgSurfaceVariant
 import breathy.com.ui.theme.themeTextDisabled
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -147,7 +148,7 @@ fun PublicProfileScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = uiState.profile?.nickname ?: "Profile",
+                        text = uiState.profile?.nickname ?: s("Profile", "الملف الشخصي"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -198,7 +199,7 @@ fun PublicProfileScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "⚠️ Failed to load profile",
+                        text = s("⚠️ Failed to load profile", "⚠️ تعذر تحميل الملف الشخصي"),
                         color = themeTextPrimary,
                         style = MaterialTheme.typography.headlineSmall
                     )
@@ -214,7 +215,7 @@ fun PublicProfileScreen(
                         onClick = { viewModel.retry() },
                         shape = RoundedCornerShape(24.dp)
                     ) {
-                        Text("Retry", color = AccentPrimary)
+                        Text(s("Retry", "إعادة المحاولة"), color = AccentPrimary)
                     }
                 }
             }
@@ -228,7 +229,7 @@ fun PublicProfileScreen(
             ) {
                 // ── Profile header ─────────────────────────────────────────
                 item {
-                    ProfileHeader(profile = uiState.profile!!)
+                    ProfileHeader(profile = uiState.profile!!, liveFollowerCount = uiState.liveFollowerCount)
                 }
 
                 // ── Action buttons ────────────────────────────────────────
@@ -274,7 +275,7 @@ fun PublicProfileScreen(
                                 androidx.compose.material3.TextButton(
                                     onClick = { viewModel.dismissError() }
                                 ) {
-                                    Text("OK", color = MaterialTheme.colorScheme.error)
+                                    Text(s("OK", "حسنًا"), color = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
@@ -290,7 +291,7 @@ fun PublicProfileScreen(
                         ) {
                             androidx.compose.material3.TextButton(onClick = { showSafetySheet = true }) {
                                 androidx.compose.material3.Text(
-                                    text = "Report or block this user",
+                                    text = s("Report or block this user", "الإبلاغ عن هذا المستخدم أو حظره"),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = themeTextSecondary
                                 )
@@ -302,7 +303,7 @@ fun PublicProfileScreen(
                 // ── Stories header ────────────────────────────────────────
                 item {
                     Text(
-                        text = "Stories",
+                        text = s("Stories", "القصص"),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = themeTextSecondary,
@@ -320,7 +321,7 @@ fun PublicProfileScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No stories yet",
+                                text = s("No stories yet", "لا توجد قصص بعد"),
                                 color = themeTextDisabled,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -376,7 +377,7 @@ fun PublicProfileScreen(
 
 
 @Composable
-private fun ProfileHeader(profile: PublicProfile) {
+private fun ProfileHeader(profile: PublicProfile, liveFollowerCount: Int? = null) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -431,7 +432,8 @@ private fun ProfileHeader(profile: PublicProfile) {
                     color = AccentPrimary.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text = if (profile.daysSmokeFree == 0) "Day 1" else "${profile.daysSmokeFree} days smoke-free",
+                        text = if (profile.daysSmokeFree == 0) s("Day 1", "اليوم الأول")
+                        else s("%d days smoke-free", "%d يومًا بلا تدخين").format(profile.daysSmokeFree),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         color = AccentPrimary,
                         style = MaterialTheme.typography.labelMedium,
@@ -446,7 +448,7 @@ private fun ProfileHeader(profile: PublicProfile) {
                     color = AccentPurple.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text = "Lv.$level",
+                        text = s("Lv.%d", "المستوى %d").format(level),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         color = AccentPurple,
                         style = MaterialTheme.typography.labelMedium,
@@ -461,7 +463,8 @@ private fun ProfileHeader(profile: PublicProfile) {
                     color = SoftSage.copy(alpha = 0.4f)
                 ) {
                     Text(
-                        text = "${(uiState.liveFollowerCount ?: profile.followerCount).coerceAtLeast(0)} followers",
+                        text = s("%d followers", "%d متابع")
+                            .format((liveFollowerCount ?: profile.followerCount).coerceAtLeast(0)),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         color = breathy.com.ui.theme.DeepForest,
                         style = MaterialTheme.typography.labelMedium,
@@ -512,7 +515,7 @@ private fun ProfileHeader(profile: PublicProfile) {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Quit on ${formatQuitDate(qd.toDate())}",
+                        text = s("Quit on %s", "أقلع في %s").format(formatQuitDate(qd.toDate())),
                         color = themeTextSecondary,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -565,7 +568,7 @@ private fun ProfileActions(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Message", fontWeight = FontWeight.SemiBold)
+                    Text(s("Message", "رسالة"), fontWeight = FontWeight.SemiBold)
                 }
             }
             FriendStatus.REQUEST_SENT -> {
@@ -591,7 +594,7 @@ private fun ProfileActions(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Pending", fontWeight = FontWeight.Medium)
+                    Text(s("Pending", "قيد الانتظار"), fontWeight = FontWeight.Medium)
                 }
 
                 Button(
@@ -615,7 +618,7 @@ private fun ProfileActions(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Message", fontWeight = FontWeight.SemiBold)
+                    Text(s("Message", "رسالة"), fontWeight = FontWeight.SemiBold)
                 }
             }
             FriendStatus.REQUEST_RECEIVED -> {
@@ -640,7 +643,7 @@ private fun ProfileActions(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Accept", fontWeight = FontWeight.Medium)
+                    Text(s("Accept", "قبول"), fontWeight = FontWeight.Medium)
                 }
 
                 Button(
@@ -660,7 +663,7 @@ private fun ProfileActions(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Message", fontWeight = FontWeight.SemiBold)
+                    Text(s("Message", "رسالة"), fontWeight = FontWeight.SemiBold)
                 }
             }
             FriendStatus.NOT_FRIENDS -> {
@@ -699,7 +702,7 @@ private fun ProfileActions(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        if (isSendingRequest) "Sending..." else "Add Friend",
+                        if (isSendingRequest) s("Sending...", "جارٍ الإرسال...") else s("Add Friend", "إضافة صديق"),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -765,8 +768,8 @@ private fun FollowToggleButton(
         Text(
             text = when {
                 isBusy -> "..."
-                isFollowing -> "Following ✓"
-                else -> "Follow"
+                isFollowing -> s("Following ✓", "أتابعه ✓")
+                else -> s("Follow", "متابعة")
             },
             fontWeight = FontWeight.SemiBold
         )
@@ -876,7 +879,7 @@ class PublicProfileViewModel(
                         Timber.e(e, "Failed to load public profile: %s", profileUserId)
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = e.localizedMessage ?: "Failed to load profile"
+                            error = e.localizedMessage ?: s("Failed to load profile", "تعذر تحميل الملف الشخصي")
                         )
                     }
                 }
@@ -1065,14 +1068,24 @@ class PublicProfileViewModel(
                         } catch (_: Exception) { "unknown" }
                         val message = when {
                             code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                                "Follow blocked (PERMISSION_DENIED). The Firestore RULES in Firebase project \"$projectId\" don't allow the follows collection yet. Publish the v6 rules on THAT project: Console → Firestore Database → Rules → paste → Publish."
+                                s(
+                                    "Follow blocked (PERMISSION_DENIED). Publish the v7 Firestore rules in Console → Firestore Database → (database dropdown: ai-studio-breathy-…) → Rules → paste → Publish.",
+                                    "تم حظر المتابعة (PERMISSION_DENIED). انشر قواعد Firestore الإصدار 7 في Console → Firestore Database → (قائمة قواعد البيانات: ai-studio-breathy-…) → Rules → الصق → Publish."
+                                )
                             code == com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE ||
                                 e.message?.contains("timed out", ignoreCase = true) == true ->
-                                "Couldn't " + (if (following) "unfollow" else "follow") +
-                                    " — check your connection and try again."
+                                s(
+                                    "Couldn't %s — check your connection and try again.",
+                                    "تعذر %s — تحقق من اتصالك وحاول مجددًا."
+                                ).format(if (following) s("unfollow", "إلغاء متابعة") else s("follow", "متابعة"))
                             else ->
-                                "Couldn't " + (if (following) "unfollow" else "follow") +
-                                    " (" + (code?.name ?: e.javaClass.simpleName) + "). Please try again."
+                                s(
+                                    "Couldn't %s (%s). Please try again.",
+                                    "تعذر %s (%s). حاول مجددًا."
+                                ).format(
+                                    if (following) s("unfollow", "إلغاء متابعة") else s("follow", "متابعة"),
+                                    code?.name ?: e.javaClass.simpleName
+                                )
                         }
                         _uiState.value = _uiState.value.copy(
                             isFollowBusy = false,

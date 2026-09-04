@@ -102,10 +102,10 @@ class NotificationHelper(
         val channels = listOf(
             NotificationChannel(
                 CHANNEL_CHAT,
-                "Chat Messages",
+                breathy.com.utils.s("Chat Messages", "رسائل المحادثة"),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "New direct messages from friends"
+                description = breathy.com.utils.s("New direct messages from friends", "رسائل مباشرة جديدة من الأصدقاء")
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 100, 50, 100)
                 setShowBadge(true)
@@ -114,10 +114,10 @@ class NotificationHelper(
             },
             NotificationChannel(
                 CHANNEL_FRIEND_REQUESTS,
-                "Friend Requests",
+                breathy.com.utils.s("Friend Requests", "طلبات الصداقة"),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Incoming friend requests"
+                description = breathy.com.utils.s("Incoming friend requests", "طلبات صداقة واردة")
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 300)
                 setShowBadge(true)
@@ -126,10 +126,10 @@ class NotificationHelper(
             },
             NotificationChannel(
                 CHANNEL_EVENTS,
-                "Events",
+                breathy.com.utils.s("Events", "الفعاليات"),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Challenge reminders, check-in deadlines, and admin approvals"
+                description = breathy.com.utils.s("Challenge reminders, check-in deadlines, and admin approvals", "تذكيرات التحديات ومواعيد التسجيل وموافقات الإدارة")
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 200, 100, 300)
                 setShowBadge(true)
@@ -138,10 +138,10 @@ class NotificationHelper(
             },
             NotificationChannel(
                 CHANNEL_ACHIEVEMENTS,
-                "Achievements",
+                breathy.com.utils.s("Achievements", "الإنجازات"),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Achievement unlocks and smoke-free milestones"
+                description = breathy.com.utils.s("Achievement unlocks and smoke-free milestones", "فتح الإنجازات ومحطات الإقلاع")
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 200, 100, 200)
                 setShowBadge(true)
@@ -150,10 +150,10 @@ class NotificationHelper(
             },
             NotificationChannel(
                 CHANNEL_DAILY_REMINDER,
-                "Daily Reminders",
+                breathy.com.utils.s("Daily Reminders", "التذكيرات اليومية"),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Daily motivational quotes and streak reminders"
+                description = breathy.com.utils.s("Daily motivational quotes and streak reminders", "اقتباسات تحفيزية يومية وتذكيرات بالسلسلة")
                 enableVibration(false)
                 setShowBadge(true)
             }

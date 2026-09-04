@@ -51,6 +51,7 @@ import breathy.com.ui.theme.AccentSecondary
 import breathy.com.ui.theme.themeBgSurface
 import breathy.com.ui.theme.themeBgSurfaceVariant
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -210,7 +211,7 @@ fun MoneySavedCard(
     val numericInt = moneySaved.toInt().coerceAtLeast(0)
     StatCard(
         value = formatted,
-        label = "Saved",
+        label = s("Saved", "موفّر"),
         icon = {
             Icon(
                 imageVector = Icons.Default.Savings,
@@ -233,7 +234,7 @@ fun CigarettesAvoidedCard(
 ) {
     StatCard(
         value = cigarettesAvoided.toString(),
-        label = "Avoided",
+        label = s("Avoided", "تم تجنّبها"),
         icon = {
             Icon(
                 imageVector = Icons.Default.MonitorHeart,
@@ -256,7 +257,7 @@ fun LifeRegainedCard(
 ) {
     StatCard(
         value = lifeRegainedText,
-        label = "Life Regained",
+        label = s("Life Regained", "عمر مستعاد"),
         icon = {
             Icon(
                 imageVector = Icons.Default.Bloodtype,

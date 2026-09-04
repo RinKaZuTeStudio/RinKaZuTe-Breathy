@@ -59,6 +59,7 @@ import breathy.com.ui.theme.BreathyPalette
 import breathy.com.ui.theme.BreathyBorders
 import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeTextPrimary
+import breathy.com.utils.s
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 
@@ -128,7 +129,7 @@ fun SubscriptionScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Breathy Premium",
+                        text = s("Breathy Premium", "Breathy بريميوم"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -176,7 +177,7 @@ fun SubscriptionScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "More support. Less distraction.",
+                text = s("More support. Less distraction.", "دعم أكثر، تشتيت أقل."),
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
                 color = BreathyPalette.textPrimary
@@ -185,7 +186,10 @@ fun SubscriptionScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Breathy Premium helps you stay focused on what matters — your journey.",
+                text = s(
+                    "Breathy Premium helps you stay focused on what matters — your journey.",
+                    "يساعدك Breathy بريميوم على التركيز فيما يهمّك — رحلتك نحو الإقلاع."
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = BreathyPalette.textSecondary
@@ -208,40 +212,67 @@ fun SubscriptionScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     PremiumBenefitRow(
-                        title = "Ad-free experience",
-                        description = "No interstitials, no banners — zero ads everywhere."
+                        title = s("Ad-free experience", "تجربة بلا إعلانات"),
+                        description = s(
+                            "No interstitials, no banners — zero ads everywhere.",
+                            "لا إعلانات بينية ولا لافتات — بلا إعلانات في كل مكان."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "+500 Gold every week",
-                        description = "A 500-Gold weekly bonus, credited automatically while subscribed."
+                        title = s("+500 Gold every week", "+500 ذهب كل أسبوع"),
+                        description = s(
+                            "A 500-Gold weekly bonus, credited automatically while subscribed.",
+                            "مكافأة أسبوعية بقيمة 500 ذهب تُضاف تلقائياً طوال فترة اشتراكك."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "FREE entry to every event",
-                        description = "Skip the 500-Gold entry fee on any event — subscribers join free."
+                        title = s("FREE entry to every event", "دخول مجاني إلى كل فعالية"),
+                        description = s(
+                            "Skip the 500-Gold entry fee on any event — subscribers join free.",
+                            "تخطَّ رسوم الدخول البالغة 500 ذهب في أي فعالية — المشتركون ينضمون مجاناً."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "Animated avatars",
-                        description = "Free From The Chain & Finally Free — animated with a white flash, yours while subscribed."
+                        title = s("Animated avatars", "صور رمزية متحركة"),
+                        description = s(
+                            "Free From The Chain & Finally Free — animated with a white flash, yours while subscribed.",
+                            "Free From The Chain وFinally Free — متحركة مع وميض أبيض، وتكون لك طوال فترة اشتراكك."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "Neon Glow name",
-                        description = "Your nickname glows with an animated neon halo everywhere in the app."
+                        title = s("Neon Glow name", "اسم متوهّج بالنيون"),
+                        description = s(
+                            "Your nickname glows with an animated neon halo everywhere in the app.",
+                            "اسمك يتوهّج بهالة نيونية متحركة في كل مكان داخل التطبيق."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "Exclusive events & challenges",
-                        description = "Premium-only competitions with real prize pools."
+                        title = s("Exclusive events & challenges", "فعاليات وتحديات حصرية"),
+                        description = s(
+                            "Premium-only competitions with real prize pools.",
+                            "مسابقات حصرية للمشتركين بجوائز حقيقية."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "Premium avatar frame",
-                        description = "The ornate Premium border — unlocked and equipped automatically."
+                        title = s("Premium avatar frame", "إطار صور رمزية بريميوم"),
+                        description = s(
+                            "The ornate Premium border — unlocked and equipped automatically.",
+                            "الإطار البريميوم المزخرف — يُفتح ويُفعَّل تلقائياً."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "Premium badge everywhere",
-                        description = "Stand out on the leaderboard, community and your profile."
+                        title = s("Premium badge everywhere", "شارة بريميوم في كل مكان"),
+                        description = s(
+                            "Stand out on the leaderboard, community and your profile.",
+                            "تتميّز بها في لوحة الصدارة والمجتمع وملفك الشخصي."
+                        )
                     )
                     PremiumBenefitRow(
-                        title = "Support Breathy's journey",
-                        description = "Your subscription funds new features and events."
+                        title = s("Support Breathy's journey", "ادعم رحلة Breathy"),
+                        description = s(
+                            "Your subscription funds new features and events.",
+                            "اشتراكك يموّل ميزات وفعاليات جديدة."
+                        )
                     )
                 }
             }
@@ -268,7 +299,7 @@ fun SubscriptionScreen(
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "BREATHY PREMIUM",
+                            text = s("BREATHY PREMIUM", "BREATHY بريميوم"),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 letterSpacing = 2.sp,
                                 fontWeight = FontWeight.Bold
@@ -278,7 +309,7 @@ fun SubscriptionScreen(
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = "SUBSCRIBED ✓",
+                            text = s("SUBSCRIBED ✓", "تم الاشتراك ✓"),
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.ExtraBold
                             ),
@@ -292,8 +323,10 @@ fun SubscriptionScreen(
                         ) {
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "Auto-renewal is cancelled — Premium stays active " +
-                                        "until the end of your current billing period.",
+                                text = s(
+                                    "Auto-renewal is cancelled — Premium stays active until the end of your current billing period.",
+                                    "تم إلغاء التجديد التلقائي — يبقى بريميوم مفعّلاً حتى نهاية دورة الفوترة الحالية."
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = BreathyPalette.textSecondary,
                                 textAlign = TextAlign.Center
@@ -301,15 +334,18 @@ fun SubscriptionScreen(
                         }
                         Spacer(Modifier.height(10.dp))
                         val benefits = listOf(
-                            "Ad-free experience",
-                            "+500 Gold every week",
-                            "FREE entry to every event",
-                            "Animated avatars — Free From The Chain & Finally Free",
-                            "Neon Glow name",
-                            "Exclusive events & challenges",
-                            "Premium avatar frame — auto-equipped",
-                            "Premium badge on leaderboard & community",
-                            "You're funding Breathy's development — thank you!"
+                            s("Ad-free experience", "تجربة بلا إعلانات"),
+                            s("+500 Gold every week", "+500 ذهب كل أسبوع"),
+                            s("FREE entry to every event", "دخول مجاني إلى كل فعالية"),
+                            s(
+                                "Animated avatars — Free From The Chain & Finally Free",
+                                "صور رمزية متحركة — Free From The Chain وFinally Free"
+                            ),
+                            s("Neon Glow name", "اسم متوهّج بالنيون"),
+                            s("Exclusive events & challenges", "فعاليات وتحديات حصرية"),
+                            s("Premium avatar frame — auto-equipped", "إطار صور رمزية بريميوم — يُفعَّل تلقائياً"),
+                            s("Premium badge on leaderboard & community", "شارة بريميوم على لوحة الصدارة والمجتمع"),
+                            s("You're funding Breathy's development — thank you!", "أنت تموّل تطوير Breathy — شكراً لك!")
                         )
                         benefits.forEach { benefit ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -331,7 +367,7 @@ fun SubscriptionScreen(
                         }
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "Thank you for supporting Breathy.",
+                            text = s("Thank you for supporting Breathy.", "شكراً لدعمك Breathy."),
                             style = MaterialTheme.typography.bodySmall,
                             color = BreathyPalette.textSecondary,
                             textAlign = TextAlign.Center
@@ -346,7 +382,7 @@ fun SubscriptionScreen(
                     breathy.com.data.repository.SubscriptionStatus.ACTIVE
                 ) {
                     Text(
-                        text = "Renews automatically every month via Google Play.",
+                        text = s("Renews automatically every month via Google Play.", "يتجدد تلقائياً كل شهر عبر Google Play."),
                         style = MaterialTheme.typography.bodySmall,
                         color = BreathyPalette.textSecondary,
                         textAlign = TextAlign.Center
@@ -376,7 +412,7 @@ fun SubscriptionScreen(
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Manage Subscription")
+                    Text(s("Manage Subscription", "إدارة الاشتراك"))
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -385,16 +421,16 @@ fun SubscriptionScreen(
                     onClick = {
                         viewModel.restore { found ->
                             restoreMessage = if (found) {
-                                "Premium is active on this account."
+                                s("Premium is active on this account.", "بريميوم مفعّل على هذا الحساب.")
                             } else {
-                                "No active subscription found on Google Play."
+                                s("No active subscription found on Google Play.", "لم نعثر على اشتراك نشط في Google Play.")
                             }
                         }
                     },
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Check subscription status")
+                    Text(s("Check subscription status", "التحقق من حالة الاشتراك"))
                 }
 
                 restoreMessage?.let {
@@ -431,7 +467,7 @@ fun SubscriptionScreen(
                                 )
                             ) {
                                 Text(
-                                    text = "Launch offer — active",
+                                    text = s("Launch offer — active", "عرض الإطلاق — مفعّل"),
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = BreathyPalette.darkBotanical,
@@ -450,14 +486,14 @@ fun SubscriptionScreen(
                             )
                         )
                         Text(
-                            text = "per month · auto-renewing",
+                            text = s("per month · auto-renewing", "شهرياً · تجديد تلقائي"),
                             style = MaterialTheme.typography.bodySmall,
                             color = BreathyPalette.textSecondary
                         )
                         if (premiumState.localizedPrice == null) {
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "Loading price from Google Play…",
+                                text = s("Loading price from Google Play…", "جارٍ تحميل السعر من Google Play…"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = BreathyPalette.textSecondary
                             )
@@ -490,7 +526,7 @@ fun SubscriptionScreen(
                         )
                     } else {
                         Text(
-                            text = "Subscribe with Google Play",
+                            text = s("Subscribe with Google Play", "اشترك عبر Google Play"),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -502,9 +538,9 @@ fun SubscriptionScreen(
                     onClick = {
                         viewModel.restore { found ->
                             restoreMessage = if (found) {
-                                "Premium restored — welcome back!"
+                                s("Premium restored — welcome back!", "تمت استعادة بريميوم — أهلاً بعودتك!")
                             } else {
-                                "No previous purchases found on this Google account."
+                                s("No previous purchases found on this Google account.", "لم نعثر على مشتريات سابقة في حساب Google هذا.")
                             }
                         }
                     },
@@ -512,7 +548,7 @@ fun SubscriptionScreen(
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Restore purchases")
+                    Text(s("Restore purchases", "استعادة الشراء"))
                 }
 
                 restoreMessage?.let {
@@ -528,8 +564,10 @@ fun SubscriptionScreen(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = "Renews monthly via Google Play. Cancel anytime in " +
-                        "Google Play settings. Prices are localized by Google Play.",
+                    text = s(
+                        "Renews monthly via Google Play. Cancel anytime in Google Play settings. Prices are localized by Google Play.",
+                        "يتجدد شهرياً عبر Google Play. يمكنك الإلغاء في أي وقت من إعدادات Google Play. الأسعار محدَّدة بواسطة Google Play."
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = BreathyPalette.textDisabled,
                     textAlign = TextAlign.Center

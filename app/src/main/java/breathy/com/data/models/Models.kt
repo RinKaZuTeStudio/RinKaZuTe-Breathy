@@ -420,17 +420,17 @@ data class Story(
     /** Check if a given user has already liked this story. */
     fun isLikedBy(userId: String): Boolean = likedBy.contains(userId)
 
-    /** Time-ago string for display purposes. */
+    /** Time-ago string for display purposes (AR/EN via the in-app language). */
     fun timeAgo(): String {
         val createdMillis = createdAt.toDate().time
         val diffMillis = System.currentTimeMillis() - createdMillis
         val minutes = TimeUnit.MILLISECONDS.toMinutes(diffMillis)
         return when {
-            minutes < 1 -> "Just now"
-            minutes < 60 -> "${minutes}m ago"
-            minutes < 1440 -> "${minutes / 60}h ago"
-            minutes < 10080 -> "${minutes / 1440}d ago"
-            else -> "${minutes / 10080}w ago"
+            minutes < 1 -> breathy.com.utils.s("Just now", "الآن")
+            minutes < 60 -> breathy.com.utils.s("%dm ago", "قبل %d د").format(minutes)
+            minutes < 1440 -> breathy.com.utils.s("%dh ago", "قبل %d س").format(minutes / 60)
+            minutes < 10080 -> breathy.com.utils.s("%dd ago", "قبل %d يوم").format(minutes / 1440)
+            else -> breathy.com.utils.s("%dw ago", "قبل %d أسبوع").format(minutes / 10080)
         }
     }
 }
@@ -924,6 +924,52 @@ data class Achievement(
     val xpReward: Int = 0,
     val unlocked: Boolean = false
 ) {
+    /** v1.0.10 — Arabic-aware display title (resolves at call time). */
+    fun displayTitle(): String = when (id) {
+        "first_day" -> breathy.com.utils.s("First Breath", "أول نَفَس")
+        "one_week" -> breathy.com.utils.s("One Week Strong", "أسبوع قوي")
+        "one_month" -> breathy.com.utils.s("One Month Free", "شهر كامل حر")
+        "three_months" -> breathy.com.utils.s("Three Months Free", "ثلاثة أشهر حُرّة")
+        "six_months" -> breathy.com.utils.s("Six Months Strong", "ستة أشهر قوية")
+        "one_year" -> breathy.com.utils.s("One Year Clean", "سنة كاملة نظيفة")
+        "money_saver", "money_saver_100" -> breathy.com.utils.s("Money Saver", "مُوفّر المال")
+        "big_saver", "money_saver_1000" -> breathy.com.utils.s("Big Saver", "المدّخر الكبير")
+        "craving_crusher", "craving_crusher_10" -> breathy.com.utils.s("Craving Crusher", "ساحق الرغبات")
+        "craving_crusher_50" -> breathy.com.utils.s("Craving Master", "سيّد الرغبات")
+        "breathing_master" -> breathy.com.utils.s("Breathing Master", "سيّد التنفّس")
+        "community_star" -> breathy.com.utils.s("Community Star", "نجم المجتمع")
+        "storyteller" -> breathy.com.utils.s("Storyteller", "راوي القصص")
+        "social_butterfly" -> breathy.com.utils.s("Social Butterfly", "فراشة المجتمعات")
+        "event_champion" -> breathy.com.utils.s("Event Champion", "بطل الفعاليات")
+        "streak_keeper" -> breathy.com.utils.s("Streak Keeper", "حافظ السلسلة")
+        "level_5" -> breathy.com.utils.s("Level 5", "المستوى 5")
+        "level_10" -> breathy.com.utils.s("Level 10", "المستوى 10")
+        else -> title
+    }
+
+    /** v1.0.10 — Arabic-aware display description (resolves at call time). */
+    fun displayDescription(): String = when (id) {
+        "first_day" -> breathy.com.utils.s("Complete Day 1 smoke-free", "أكمل اليوم الأول بدون تدخين")
+        "one_week" -> breathy.com.utils.s("Reach 7 days smoke-free", "اوصل إلى 7 أيام بدون تدخين")
+        "one_month" -> breathy.com.utils.s("Reach 30 days smoke-free", "اوصل إلى 30 يوماً بدون تدخين")
+        "three_months" -> breathy.com.utils.s("Reach 90 days smoke-free", "اوصل إلى 90 يوماً بدون تدخين")
+        "six_months" -> breathy.com.utils.s("Reach 180 days smoke-free", "اوصل إلى 180 يوماً بدون تدخين")
+        "one_year" -> breathy.com.utils.s("Reach 365 days smoke-free", "اوصل إلى 365 يوماً بدون تدخين")
+        "money_saver", "money_saver_100" -> breathy.com.utils.s("Save $100 total", "وفّر 100$ إجمالاً")
+        "big_saver", "money_saver_1000" -> breathy.com.utils.s("Save $1,000 total", "وفّر 1,000$ إجمالاً")
+        "craving_crusher", "craving_crusher_10" -> breathy.com.utils.s("Successfully resist 10 cravings", "قاوم 10 رغبات تدخين بنجاح")
+        "craving_crusher_50" -> breathy.com.utils.s("Successfully resist 50 cravings", "قاوم 50 رغبة تدخين بنجاح")
+        "breathing_master" -> breathy.com.utils.s("Complete 100 breathing exercises", "أكمل 100 تمرين تنفّس")
+        "community_star" -> breathy.com.utils.s("Receive 50 total likes on stories", "احصل على 50 إعجاباً على قصصك")
+        "storyteller" -> breathy.com.utils.s("Post 10 community stories", "انشر 10 قصص في المجتمع")
+        "social_butterfly" -> breathy.com.utils.s("Add 10 friends", "أضف 10 أصدقاء")
+        "event_champion" -> breathy.com.utils.s("Complete an event challenge", "أكمل تحدي فعالية")
+        "streak_keeper" -> breathy.com.utils.s("Claim daily reward 30 days in a row", "استلم المكافأة اليومية 30 يوماً متتالياً")
+        "level_5" -> breathy.com.utils.s("Reach Level 5", "اوصل إلى المستوى 5")
+        "level_10" -> breathy.com.utils.s("Reach Level 10", "اوصل إلى المستوى 10")
+        else -> description
+    }
+
     companion object {
         /** Predefined achievements as specified in the PRD. */
         val ALL_DEFINITIONS = listOf(
@@ -978,6 +1024,53 @@ data class HealthMilestone(
         minutesAfterQuit < 43200 -> "${minutesAfterQuit / 10080} weeks"
         minutesAfterQuit < 525600 -> "${minutesAfterQuit / 43200} months"
         else -> "${minutesAfterQuit / 525600} years"
+    }
+
+    /** v1.0.10 — Arabic-aware time label (resolves at call time). */
+    fun displayTimeLabel(): String {
+        val label = when {
+            minutesAfterQuit < 60 -> breathy.com.utils.s("%d minutes", "%d دقيقة").format(minutesAfterQuit)
+            minutesAfterQuit < 1440 -> breathy.com.utils.s("%d hours", "%d ساعة").format(minutesAfterQuit / 60)
+            minutesAfterQuit < 10080 -> breathy.com.utils.s("%d days", "%d يوم").format(minutesAfterQuit / 1440)
+            minutesAfterQuit < 43200 -> breathy.com.utils.s("%d weeks", "%d أسبوع").format(minutesAfterQuit / 10080)
+            minutesAfterQuit < 525600 -> breathy.com.utils.s("%d months", "%d شهر").format(minutesAfterQuit / 43200)
+            else -> breathy.com.utils.s("%d years", "%d سنة").format(minutesAfterQuit / 525600)
+        }
+        return label
+    }
+
+    /** v1.0.10 — Arabic-aware display title (resolves at call time). */
+    fun displayTitle(): String = when (minutesAfterQuit) {
+        20L -> breathy.com.utils.s("Heart Rate Normalizes", "ينتظم معدل ضربات القلب")
+        480L -> breathy.com.utils.s("Carbon Monoxide Levels Drop", "ينخفض أول أكسيد الكربون")
+        1440L -> breathy.com.utils.s("Heart Attack Risk Decreases", "يقل خطر النوبة القلبية")
+        2880L -> breathy.com.utils.s("Taste and Smell Improve", "يتحسن التذوق والشم")
+        4320L -> breathy.com.utils.s("Breathing Becomes Easier", "يصبح التنفس أسهل")
+        20160L -> breathy.com.utils.s("Circulation Improves", "تتحسن الدورة الدموية")
+        43200L -> breathy.com.utils.s("Lung Cilia Recover", "تتعافى أهداب الرئة")
+        129600L -> breathy.com.utils.s("Coughing Eases", "يلتئم السعال")
+        525600L -> breathy.com.utils.s("Heart Disease Risk Halved", "ينخفض خطر أمراض القلب للنصف")
+        2628000L -> breathy.com.utils.s("Stroke Risk Equal to Non-Smoker", "خطر السكتة يساوي غير المدخنين")
+        5256000L -> breathy.com.utils.s("Lung Cancer Risk Halved", "ينخفض خطر سرطان الرئة للنصف")
+        7884000L -> breathy.com.utils.s("Heart Disease Risk Similar to a Non-Smoker", "خطر أمراض القلب يشابه غير المدخنين")
+        else -> title
+    }
+
+    /** v1.0.10 — Arabic-aware display description (resolves at call time). */
+    fun displayDescription(): String = when (minutesAfterQuit) {
+        20L -> breathy.com.utils.s("Your heart rate and blood pressure begin to drop to normal levels, reducing cardiovascular stress immediately.", "يبدأ معدل ضربات قلبك وضغط دمك بالانخفاض إلى مستويات طبيعية، ما يخفف الإجهاد القلبي الوعائي فوراً.")
+        480L -> breathy.com.utils.s("Carbon monoxide levels in your blood fall toward normal, allowing oxygen delivery to your cells to recover.", "ينخفض أول أكسيد الكربون في دمك نحو المستوى الطبيعي، ما يسمح باستعادة وصول الأكسجين إلى خلاياك.")
+        1440L -> breathy.com.utils.s("Your risk of heart attack begins to decrease as the effects of carbon monoxide and nicotine on your cardiovascular system begin to reverse.", "يبدأ خطر النوبة القلبية بالانخفاض مع انحسار تأثير أول أكسيد الكربون والنيكوتين على جهازك القلبي الوعائي.")
+        2880L -> breathy.com.utils.s("Nerve endings begin to regrow, and your ability to taste and smell is noticeably enhanced. Food begins to taste richer and more complex.", "تبدأ النهايات العصبية بالتجدد، وتتحسن قدرتك على التذوق والشم بشكل ملحوظ. يبدأ الطعم بالغنى والتنوع.")
+        4320L -> breathy.com.utils.s("Bronchial tubes relax and lung capacity increases, making breathing feel noticeably easier and deeper.", "تسترخي القصبات الهوائية وتزداد سعة الرئة، فيصبح تنفسك أعمق وأسهل بشكل واضح.")
+        20160L -> breathy.com.utils.s("Blood circulation throughout your body improves significantly, making walking and exercise easier and more enjoyable.", "تتحسن الدورة الدموية في جسمك كله بشكل كبير، ما يجعل المشي والتمرين أسهل وأكثر متعة.")
+        43200L -> breathy.com.utils.s("The tiny hair-like cilia in your airways begin to regrow, helping clear mucus and reducing the risk of infection. Breathing gradually feels easier.", "تبدأ الأهداب الدقيقة في مجاريك الهوائية بالتجدد، ما يساعد على تنظيف المخاط ويقلل خطر العدوى. يتحسن تنفسك تدريجياً.")
+        129600L -> breathy.com.utils.s("As cilia continue to recover, coughing, sinus congestion and shortness of breath gradually decrease.", "مع استمرار تعافي الأهداب، يقل السعال واحتقان الجيوب الأنفية وضيق التنفس تدريجياً.")
+        525600L -> breathy.com.utils.s("Your risk of coronary heart disease is now half that of a smoker's, a dramatic reduction in cardiovascular danger.", "أصبح خطر إصابتك بأمراض القلب التاجية نصف خطر المدخن — انخفاض هائل في الخطر القلبي الوعائي.")
+        2628000L -> breathy.com.utils.s("Your risk of having a stroke is now reduced to that of a non-smoker, a major milestone in vascular health recovery.", "أصبح خطر الإصابة بسكتة دماغية مساوياً لخطر غير المدخنين — إنجاز كبير في تعافي صحة الأوعية الدموية.")
+        5256000L -> breathy.com.utils.s("Your risk of lung cancer falls to about half that of a smoker, and your risk of other cancers also decreases.", "ينخفض خطر سرطان الرئة لديك إلى نحو نصف خطر المدخن، وينخفض أيضاً خطر أنواع سرطان أخرى.")
+        7884000L -> breathy.com.utils.s("Your risk of coronary heart disease is now similar to that of someone who has never smoked — a major long-term recovery milestone.", "أصبح خطر إصابتك بأمراض القلب التاجية مشابهاً لمن لم يدخّن أبداً — علامة تعافٍ طويلة المدى رائعة.")
+        else -> description
     }
 
     companion object {

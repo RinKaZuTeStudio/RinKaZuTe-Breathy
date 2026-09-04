@@ -181,9 +181,16 @@ fun BreathyAvatar(
         }
 
         // ── Inner avatar circle FIRST — the frame renders IN FRONT of it ──
+        // v1.0.10 SIZE FIX — the artwork circle now matches EACH frame's
+        // actual inner opening (measured from the official border PNGs'
+        // inscribed transparent circle, with a small tuck under the wreath
+        // edge). Previously a fixed 0.66 fraction made the artwork spill
+        // OUTSIDE decorative frames (nature/event/premium/rank/…) so the
+        // square card background showed around the wreath — the "distorted"
+        // look. Square art into a square circle via Crop = zero distortion.
         Box(
             modifier = Modifier
-                .size(size * 0.66f)
+                .size(size * frameHoleFraction(effectiveFrame))
                 .clip(CircleShape)
                 .background(BreathyPalette.veryLightSage)
         ) {
@@ -235,6 +242,27 @@ private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): 
     breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> breathy.com.R.drawable.pic_healthlungs
     breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> breathy.com.R.drawable.pic_healthyfuture
     breathy.com.data.models.ProfilePicture.FINALLY_FREE -> breathy.com.R.drawable.pic_finallyfree
+}
+
+/**
+ * v1.0.10 — fraction of the avatar canvas that the artwork circle occupies,
+ * matched to each official border artwork's real inner opening (the largest
+ * transparent circle centered in the frame PNG, plus ~12% tuck so the art
+ * edge hides beneath the wreath instead of floating with a gap). Measured
+ * offline from the shipped 512×512 frame PNGs — values are static because
+ * the frame collection is bundled with the app.
+ */
+private fun frameHoleFraction(frame: breathy.com.data.models.AvatarFrame): Float = when (frame) {
+    breathy.com.data.models.AvatarFrame.NONE -> 0.551f        // classic thin ring
+    breathy.com.data.models.AvatarFrame.NATURE -> 0.494f      // leaf wreath
+    breathy.com.data.models.AvatarFrame.LEAF -> 0.509f        // laurel
+    breathy.com.data.models.AvatarFrame.BRONZE -> 0.499f      // medal ring
+    breathy.com.data.models.AvatarFrame.SILVER -> 0.529f      // medal ring
+    breathy.com.data.models.AvatarFrame.GOLD -> 0.507f        // star medal
+    breathy.com.data.models.AvatarFrame.ACHIEVEMENT -> 0.341f // gem wreath
+    breathy.com.data.models.AvatarFrame.EVENT -> 0.416f       // radiant wreath
+    breathy.com.data.models.AvatarFrame.PREMIUM -> 0.341f     // ornate gem wreath
+    breathy.com.data.models.AvatarFrame.RANK -> 0.346f        // crystal wreath
 }
 
 /**
@@ -303,7 +331,7 @@ fun RankBadge(rankTier: RankTier?, level: Int, modifier: Modifier = Modifier) {
         Text(text = tier.icon, style = MaterialTheme.typography.labelMedium)
         Spacer(Modifier.width(4.dp))
         Text(
-            text = tier.label,
+            text = tier.displayLabel(),
             style = MaterialTheme.typography.labelMedium,
             color = BreathyPalette.deepForest,
             maxLines = 1,

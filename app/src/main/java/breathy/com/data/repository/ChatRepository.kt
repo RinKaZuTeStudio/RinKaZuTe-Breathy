@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
+import breathy.com.utils.s
 import timber.log.Timber
 
 /**
@@ -44,7 +45,7 @@ class ChatRepository(
     }
 
     private val currentUserId: String
-        get() = auth.currentUser?.uid ?: throw IllegalStateException("Not authenticated")
+        get() = auth.currentUser?.uid ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  Get or create chat
@@ -137,7 +138,7 @@ class ChatRepository(
      */
     suspend fun sendMessage(chatId: String, text: String): Result<Message> = runCatching {
         val uid = currentUserId
-        if (text.isBlank()) throw IllegalArgumentException("Message cannot be empty")
+        if (text.isBlank()) throw IllegalArgumentException(s("Message cannot be empty", "لا يمكن إرسال رسالة فارغة"))
 
         withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
             val messageData = mapOf(

@@ -86,6 +86,7 @@ import breathy.com.data.models.PublicProfile
 import breathy.com.data.repository.ChatRepository
 import breathy.com.data.repository.FriendRepository
 import breathy.com.data.repository.UserRepository
+import breathy.com.utils.s
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentSecondary
 
@@ -189,7 +190,7 @@ class ChatViewModel(
                     if (!friends) {
                         _events.emit(
                             ChatSingleEvent.ShowSnackbar(
-                                "You can only message friends. Send a friend request first."
+                                s("You can only message friends. Send a friend request first.", "يمكنك مراسلة الأصدقاء فقط. أرسل طلب صداقة أولًا.")
                             )
                         )
                     }
@@ -242,7 +243,7 @@ class ChatViewModel(
             }.onFailure { e ->
                 if (e !is CancellationException) {
                     Timber.e(e, "Failed to load chat")
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to load chat") }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = s("Failed to load chat", "فشل تحميل المحادثة")) }
                 }
             }
         }
@@ -311,7 +312,7 @@ class ChatViewModel(
             viewModelScope.launch {
                 _events.emit(
                     ChatSingleEvent.ShowSnackbar(
-                        "You can only message friends. Send a friend request first."
+                        s("You can only message friends. Send a friend request first.", "يمكنك مراسلة الأصدقاء فقط. أرسل طلب صداقة أولًا.")
                     )
                 )
             }
@@ -333,7 +334,7 @@ class ChatViewModel(
                     if (e !is CancellationException) {
                         Timber.e(e, "Failed to send message")
                         _uiState.update { it.copy(isSending = false) }
-                        _events.emit(ChatSingleEvent.ShowSnackbar("Failed to send message"))
+                        _events.emit(ChatSingleEvent.ShowSnackbar(s("Failed to send message", "فشل إرسال الرسالة")))
                     }
                 }
         }
@@ -489,7 +490,7 @@ fun ChatScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Loading messages...",
+                                text = s("Loading messages...", "جارٍ تحميل الرسائل..."),
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -518,7 +519,7 @@ fun ChatScreen(
                                 color = AccentPrimary
                             ) {
                                 Text(
-                                    text = "Retry",
+                                    text = s("Retry", "إعادة المحاولة"),
                                     modifier = Modifier
                                         .clickable { viewModel.loadChat() }
                                         .padding(horizontal = 24.dp, vertical = 10.dp),
@@ -545,7 +546,7 @@ fun ChatScreen(
 
             // ── Typing Indicator ───────────────────────────────────────────────
             AnimatedVisibility(visible = uiState.isOtherUserTyping) {
-                TypingIndicatorBar(otherUserName = uiState.otherUserProfile?.nickname ?: "User")
+                TypingIndicatorBar(otherUserName = uiState.otherUserProfile?.nickname ?: s("User", "مستخدم"))
             }
 
             // ── Input Bar (hidden while blocked or non-friend) ─────────────────
@@ -563,7 +564,7 @@ fun ChatScreen(
                         )
                     ) {
                         Text(
-                            text = "You can only message friends. Add this person as a friend to start a conversation.",
+                            text = s("You can only message friends. Add this person as a friend to start a conversation.", "يمكنك مراسلة الأصدقاء فقط. أضف هذا الشخص كصديق لبدء المحادثة."),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(14.dp)
                         )
@@ -653,7 +654,7 @@ private fun ChatTopBar(
             // Name + Status
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = otherUserProfile?.nickname ?: "Chat",
+                    text = otherUserProfile?.nickname ?: s("Chat", "محادثة"),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
@@ -664,9 +665,9 @@ private fun ChatTopBar(
 
                 // Status line
                 val statusText = when {
-                    isTyping -> "typing..."
-                    isOnline -> "Online"
-                    else -> "${otherUserProfile?.daysSmokeFree ?: 0}d smoke-free"
+                    isTyping -> s("typing...", "يكتب الآن...")
+                    isOnline -> s("Online", "متصل")
+                    else -> s("%dd smoke-free", "%d يوم بدون تدخين").format(otherUserProfile?.daysSmokeFree ?: 0)
                 }
                 val statusColor = when {
                     isTyping -> AccentPrimary
@@ -758,7 +759,7 @@ private fun MessageList(
                 Text(text = "\uD83C\uDF31", fontSize = 40.sp)
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "NO MESSAGES YET",
+                    text = s("NO MESSAGES YET", "لا رسائل بعد"),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.5.sp
@@ -766,7 +767,7 @@ private fun MessageList(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Say hi to ${otherUserProfile?.nickname ?: "your friend"} — every conversation starts with a single breath.",
+                    text = s("Say hi to ${otherUserProfile?.nickname ?: "your friend"} — every conversation starts with a single breath.", "قل مرحًا إلى ${otherUserProfile?.nickname ?: "صديقك"} — كل محادثة تبدأ بنَفَس واحد."),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 12.dp)
@@ -1060,7 +1061,7 @@ private fun TypingIndicatorBar(otherUserName: String) {
         ) {
             TypingDots()
             Text(
-                text = "$otherUserName is typing",
+                text = s("%s is typing", "%s يكتب الآن").format(otherUserName),
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = AccentPrimary,
                     fontSize = 11.sp,
@@ -1099,7 +1100,7 @@ private fun MessageInputBar(
                 onValueChange = onTextChanged,
                 placeholder = {
                     Text(
-                        text = "Type a message...",
+                        text = s("Type a message...", "اكتب رسالة..."),
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
                     )
                 },
@@ -1179,8 +1180,8 @@ private fun groupMessagesByDate(messages: List<Message>): List<ChatListItem> {
             timeInMillis = message.timestamp.toDate().time
         }
         val dateStr = when {
-            isSameDay(messageDate, today) -> "Today"
-            isSameDay(messageDate, yesterday) -> "Yesterday"
+            isSameDay(messageDate, today) -> s("Today", "اليوم")
+            isSameDay(messageDate, yesterday) -> s("Yesterday", "أمس")
             else -> dateFormat.format(messageDate.time)
         }
 

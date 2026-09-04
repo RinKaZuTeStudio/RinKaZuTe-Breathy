@@ -75,6 +75,7 @@ import breathy.com.ui.theme.SoftSage
 import breathy.com.ui.theme.WarmWhite
 import breathy.com.ui.theme.themeTextPrimary
 import breathy.com.ui.theme.themeTextSecondary
+import breathy.com.utils.s
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -162,7 +163,7 @@ fun GoldHistoryScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Gold History",
+                        text = s("Gold History", "سجل الذهب"),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = themeTextPrimary
@@ -199,8 +200,11 @@ fun GoldHistoryScreen(
             if (!uiState.isLoading && uiState.transactions.isEmpty()) {
                 BreathyEmptyState(
                     icon = "🪙",
-                    title = "No Gold activity yet",
-                    subtitle = "Check in daily, unlock achievements, and join events to earn Gold."
+                    title = s("No Gold activity yet", "لا يوجد نشاط ذهب بعد"),
+                    subtitle = s(
+                        "Check in daily, unlock achievements, and join events to earn Gold.",
+                        "سجّل حضورك يوميًا وافتح الإنجازات وشارك في الفعاليات لتكسب الذهب."
+                    )
                 )
             } else {
                 LazyColumn(
@@ -246,7 +250,7 @@ private fun GoldBalanceCard(balance: Int) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "YOUR GOLD",
+                        text = s("YOUR GOLD", "ذهبك"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = NaturalYellow,
                             letterSpacing = 1.5.sp
@@ -262,6 +266,55 @@ private fun GoldBalanceCard(balance: Int) {
                 }
             }
         }
+    }
+}
+
+/**
+ * v1.0.10 — Arabic-aware ledger label. The ledger stores English
+ * descriptions; the display label is re-resolved from the machine-readable
+ * `source` key so the history reads naturally in the selected app language
+ * (historical ENGLISH rows are translated too — no data migration needed).
+ */
+private fun localizedLedgerLabel(tx: GoldTransaction): String {
+    val d = tx.description
+    return when {
+        tx.source.startsWith("daily_checkin") ->
+            s("Daily check-in", "المكافأة اليومية")
+        tx.source.startsWith("premium_weekly") ->
+            s("Premium weekly bonus — +500 Gold", "مكافأة بريميوم الأسبوعية — +500 ذهب")
+        tx.source.startsWith("gold_ads") ->
+            s("Gold Ads — rewarded ad completed", "إعلانات الذهب — أكملت مشاهدة الإعلان")
+        tx.source.startsWith("event_entry_premium") ->
+            s("Premium free event entry", "دخول مجاني إلى الفعالية عبر بريميوم")
+        tx.source.startsWith("event_entry") ->
+            s("Entered the challenge event", "شاركت في تحدي الفعالية")
+        tx.source.startsWith("streak_milestone") ->
+            Regex("^(\\d+)-day smoke-free milestone$").find(d)?.groupValues?.get(1)
+                ?.let { days -> s("%s-day smoke-free milestone", "إنجاز %s يومًا بلا تدخين").format(days) }
+                ?: d
+        tx.source.startsWith("frame_purchase") ->
+            Regex("^Unlocked the (.+) frame$").find(d)?.groupValues?.get(1)
+                ?.let { en -> breathy.com.data.models.AvatarFrame.entries
+                    .firstOrNull { it.label == en }?.displayLabel() ?: en }
+                ?.let { ar -> s("Unlocked the %s frame", "فتحت إطار %s").format(ar) }
+                ?: d
+        tx.source.startsWith("picture_purchase") ->
+            Regex("^Unlocked the (.+) profile picture$").find(d)?.groupValues?.get(1)
+                ?.let { en -> breathy.com.data.models.ProfilePicture.entries
+                    .firstOrNull { it.label == en }?.displayLabel() ?: en }
+                ?.let { ar -> s("Unlocked the %s profile picture", "فتحت صورة %s").format(ar) }
+                ?: d
+        tx.source.startsWith("profile_pic_ad") ->
+            Regex("^Profile picture unlock ad \\((\\d+)/(\\d+)\\)$").find(d)?.groupValues
+                ?.let { g -> s("Profile picture unlock ad (%s/%s)", "فتح صورة عبر إعلان (%s/%s)").format(g[1], g[2]) }
+                ?: d
+        tx.source.startsWith("achievement") && d.startsWith("Achievement: ") -> {
+            val enTitle = d.removePrefix("Achievement: ")
+            val localized = breathy.com.data.repository.RewardRepository.ACHIEVEMENT_DEFINITIONS
+                .firstOrNull { it.title == enTitle }?.displayTitle() ?: enTitle
+            s("Achievement: %s", "إنجاز: %s").format(localized)
+        }
+        else -> d.ifBlank { tx.source }
     }
 }
 
@@ -286,7 +339,7 @@ private fun GoldTransactionRow(tx: GoldTransaction) {
             .fillMaxWidth()
             .semantics {
                 contentDescription =
-                    "${tx.description}: $signedText Gold, ${formatter.format(tx.timestamp.toDate())}"
+                    "${localizedLedgerLabel(tx)}: $signedText Gold, ${formatter.format(tx.timestamp.toDate())}"
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = PureWhite),
@@ -316,7 +369,7 @@ private fun GoldTransactionRow(tx: GoldTransaction) {
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = tx.description.ifBlank { tx.source },
+                    text = localizedLedgerLabel(tx),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = themeTextPrimary

@@ -77,6 +77,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import breathy.com.utils.s
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.themeBgPrimary
 import breathy.com.ui.theme.themeBgSurface
@@ -272,7 +273,7 @@ fun PushupCounterScreen(
                 cameraProvider = provider
             } catch (e: Exception) {
                 Timber.e(e, "Failed to initialize camera provider")
-                showError = "Failed to initialize camera"
+                showError = s("Failed to initialize camera", "تعذر تشغيل الكاميرا")
             }
         }
     }
@@ -295,7 +296,7 @@ fun PushupCounterScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Pushup Counter",
+                        text = s("Pushup Counter", "عداد تمارين الضغط"),
                         fontWeight = FontWeight.Bold,
                         color = themeTextPrimary
                     )
@@ -376,12 +377,12 @@ fun PushupCounterScreen(
                                         },
                                         onFailure = { e ->
                                             isSubmitting = false
-                                            showError = e.message ?: "Failed to submit"
+                                            showError = e.message ?: s("Failed to submit", "تعذر الإرسال")
                                         }
                                     )
                                 }
                             } else {
-                                showError = "Complete at least 1 pushup to submit"
+                                showError = s("Complete at least 1 pushup to submit", "أكمل تمرين ضغط واحدًا على الأقل قبل الإرسال")
                             }
                         }
                     )
@@ -540,7 +541,7 @@ private fun CameraCountingScreen(
                 if (isCounting) {
                     // Active counting state
                     Text(
-                        text = "Keep going! AI is counting your pushups",
+                        text = s("Keep going! AI is counting your pushups", "استمر! الذكاء الاصطناعي يحسب تمارين الضغط الخاصة بك"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = AccentPrimary,
                             fontWeight = FontWeight.SemiBold
@@ -562,7 +563,7 @@ private fun CameraCountingScreen(
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(text = "Stop", fontWeight = FontWeight.Bold)
+                            Text(text = s("Stop", "إيقاف"), fontWeight = FontWeight.Bold)
                         }
 
                         // Submit button
@@ -577,13 +578,13 @@ private fun CameraCountingScreen(
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(text = "Submit", fontWeight = FontWeight.Bold)
+                            Text(text = s("Submit", "إرسال"), fontWeight = FontWeight.Bold)
                         }
                     }
                 } else {
                     // Idle state
                     Text(
-                        text = if (pushupCount > 0) "$pushupCount pushups recorded" else "Position yourself in frame",
+                        text = if (pushupCount > 0) s("$pushupCount pushups recorded", "تم تسجيل $pushupCount تمارين ضغط") else s("Position yourself in frame", "ضع نفسك في إطار الكاميرا"),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = themeTextSecondary
                         )
@@ -607,7 +608,7 @@ private fun CameraCountingScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (pushupCount > 0) "Start Again" else "Start Pushups",
+                            text = if (pushupCount > 0) s("Start Again", "ابدأ من جديد") else s("Start Pushups", "ابدأ التمارين"),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -686,7 +687,7 @@ private fun PushupCountOverlay(
 
             Column {
                 Text(
-                    text = if (isCounting) "Counting..." else "Pushups",
+                    text = if (isCounting) s("Counting...", "جارٍ العد...") else s("Pushups", "تمارين الضغط"),
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -694,7 +695,7 @@ private fun PushupCountOverlay(
                 )
                 if (isCounting) {
                     Text(
-                        text = "AI is watching your form",
+                        text = s("AI is watching your form", "الذكاء الاصطناعي يراقب أداءك"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = Color.White.copy(alpha = 0.7f),
                             fontSize = 10.sp
@@ -748,7 +749,7 @@ private fun PushupCompleteScreen(
                         )
                     )
                     Text(
-                        text = "pushups",
+                        text = s("pushups", "تمارين ضغط"),
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = themeTextSecondary
                         )
@@ -759,7 +760,7 @@ private fun PushupCompleteScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Amazing work! 💪",
+                text = s("Amazing work! 💪", "عمل مذهل! 💪"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
@@ -771,7 +772,7 @@ private fun PushupCompleteScreen(
             val minutes = durationSeconds / 60
             val seconds = durationSeconds % 60
             Text(
-                text = "Session time: ${minutes}m ${seconds}s",
+                text = s("Session time: ${minutes}m ${seconds}s", "مدة الجلسة: ${minutes}د ${seconds}ث"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
 
@@ -786,7 +787,7 @@ private fun PushupCompleteScreen(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(0.6f)
             ) {
-                Text(text = "Done", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(text = s("Done", "تم"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
@@ -815,7 +816,7 @@ private fun SubmittingScreen(pushupCount: Int) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Submitting $pushupCount pushups...",
+                text = s("Submitting $pushupCount pushups...", "جارٍ إرسال $pushupCount تمارين ضغط..."),
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = themeTextPrimary,
                     fontWeight = FontWeight.Bold
@@ -825,7 +826,7 @@ private fun SubmittingScreen(pushupCount: Int) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Verifying and saving your results",
+                text = s("Verifying and saving your results", "جارٍ التحقق من نتائجك وحفظها"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary)
             )
         }
@@ -849,7 +850,7 @@ private fun NoCameraPermissionScreen(onRequestPermission: () -> Unit) {
             Text(text = "📷", fontSize = 48.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Camera access needed",
+                text = s("Camera access needed", "يلزم الوصول إلى الكاميرا"),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = themeTextPrimary
@@ -857,7 +858,7 @@ private fun NoCameraPermissionScreen(onRequestPermission: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "We need camera access to count your pushups using AI pose detection",
+                text = s("We need camera access to count your pushups using AI pose detection", "نحتاج إلى الوصول إلى الكاميرا لحساب تمارين الضغط باستخدام الذكاء الاصطناعي"),
                 style = MaterialTheme.typography.bodyMedium.copy(color = themeTextSecondary),
                 textAlign = TextAlign.Center
             )
@@ -870,7 +871,7 @@ private fun NoCameraPermissionScreen(onRequestPermission: () -> Unit) {
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text(text = "Grant Permission", fontWeight = FontWeight.Bold)
+                Text(text = s("Grant Permission", "منح الإذن"), fontWeight = FontWeight.Bold)
             }
         }
     }

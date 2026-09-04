@@ -69,6 +69,7 @@ import breathy.com.data.models.Story
 import breathy.com.data.repository.StoryRepository
 import breathy.com.ui.theme.AccentPink
 import breathy.com.ui.theme.AccentPrimary
+import breathy.com.utils.s
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -141,7 +142,7 @@ fun StoryDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Story",
+                        text = s("Story", "القصة"),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -212,14 +213,17 @@ fun StoryDetailScreen(
                 onDismissRequest = { showDeleteDialog = false },
                 title = {
                     Text(
-                        text = "Delete Story",
+                        text = s("Delete Story", "حذف القصة"),
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to delete this story? This action cannot be undone.",
+                        text = s(
+                            "Are you sure you want to delete this story? This action cannot be undone.",
+                            "هل أنت متأكد من حذف هذه القصة؟ لا يمكن التراجع عن هذا الإجراء."
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
@@ -238,13 +242,13 @@ fun StoryDetailScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                            Text(s("Delete", "حذف"), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(s("Cancel", "إلغاء"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.surface
@@ -273,7 +277,7 @@ fun StoryDetailScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "⚠️ Failed to load story",
+                        text = s("⚠️ Failed to load story", "⚠️ تعذر تحميل القصة"),
                         color = MaterialTheme.colorScheme.onBackground,
                         style = MaterialTheme.typography.headlineSmall
                     )
@@ -311,7 +315,7 @@ fun StoryDetailScreen(
                     // Replies header
                     item {
                         Text(
-                            text = "Replies (${formatCount(uiState.replies.size)})",
+                            text = s("Replies (%s)", "الردود (%s)").format(formatCount(uiState.replies.size)),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -433,7 +437,8 @@ private fun FullStoryContent(
                             color = AccentPrimary.copy(alpha = 0.15f)
                         ) {
                             Text(
-                                text = if (story.daysSmokeFree == 0) "Day 1" else "${story.daysSmokeFree}d smoke-free",
+                                text = if (story.daysSmokeFree == 0) s("Day 1", "اليوم الأول")
+                                else s("%dd smoke-free", "%d يومًا بلا تدخين").format(story.daysSmokeFree),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                 color = AccentPrimary,
                                 style = MaterialTheme.typography.labelSmall,
@@ -612,7 +617,7 @@ private fun ReplyItem(
 
             // Reply-to button
             Text(
-                text = "Reply",
+                text = s("Reply", "رد"),
                 color = AccentPrimary,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
@@ -651,7 +656,7 @@ private fun ReplyInputBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Replying to ${replyingTo.nickname}",
+                        text = s("Replying to %s", "ردًا على %s").format(replyingTo.nickname),
                         style = MaterialTheme.typography.labelSmall,
                         color = AccentPrimary,
                         fontWeight = FontWeight.Medium,
@@ -686,7 +691,7 @@ private fun ReplyInputBar(
                         },
                     placeholder = {
                         Text(
-                            text = "Write a reply...",
+                            text = s("Write a reply...", "اكتب ردًا..."),
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f)
                         )
                     },
@@ -743,11 +748,11 @@ private fun Reply.timeAgo(): String {
     val diffMillis = System.currentTimeMillis() - createdMillis
     val minutes = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(diffMillis)
     return when {
-        minutes < 1 -> "Just now"
-        minutes < 60 -> "${minutes}m ago"
-        minutes < 1440 -> "${minutes / 60}h ago"
-        minutes < 10080 -> "${minutes / 1440}d ago"
-        else -> "${minutes / 10080}w ago"
+        minutes < 1 -> s("Just now", "الآن")
+        minutes < 60 -> s("%dm ago", "قبل %d دقيقة").format(minutes)
+        minutes < 1440 -> s("%dh ago", "قبل %d ساعة").format(minutes / 60)
+        minutes < 10080 -> s("%dd ago", "قبل %d يوم").format(minutes / 1440)
+        else -> s("%dw ago", "قبل %d أسبوع").format(minutes / 10080)
     }
 }
 
@@ -829,7 +834,7 @@ class StoryDetailViewModel(
                     if (e !is CancellationException) {
                         Timber.e(e, "Failed to load replies")
                         _uiState.value = _uiState.value.copy(
-                            error = e.localizedMessage ?: "Failed to load replies"
+                            error = e.localizedMessage ?: s("Failed to load replies", "تعذر تحميل الردود")
                         )
                     }
                 }

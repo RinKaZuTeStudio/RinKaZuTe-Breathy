@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import breathy.com.data.repository.UserRepository
+import breathy.com.utils.s
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -66,7 +67,7 @@ fun AgeCompletionScreen(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "One last thing",
+            text = s("One last thing", "أمر أخير فقط"),
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground
@@ -75,8 +76,7 @@ fun AgeCompletionScreen(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Please confirm your age to complete your profile. " +
-                "This is asked only once.",
+            text = s("Please confirm your age to complete your profile. This is asked only once.", "يرجى تأكيد عمرك لإكمال ملفك الشخصي. يُطلب هذا مرة واحدة فقط."),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -119,7 +119,7 @@ fun AgeCompletionScreen(
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "years",
+                        text = s("years", "سنة"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -154,7 +154,7 @@ fun AgeCompletionScreen(
             onClick = {
                 val selectedAge = age
                 if (selectedAge == null) {
-                    errorMessage = "Please select your age to continue"
+                    errorMessage = s("Please select your age to continue", "يرجى اختيار عمرك للمتابعة")
                     return@Button
                 }
                 isSaving = true
@@ -163,7 +163,7 @@ fun AgeCompletionScreen(
                     val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
                     if (uid == null) {
                         isSaving = false
-                        errorMessage = "You are not signed in. Please log in again."
+                        errorMessage = s("You are not signed in. Please log in again.", "أنت غير مسجل الدخول. يرجى تسجيل الدخول مرة أخرى.")
                         return@launch
                     }
                     userRepository.updateAge(uid, selectedAge)
@@ -174,7 +174,7 @@ fun AgeCompletionScreen(
                         .onFailure { e ->
                             Timber.e(e, "AgeCompletionScreen: failed to save age")
                             isSaving = false
-                            errorMessage = "Could not save your age. Please try again."
+                            errorMessage = s("Could not save your age. Please try again.", "تعذر حفظ عمرك. يرجى المحاولة مرة أخرى.")
                         }
                 }
             },
@@ -195,7 +195,7 @@ fun AgeCompletionScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Continue my journey")
+                Text(s("Continue my journey", "أكمل رحلتي"))
             }
         }
     }

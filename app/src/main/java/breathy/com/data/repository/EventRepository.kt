@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
+import breathy.com.utils.s
 import timber.log.Timber
 
 /**
@@ -66,7 +67,7 @@ class EventRepository(
     }
 
     private val currentUserId: String
-        get() = auth.currentUser?.uid ?: throw IllegalStateException("Not authenticated")
+        get() = auth.currentUser?.uid ?: throw IllegalStateException(s("Not authenticated", "غير مسجل الدخول"))
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  Get events
@@ -90,7 +91,7 @@ class EventRepository(
             snapshot.documents.mapNotNull { doc ->
                 doc.data?.let { Event.fromFirestoreMap(doc.id, it) }
             }
-        } ?: throw IllegalStateException("Get active events timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Get active events timed out after 30 seconds", "انتهت مهلة تحميل الفعاليات، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to get active events")
     }
@@ -132,7 +133,7 @@ class EventRepository(
             val doc = snapshot.documents.firstOrNull()
                 ?: throw NoSuchElementException("No pushup challenge event exists")
             Event.fromFirestoreMap(doc.id, doc.data ?: emptyMap())
-        } ?: throw IllegalStateException("Find featured event timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Find featured event timed out after 30 seconds", "انتهت مهلة البحث عن الفعالية المميزة"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.w(e, "No live featured event found")
     }
@@ -217,7 +218,7 @@ class EventRepository(
             firestore.runTransaction { tx ->
                 val participantSnap = tx.get(participantRef)
                 if (participantSnap.exists()) {
-                    throw IllegalStateException("Already joined this event")
+                    throw IllegalStateException(s("Already joined this event", "لقد انضممت إلى هذه الفعالية بالفعل"))
                 }
 
                 if (effectiveFee > 0) {
@@ -283,7 +284,7 @@ class EventRepository(
                 eventId = eventId,
                 joinedAt = com.google.firebase.Timestamp.now()
             )
-        } ?: throw IllegalStateException("Join event timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Join event timed out after 30 seconds", "انتهت مهلة الانضمام إلى الفعالية، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to join event: %s", eventId)
     }
@@ -367,7 +368,7 @@ class EventRepository(
                 status = CheckinStatus.PENDING,
                 submittedAt = com.google.firebase.Timestamp.now()
             )
-        } ?: throw IllegalStateException("Submit check-in timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Submit check-in timed out after 30 seconds", "انتهت مهلة إرسال تسجيل الحضور، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to submit check-in for event: %s", eventId)
     }
@@ -513,7 +514,7 @@ class EventRepository(
                 }.awaitAll()
             }
             entries
-        } ?: throw IllegalStateException("Get event leaderboard timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Get event leaderboard timed out after 30 seconds", "انتهت مهلة تحميل لوحة صدارة الفعالية"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to get event leaderboard: %s", eventId)
     }
@@ -566,7 +567,7 @@ class EventRepository(
             firestore.runTransaction { transaction ->
                 val participantDoc = transaction.get(participantRef)
                 if (!participantDoc.exists()) {
-                    throw IllegalStateException("You must join the event first.")
+                    throw IllegalStateException(s("You must join the event first.", "يجب الانضمام إلى الفعالية أولاً."))
                 }
 
                 val currentData = participantDoc.data ?: emptyMap<String, Any>()
@@ -597,7 +598,7 @@ class EventRepository(
             Unit
 
             pushupCount
-        } ?: throw IllegalStateException("Submit pushup count timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Submit pushup count timed out after 30 seconds", "انتهت مهلة إرسال عدد التمارين، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to submit pushup count")
     }
@@ -734,7 +735,7 @@ class EventRepository(
                 }.awaitAll()
             }
             entries
-        } ?: throw IllegalStateException("Get pushup leaderboard timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Get pushup leaderboard timed out after 30 seconds", "انتهت مهلة تحميل لوحة صدارة التمارين"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to get pushup leaderboard: %s", eventId)
     }

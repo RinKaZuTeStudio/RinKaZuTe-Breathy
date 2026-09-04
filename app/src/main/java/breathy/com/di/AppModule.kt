@@ -57,8 +57,26 @@ class AppModule(
         FirebaseAuth.getInstance()
     }
 
-    /** Cloud Firestore instance — uses the named database for this Firebase project. */
-    @Suppress("DEPRECATION")
+    /**
+     * Cloud Firestore instance.
+     *
+     * v1.0.10 FINAL DECISION — STAY ON THE NAMED DATABASE
+     * "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7".
+     *
+     * Every app version since the very first release has written to this
+     * named database, so ALL user data (accounts' gold, XP, levels, quit
+     * dates, avatar unlocks, follow graph, stories, chats) lives there.
+     * Switching to the (default) database would orphan every piece of that
+     * data — users would see their gold, levels, follows and stories vanish.
+     * That is unacceptable, so the database id stays exactly as it was.
+     *
+     * The v1.0.10 follow-counter and daily-reward fixes live in the APP CODE
+     * (existence-aware writes + live listeners — see FollowRepository and
+     * UserRepository); they are compliant with the developer's published
+     * ruleset, so publishing that ruleset to THIS database in the Firebase
+     * Console (database dropdown: ai-studio-breathy-34bd5ba5-…) is all the
+     * developer needs to do.
+     */
     val firestore: FirebaseFirestore by lazy {
         Timber.d("Initializing FirebaseFirestore with named database")
         try {

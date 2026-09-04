@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
+import breathy.com.utils.s
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -157,7 +158,7 @@ class GoldRepository(
     }
 
     private fun requireUserId(): String =
-        auth.currentUser?.uid ?: throw IllegalStateException("User not authenticated")
+        auth.currentUser?.uid ?: throw IllegalStateException(s("User not authenticated", "غير مسجل الدخول"))
 
     // ═══════════════════════════════════════════════════════════════════════
     //  Balance
@@ -295,7 +296,7 @@ class GoldRepository(
                 )
                 newBalance to true
             }.await()
-        } ?: throw IllegalStateException("Gold earn timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Gold earn timed out after 30 seconds", "انتهت مهلة إضافة الذهب، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to earn Gold (source=%s)", source)
     }
@@ -356,7 +357,7 @@ class GoldRepository(
                 )
                 newBalance to true
             }.await()
-        } ?: throw IllegalStateException("Gold spend timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Gold spend timed out after 30 seconds", "انتهت مهلة صرف الذهب، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to spend Gold (source=%s)", source)
     }
@@ -375,7 +376,7 @@ class GoldRepository(
      */
     suspend fun purchaseFrame(frame: AvatarFrame): Result<Int> = runCatching {
         val price = frame.goldPrice
-            ?: throw IllegalArgumentException("Frame '${frame.id}' is not purchasable with Gold")
+            ?: throw IllegalArgumentException(s("This frame is not purchasable with Gold", "لا يمكن شراء هذا الإطار بالذهب"))
         val uid = requireUserId()
         val userRef = firestore.collection(USERS_COLLECTION).document(uid)
         val txId = framePurchaseKey(frame.id)
@@ -433,7 +434,7 @@ class GoldRepository(
                 )
                 newBalance
             }.await()
-        } ?: throw IllegalStateException("Frame purchase timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Frame purchase timed out after 30 seconds", "انتهت مهلة شراء الإطار، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to purchase frame: %s", frame.id)
     }
@@ -447,7 +448,7 @@ class GoldRepository(
      */
     suspend fun purchaseProfilePicture(picture: breathy.com.data.models.ProfilePicture): Result<Int> = runCatching {
         val price = picture.goldPrice
-            ?: throw IllegalArgumentException("Picture '${picture.id}' is not purchasable with Gold")
+            ?: throw IllegalArgumentException(s("This picture is not purchasable with Gold", "لا يمكن شراء هذه الصورة بالذهب"))
         val uid = requireUserId()
         val userRef = firestore.collection(USERS_COLLECTION).document(uid)
         val txId = picturePurchaseKey(picture.id)
@@ -505,7 +506,7 @@ class GoldRepository(
                 )
                 newBalance
             }.await()
-        } ?: throw IllegalStateException("Profile picture purchase timed out after 30 seconds")
+        } ?: throw IllegalStateException(s("Profile picture purchase timed out after 30 seconds", "انتهت مهلة شراء الصورة، حاول مجددًا"))
     }.onFailure { e ->
         if (e !is CancellationException) Timber.e(e, "Failed to purchase profile picture: %s", picture.id)
     }
