@@ -18,8 +18,8 @@ android {
         applicationId = "breathy.com"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 20
-        versionName = "1.0.13"
+        versionCode = 21
+        versionName = "1.0.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
