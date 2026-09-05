@@ -182,13 +182,16 @@ fun BreathyAvatar(
         }
 
         // ── Inner avatar circle FIRST — the frame renders IN FRONT of it ──
-        // v1.0.11 rev 3 — STANDARDIZED INNER APERTURE: ONE fixed photo size
-        // for EVERY frame. The photo always occupies exactly this same inner
-        // circle regardless of which frame is selected — frame artwork varies,
-        // the avatar opening never does. (Single source of truth below.)
+        // v1.0.11 rev 4 — ONE STANDARDIZED PHOTO APERTURE FOR EVERY FRAME.
+        // The photo layer is always the same 420×420 aperture inside the
+        // 512×512 canvas (see [AvatarSizing]) — switching frames NEVER moves
+        // or resizes the profile picture; only the 512×512 frame artwork
+        // drawn IN FRONT of it changes. All ten frames (NONE, NATURE, LEAF,
+        // BRONZE, SILVER, GOLD, RANK, ACHIEVEMENT, EVENT, PREMIUM) render
+        // through this single Box with identical dimensions.
         Box(
             modifier = Modifier
-                .size(size * STANDARD_INNER_APERTURE)
+                .size(size * AvatarSizing.STANDARD_INNER_APERTURE)
                 .clip(CircleShape)
                 .background(BreathyPalette.veryLightSage)
         ) {
@@ -282,17 +285,51 @@ private fun avatarArtZoom(picture: breathy.com.data.models.ProfilePicture): Floa
 }
 
 /**
- * v1.0.11 rev 3 — THE single source of truth for the inner avatar/photo size.
+ * v1.0.11 rev 4 — THE single source of truth for ALL avatar geometry.
  *
- * Every frame renders the profile picture inside the SAME fixed circle —
- * this fraction of the avatar canvas — so switching frames never changes the
- * photo size: SAME PHOTO SIZE → SAME INNER CIRCLE → DIFFERENT FRAME ARTWORK
- * around it. Value matches the ring frames' measured inner openings (0.44–0.49
- * of the canvas) plus a small tuck, so ring frames fill cleanly; ornate
- * wreaths (smaller openings) simply overlap the photo edge with their own
- * artwork, which is always drawn IN FRONT.
+ * Every avatar in Breathy is built on ONE fixed canvas structure:
+ *
+ * ```
+ * 512×512 frame canvas
+ * └── 420×420 profile-picture aperture
+ *     └── 420×420 center-cropped/fitted artwork
+ * ```
+ *
+ * - Every frame artwork is a 512×512 PNG ([AvatarFrame] collection).
+ * - Every profile picture is a 512×512 square ([ProfilePicture] collection).
+ * - The photo ALWAYS occupies the SAME 420×420 inner area — expressed as
+ *   [STANDARD_INNER_APERTURE] (420/512) of the rendered avatar size — no
+ *   matter which of the ten frames is selected. There are deliberately NO
+ *   per-frame aperture values anywhere in the codebase: a future frame
+ *   added to the collection automatically uses these same dimensions by
+ *   rendering through [BreathyAvatar], which is the only consumer.
+ * - The aperture circle is the circle INSCRIBED in the 420×420 aperture
+ *   square (every frame opening is circular). The 512×512 frame artwork is
+ *   always drawn IN FRONT of the photo, so the ring covers the photo edge
+ *   exactly as designed — only the artwork around the aperture changes.
+ * - Profile pictures fill the aperture via proportional CENTER-CROP
+ *   (`ContentScale.Crop`) plus a frame-independent center zoom
+ *   ([avatarArtZoom]). Images are never stretched or distorted, and the
+ *   picture never changes size or position when the user switches frames.
  */
-private const val STANDARD_INNER_APERTURE = 0.52f
+object AvatarSizing {
+    /** Frame artwork canvas edge, in artwork pixels. */
+    const val FRAME_CANVAS_PX = 512
+
+    /** Profile-picture canvas edge, in artwork pixels. */
+    const val PHOTO_CANVAS_PX = 512
+
+    /** Inner profile-picture aperture edge, in artwork pixels. */
+    const val APERTURE_PX = 420
+
+    /**
+     * The standardized inner aperture as a fraction of the avatar canvas
+     * (420 / 512 = 0.8203125). Rendered size of the photo layer is always
+     * `avatarSize * STANDARD_INNER_APERTURE` for EVERY frame.
+     */
+    const val STANDARD_INNER_APERTURE: Float =
+        APERTURE_PX.toFloat() / FRAME_CANVAS_PX.toFloat()
+}
 
 /**
  * v1.0.11 rev 3 PREMIUM ANIMATED AVATAR — FREE FROM THE CHAIN.

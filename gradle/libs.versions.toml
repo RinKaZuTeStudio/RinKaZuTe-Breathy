@@ -40,6 +40,7 @@ billing = "7.1.1"
 
 # Ads
 levelplay = "9.2.0"
+unityAds = "4.16.0"
 
 # Google Sign-In
 playServicesAuth = "21.3.0"
@@ -121,6 +122,7 @@ billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", versi
 
 # AdMob
 levelplay = { group = "com.ironsource.sdk", name = "mediationsdk", version.ref = "levelplay" }
+unity-ads = { group = "com.unity3d.ads", name = "unity-ads", version.ref = "unityAds" }
 
 # Google Sign-In
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }

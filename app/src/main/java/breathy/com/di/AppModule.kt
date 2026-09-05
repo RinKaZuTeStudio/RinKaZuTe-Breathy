@@ -269,21 +269,27 @@ class AppModule(
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * LevelPlay ad manager — the ONLY ad system in the app (AdMob fully
-     * removed). Handles rewarded ("Gold Ads" → +200 Gold), native, and
-     * frequency-capped interstitial ads. Automatically exempts users with a
-     * verified Premium subscription (zero ads loaded or shown).
+     * Ad manager — two production stacks (v1.0.11 rev 4):
+     * - Unity Ads (Game ID 800367613): interstitial ("Interstitial_Android",
+     *   frequency-capped) + gold rewarded ("Rewarded_Android" → +200 Gold).
+     * - Unity LevelPlay (App Key 27e9c42cd): native ads + the dedicated
+     *   "Profile Pic" rewarded unit (5 watches → SUNRISE picture).
+     *
+     * Premium eligibility is PER FORMAT: native/interstitial are blocked for
+     * verified Premium subscribers; rewarded ads stay ALLOWED for everyone —
+     * they are a voluntary reward mechanic (+200 Gold), not an interruption.
      */
     val adManager: AdManager by lazy {
-        Timber.d("Initializing AdManager (Unity LevelPlay)")
+        Timber.d("Initializing AdManager (Unity Ads + LevelPlay)")
         AdManager(applicationContext).also { adManager ->
-            // Keep ad behavior in lock-step with the verified premium entitlement:
-            // verified premium → zero ads (not loaded, not shown).
+            // Keep ad behaviour in lock-step with the verified premium entitlement:
+            // premium → native/interstitial blocked; rewarded stays available.
             adManager.attachPremiumState(premiumRepository.state)
 
             // ── Gold Ads rewarded security path ─────────────────────────────
-            // Invoked ONLY from the LevelPlay completion callback
-            // (onAdRewarded) — never on ad open/click. The show token powers
+            // Invoked ONLY from the Unity Ads completion callback
+            // (onUnityAdsShowComplete with COMPLETED state) — never on ad
+            // open/click. The show token powers
             // the Gold-ledger dedup key, so retries/duplicate callbacks can
             // never double-credit a single completed ad.
             val goldScope = kotlinx.coroutines.CoroutineScope(
