@@ -83,11 +83,41 @@ class AdManager(
         /** Unity Ads Game ID ("app ID") — Unity Dashboard → Monetization. */
         const val UNITY_GAME_ID = "800367613"
 
-        /** Rewarded placement — +200 Gold ONLY on verified COMPLETED shows. */
+        /** Rewarded placement — +200 Gold ONLY on verified COMPLETED shows.
+         *  GOLD flow ONLY — the SUNRISE picture flow uses the DEDICATED
+         *  picture placement [UNITY_PICTURE_REWARDED_PLACEMENT] (v1.0.11 rev 6). */
         const val UNITY_REWARDED_PLACEMENT = "Rewarded_Android"
+
+        /** DEDICATED picture-rewarded placement (v1.0.11 rev 6) — serves the
+         *  SUNRISE picture watch flow ONLY. Kept strictly separate from the
+         *  gold placement [UNITY_REWARDED_PLACEMENT] so each flow has its own
+         *  production waterfall. Reward still granted ONLY on COMPLETED. */
+        const val UNITY_PICTURE_REWARDED_PLACEMENT = "Ad2"
 
         /** Full-screen interstitial placement. */
         const val UNITY_INTERSTITIAL_PLACEMENT = "Interstitial_Android"
+
+        // ── AdMob production ad-unit identifiers (exact, never test IDs) ─
+        // These are the production AdMob units associated with the Breathy
+        // mediation waterfall (LevelPlay console network config). The Google
+        // Mobile Ads SDK is NOT embedded standalone (no APPLICATION_ID
+        // meta-data exists — it was removed at v1.0.3); these unit IDs are
+        // consumed server-side by the mediation waterfall and are recorded
+        // here verbatim as the production source of truth.
+        /** AdMob App Open ad unit (production). */
+        const val ADMOB_APP_OPEN_AD_UNIT_ID = "ca-app-pub-9434446627275871/5853663684"
+
+        /** AdMob Gold Rewarded ad unit (production) — pairs with
+         *  [UNITY_REWARDED_PLACEMENT]. */
+        const val ADMOB_GOLD_REWARDED_AD_UNIT_ID = "ca-app-pub-9434446627275871/8503877756"
+
+        /** AdMob Interstitial ad unit (production) — pairs with
+         *  [UNITY_INTERSTITIAL_PLACEMENT]. */
+        const val ADMOB_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-9434446627275871/1600874709"
+
+        /** AdMob Picture Rewarded ad unit (production) — pairs with the
+         *  dedicated SUNRISE picture placement [UNITY_PICTURE_REWARDED_PLACEMENT]. */
+        const val ADMOB_PICTURE_REWARDED_AD_UNIT_ID = "ca-app-pub-9434446627275871/8657966595"
 
         // ── Unity LevelPlay production identifiers (native ads) ───────────
         /** LevelPlay App Key (Unity LevelPlay platform → production). */
@@ -140,6 +170,7 @@ class AdManager(
     private val isInitializing = AtomicBoolean(false)
     private val isUnityInitializing = AtomicBoolean(false)
     private val isUnityRewardedLoading = AtomicBoolean(false)
+    private val isUnityPictureRewardedLoading = AtomicBoolean(false)
     private val isUnityInterstitialLoading = AtomicBoolean(false)
 
     /** True once [LevelPlay.init] succeeded — LevelPlay loads start here. */
@@ -151,6 +182,10 @@ class AdManager(
     /** True while a loaded Unity rewarded/interstitial ad is ready to show. */
     @Volatile
     private var unityRewardedReady = false
+
+    /** True while the DEDICATED picture-rewarded ("Ad2") ad is ready to show. */
+    @Volatile
+    private var unityPictureRewardedReady = false
 
     @Volatile
     private var unityInterstitialReady = false
@@ -270,6 +305,7 @@ class AdManager(
                     if (!isUnitySdkReady.compareAndSet(false, true)) return
                     Timber.i("Unity Ads initialized (gameId=%s)", UNITY_GAME_ID)
                     loadRewardedAd()
+                    loadPictureRewardedAd()
                     loadInterstitialAd()
                 }
 
@@ -367,6 +403,44 @@ class AdManager(
         }
     }
 
+    /**
+     * Load the DEDICATED picture-rewarded ad ("Ad2") for the SUNRISE picture
+     * flow (v1.0.11 rev 6). Fully independent from the gold placement: own
+     * ready flag, own loading flag, own load listener. Safe to call
+     * repeatedly. NO premium gate — rewarded stays available to everyone.
+     */
+    fun loadPictureRewardedAd() {
+        if (!isUnitySdkReady.get()) return
+        if (unityPictureRewardedReady) return
+        if (!isUnityPictureRewardedLoading.compareAndSet(false, true)) return
+        try {
+            UnityAds.load(UNITY_PICTURE_REWARDED_PLACEMENT, unityPictureRewardedLoadListener)
+        } catch (e: Exception) {
+            isUnityPictureRewardedLoading.set(false)
+            Timber.e(e, "Exception requesting picture-rewarded ad load")
+            scheduleLoadRetry { loadPictureRewardedAd() }
+        }
+    }
+
+    private val unityPictureRewardedLoadListener = object : IUnityAdsLoadListener {
+        override fun onUnityAdsAdLoaded(placementId: String) {
+            isUnityPictureRewardedLoading.set(false)
+            unityPictureRewardedReady = true
+            Timber.d("Unity Ads picture-rewarded ad loaded (placement=%s)", placementId)
+        }
+
+        override fun onUnityAdsFailedToLoad(
+            placementId: String,
+            error: UnityAds.UnityAdsLoadError,
+            message: String
+        ) {
+            isUnityPictureRewardedLoading.set(false)
+            unityPictureRewardedReady = false
+            Timber.w("Unity Ads picture-rewarded failed to load: %s — will retry", message)
+            scheduleLoadRetry { loadPictureRewardedAd() }
+        }
+    }
+
     private val unityRewardedShowListener = object : IUnityAdsShowListener {
         override fun onUnityAdsShowStart(placementId: String) {
             eventListener?.onAdShown(AdType.REWARDED)
@@ -418,8 +492,12 @@ class AdManager(
             } else {
                 Timber.d("Unity Ads rewarded not completed (%s) — no reward", state)
             }
-            // Pre-load the next reward opportunity.
-            loadRewardedAd()
+            // Pre-load the next reward opportunity — for the SAME flow that
+            // just finished (each purpose owns its dedicated placement).
+            when (rewardedShowPurpose) {
+                RewardedPurpose.GOLD -> loadRewardedAd()
+                RewardedPurpose.PROFILE_PIC -> loadPictureRewardedAd()
+            }
         }
 
         override fun onUnityAdsShowFailure(
@@ -429,7 +507,10 @@ class AdManager(
         ) {
             Timber.w("Unity Ads rewarded failed to display: %s", message)
             eventListener?.onAdShowFailed(AdType.REWARDED, message)
-            loadRewardedAd()
+            when (rewardedShowPurpose) {
+                RewardedPurpose.GOLD -> loadRewardedAd()
+                RewardedPurpose.PROFILE_PIC -> loadPictureRewardedAd()
+            }
         }
     }
 
@@ -444,46 +525,68 @@ class AdManager(
     fun showRewardedAd(activity: Activity): Boolean =
         startRewardedShow(activity, RewardedPurpose.GOLD)
 
-    /** Internal show entry — keeps the private [RewardedPurpose] type hidden. */
+    /** Internal show entry — keeps the private [RewardedPurpose] type hidden.
+     *  v1.0.11 rev 6: each purpose shows its OWN dedicated placement —
+     *  GOLD → [UNITY_REWARDED_PLACEMENT] (`Rewarded_Android`),
+     *  PROFILE_PIC → [UNITY_PICTURE_REWARDED_PLACEMENT] (`Ad2`). */
     private fun startRewardedShow(activity: Activity, purpose: RewardedPurpose): Boolean {
-        if (!unityRewardedReady) {
-            Timber.d("Rewarded ad not ready — requesting load")
-            loadRewardedAd()
+        val placement = when (purpose) {
+            RewardedPurpose.GOLD -> UNITY_REWARDED_PLACEMENT
+            RewardedPurpose.PROFILE_PIC -> UNITY_PICTURE_REWARDED_PLACEMENT
+        }
+        val ready = when (purpose) {
+            RewardedPurpose.GOLD -> unityRewardedReady
+            RewardedPurpose.PROFILE_PIC -> unityPictureRewardedReady
+        }
+        if (!ready) {
+            Timber.d("Rewarded ad not ready (placement=%s) — requesting load", placement)
+            when (purpose) {
+                RewardedPurpose.GOLD -> loadRewardedAd()
+                RewardedPurpose.PROFILE_PIC -> loadPictureRewardedAd()
+            }
             return false
         }
         rewardShowToken = UUID.randomUUID().toString().replace("-", "")
         rewardGrantedForThisShow.set(false)
         rewardedShowPurpose = purpose
-        unityRewardedReady = false // this load is consumed by the show
+        // This load is consumed by the show (flag of the placement we show).
+        when (purpose) {
+            RewardedPurpose.GOLD -> unityRewardedReady = false
+            RewardedPurpose.PROFILE_PIC -> unityPictureRewardedReady = false
+        }
         return try {
             UnityAds.show(
                 activity,
-                UNITY_REWARDED_PLACEMENT,
+                placement,
                 UnityAdsShowOptions(),
                 unityRewardedShowListener
             )
             true
         } catch (e: Exception) {
             Timber.e(e, "Exception showing rewarded ad — never crash on ad errors")
-            loadRewardedAd()
+            when (purpose) {
+                RewardedPurpose.GOLD -> loadRewardedAd()
+                RewardedPurpose.PROFILE_PIC -> loadPictureRewardedAd()
+            }
             false
         }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     //  Rewarded ad — SUNRISE picture flow (5 completed watches → unlock)
-    //  v1.0.11 rev 5: runs on the REAL Unity Ads rewarded placement
-    //  ("Rewarded_Android") — the proven production rewarded stack. The ad
-    //  opens and plays for real; a watch is recorded ONLY when Unity Ads
-    //  reports COMPLETED, and duplicate callbacks are guarded. LevelPlay no
-    //  longer shows rewarded ads (it keeps serving the native ad).
+    //  v1.0.11 rev 6: runs on the DEDICATED picture placement "Ad2" — strictly
+    //  separate from the gold placement ("Rewarded_Android"). The ad opens and
+    //  plays for real; a watch is recorded ONLY when Unity Ads reports
+    //  COMPLETED, and duplicate callbacks are guarded. LevelPlay does not
+    //  show rewarded ads (it keeps serving the native ad).
     //  Premium users: ALLOWED — rewarded format, voluntary mechanic.
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Show the REAL rewarded ad for the SUNRISE picture flow. One watch is
-     * recorded ONLY through [profilePicGrantCallback] when Unity Ads confirms
-     * COMPLETED completion — never on early close, failure or invalid
+     * Show the REAL rewarded ad for the SUNRISE picture flow — the DEDICATED
+     * "Ad2" picture placement (v1.0.11 rev 6; NOT the gold placement). One
+     * watch is recorded ONLY through [profilePicGrantCallback] when Unity Ads
+     * confirms COMPLETED completion — never on early close, failure or invalid
      * callbacks, and never without the ad actually playing.
      * Available to EVERYONE — Premium users included.
      *
@@ -642,8 +745,10 @@ class AdManager(
     fun release() {
         interstitialDismissed = null
         unityRewardedReady = false
+        unityPictureRewardedReady = false
         unityInterstitialReady = false
         isUnityRewardedLoading.set(false)
+        isUnityPictureRewardedLoading.set(false)
         isUnityInterstitialLoading.set(false)
         retryJobs.forEach { it.cancel() }
         retryJobs.clear()

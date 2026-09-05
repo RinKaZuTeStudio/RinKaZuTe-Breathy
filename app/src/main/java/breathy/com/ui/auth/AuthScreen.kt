@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,6 +90,10 @@ import breathy.com.data.repository.AuthRepository
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
+import breathy.com.ui.theme.DarkBotanical
+import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.MediumSage
+import breathy.com.ui.theme.NaturalYellow
 import breathy.com.utils.s
 
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -709,24 +714,7 @@ fun AuthScreen(
                 .padding(top = 60.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            BreathyLogo()
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = s("Breathy for your Health", "Breathy لصحتك"),
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = if (uiState.isSignUpMode) s("Create your account", "أنشئ حسابك") else s("Welcome back", "مرحباً بعودتك"),
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            AuthWelcomeHeader(isSignUpMode = uiState.isSignUpMode)
 
             Spacer(modifier = Modifier.height(36.dp))
 
@@ -836,123 +824,97 @@ fun AuthScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Breathy Logo — Animated breathing icon with neon glow
+//  Welcome Header — typography-first Breathy Nature login header
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Typography-first welcome header for the auth screen (v1.0.11 rev 6).
+ * Replaces the old generic animated lung/blob illustration with a polished,
+ * calm Breathy Nature composition: a refined static breath-ring mark with a
+ * subtle alpha-only "breathing" glow, brand wordmark, and a clear headline
+ * directly above the email field. No floating shapes, no resizing elements.
+ */
 @Composable
-private fun BreathyLogo() {
-    val infiniteTransition = rememberInfiniteTransition(label = "breathing")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.85f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breathingScale"
-    )
-
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breathingGlow"
-    )
-
-    Box(
-        contentAlignment = Alignment.Center
-    ) {
-        // Outer glow
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .graphicsLayer {
-                    scaleX = scale * 1.3f
-                    scaleY = scale * 1.3f
-                    alpha = glowAlpha
-                }
-                .blur(30.dp)
-                .background(
-                    AccentPrimary.copy(alpha = 0.4f),
-                    CircleShape
-                )
+private fun AuthWelcomeHeader(isSignUpMode: Boolean) {
+    // Alpha-only breathing accent (no scale/shape change — the mark itself
+    // never resizes; only the outer ring's opacity gently breathes).
+    val ringAlpha by rememberInfiniteTransition(label = "breath")
+        .animateFloat(
+            initialValue = 0.55f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 3800, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breathRingAlpha"
         )
 
-        // Inner glow
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // ── Breath mark: two thin concentric rings + a small gold dot ────
         Box(
-            modifier = Modifier
-                .size(80.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = glowAlpha + 0.2f
-                }
-                .blur(15.dp)
-                .background(
-                    AccentPrimary.copy(alpha = 0.3f),
-                    CircleShape
-                )
-        )
-
-        // Breathing lung icon — drawn with Canvas
-        Canvas(
-            modifier = Modifier
-                .size(64.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
+            modifier = Modifier.size(72.dp),
+            contentAlignment = Alignment.Center
         ) {
-            val width = size.width
-            val height = size.height
-            val lungColor = AccentPrimary
-
-            // Trachea (windpipe) — center vertical line
-            drawLine(
-                color = lungColor,
-                start = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.05f),
-                end = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.4f),
-                strokeWidth = 4.dp.toPx(),
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            // Outer ring — soft sage, gently breathing (alpha only)
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .graphicsLayer { alpha = ringAlpha }
+                    .border(width = 1.5.dp, color = MediumSage, shape = CircleShape)
             )
-
-            // Left bronchus — branch to left lung
-            drawLine(
-                color = lungColor,
-                start = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.35f),
-                end = androidx.compose.ui.geometry.Offset(width * 0.3f, height * 0.5f),
-                strokeWidth = 3.dp.toPx(),
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            // Inner ring — deep forest green (steady anchor)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .border(width = 2.dp, color = DeepForest.copy(alpha = 0.85f), shape = CircleShape)
             )
-
-            // Right bronchus — branch to right lung
-            drawLine(
-                color = lungColor,
-                start = androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.35f),
-                end = androidx.compose.ui.geometry.Offset(width * 0.7f, height * 0.5f),
-                strokeWidth = 3.dp.toPx(),
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
-
-            // Left lung shape
-            drawOval(
-                color = lungColor,
-                topLeft = androidx.compose.ui.geometry.Offset(width * 0.05f, height * 0.4f),
-                size = androidx.compose.ui.geometry.Size(width * 0.4f, height * 0.55f),
-                alpha = 0.7f
-            )
-
-            // Right lung shape
-            drawOval(
-                color = lungColor,
-                topLeft = androidx.compose.ui.geometry.Offset(width * 0.55f, height * 0.4f),
-                size = androidx.compose.ui.geometry.Size(width * 0.4f, height * 0.55f),
-                alpha = 0.7f
+            // Gold "morning" dot resting on the outer ring (recovery light)
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .align(Alignment.TopCenter)
+                    .background(NaturalYellow, CircleShape)
             )
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // ── Brand wordmark ────────────────────────────────────────────────
+        Text(
+            text = s("B R E A T H Y", "B R E A T H Y"),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 3.sp,
+            color = MediumSage
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // ── Headline (mode-aware) ─────────────────────────────────────────
+        Text(
+            text = if (isSignUpMode) {
+                s("CREATE YOUR ACCOUNT", "أنشئ حسابك")
+            } else {
+                s("WELCOME BACK", "مرحباً بعودتك")
+            },
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+            color = DarkBotanical
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ── Supporting line — calm, intentional ──────────────────────────
+        Text(
+            text = s(
+                "Breathe in. Breathe out. Your smoke-free journey continues.",
+                "تنفّس بهدوء. رحلتك دون تدخين مستمرة."
+            ),
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = DeepForest.copy(alpha = 0.65f)
+        )
     }
 }
 
