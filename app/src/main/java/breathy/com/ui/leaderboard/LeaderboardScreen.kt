@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -486,6 +487,12 @@ fun LeaderboardScreen(
     )
 
     Scaffold(
+        // v1.0.12 — nested-Scaffold inset fix: the main NavGraph Scaffold
+        // already reserves the system navigation-bar area for the app-wide
+        // bottom NavigationBar. Without this, the nested Scaffold re-applies
+        // the system bottom inset as content padding, creating an unwanted
+        // empty strip between the page content and the bottom bar.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {

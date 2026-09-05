@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -242,6 +243,13 @@ fun HomeScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
+            // v1.0.12 — nested-Scaffold inset fix: the main NavGraph Scaffold
+            // already reserves the system navigation-bar area for the app-wide
+            // bottom NavigationBar and the status-bar area at the top. Without
+            // this, the nested Scaffold re-applies those system insets as
+            // content padding, creating an unwanted empty strip between the
+            // page content and the bottom bar (and a doubled gap at the top).
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             floatingActionButton = {

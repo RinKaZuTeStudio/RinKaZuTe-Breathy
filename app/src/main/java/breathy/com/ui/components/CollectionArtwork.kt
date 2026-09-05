@@ -33,9 +33,13 @@ import androidx.compose.ui.unit.IntSize
  * 1. CONTENT TRIM — the artwork's uniform background margins are measured
  *    once per artwork (cached in-process) and excluded from the drawn source
  *    rect, so the actual subject fills the container.
- * 2. PROPORTIONAL FIT — the trimmed artwork is drawn with
- *    [ContentScale.Fit], centered: the complete subject stays visible, is
- *    never stretched, never distorted and never arbitrarily cropped.
+ * 2. EDGE-TO-EDGE FILL — v1.0.12: the trimmed artwork is drawn with
+ *    [ContentScale.Crop], centered: the picture is scaled to COVER its
+ *    container so it fills the circular avatar-border aperture (and every
+ *    picture icon) edge to edge — no letterbox bands, no smaller-than-border
+ *    look. Subjects are near-square after trimming, so nothing meaningful is
+ *    cropped; the container's circular clip hides only background corners.
+ *    The picture is never stretched or distorted.
  * 3. SEAMLESS BACKGROUND — the container is filled with the artwork's own
  *    sampled background colour, so any remaining letterbox area reads as a
  *    natural extension of the art (no visible bands, no "empty space").
@@ -143,11 +147,12 @@ object CollectionArtworkTrim {
 }
 
 /**
- * Renders one Breathy collection artwork (512×512 square sticker card) inside
- * any container, content-aware: uniform background margins are trimmed, the
- * subject is fitted proportionally and centered, and the container background
- * is filled with the artwork's own background colour so no empty bands show.
- * The artwork files are never modified and images are never stretched.
+ * v1.0.12 — renders one Breathy collection artwork (512×512 square sticker
+ * card) inside any container, content-aware and edge-to-edge: uniform
+ * background margins are trimmed, the subject is scaled to cover the container
+ * and centered, so the picture FILLS the avatar border aperture / picture icon
+ * completely. The artwork files are never modified and images are never
+ * stretched.
  */
 @Composable
 fun CollectionArtwork(
@@ -172,7 +177,11 @@ fun CollectionArtwork(
             painter = painter,
             contentDescription = contentDescription,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
+            // v1.0.12 — cover, not fit: the picture must FILL the avatar
+            // border aperture and every picture icon edge to edge (no
+            // letterbox bands making the picture look smaller than the
+            // border). Cropping only trims background after content-trim.
+            contentScale = ContentScale.Crop
         )
     }
 }
