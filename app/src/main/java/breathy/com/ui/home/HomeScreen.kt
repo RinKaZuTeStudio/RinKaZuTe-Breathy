@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -296,6 +297,9 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // ── Stat Cards Row ─────────────────────────────────────
+                    // v1.0.11 rev 7 — balanced dashboard row: intrinsic-min
+                    // height makes all three cards EQUAL height with aligned
+                    // top/bottom edges and even spacing (cards fill the row).
                     AnimatedVisibility(
                         visible = statsVisible,
                         enter = slideInVertically(
@@ -304,8 +308,11 @@ fun HomeScreen(
                         ) + fadeIn(animationSpec = tween(400))
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             MoneySavedCard(
                                 moneySaved = uiState.moneySaved,

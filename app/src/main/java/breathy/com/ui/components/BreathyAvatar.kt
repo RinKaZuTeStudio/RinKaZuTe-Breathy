@@ -77,19 +77,21 @@ import kotlin.math.sin
  *
  * Renders the user's photo (or a botanical default) inside the selected
  * [AvatarFrame]. Frame artwork is the OFFICIAL "Avatar Borders Collection"
- * (res/drawable-nodpi/frame_*.png) — 4K-designed wreaths, crests and rings.
+ * (res/drawable-nodpi/frame_*.png) — the hand-cleaned GitHub/docs wreaths,
+ * crests and rings (v1.0.11 rev 7). The artwork renders exactly as supplied:
+ * transparent background, no shadow, no halo, no added glow.
  *
- * EVERY border has its own signature animation (v1.0.7):
- * - CLASSIC      → soft halo breathing
+ * Every border keeps its own signature animation (v1.0.7):
+ * - CLASSIC      → (static ring — clean, no glow)
  * - NATURE       → gentle botanical sway (rotates ±2.4° like leaves in wind)
- * - LEAF         → living scale breathing + green aura
- * - BRONZE       → warm amber aura pulse + bronze shine sweep
- * - SILVER       → cool metal shine sweep + pale aura
- * - GOLD         → golden shine sweep, warm aura, orbiting gold sparks
+ * - LEAF         → living scale breathing
+ * - BRONZE       → bronze shine sweep
+ * - SILVER       → cool metal shine sweep
+ * - GOLD         → golden shine sweep + orbiting gold sparks
  * - ACHIEVEMENT  → celebratory star pop + sparkle
  * - EVENT        → counter-rotating gold/red festive arcs + sparks
- * - RANK         → violet energy sweep + aura
- * - PREMIUM      → the full treatment: gold+red counter shimmer, aura, sparks
+ * - RANK         → violet energy sweep
+ * - PREMIUM      → the full treatment: gold+red counter shimmer + sparks
  *
  * Pass [animated] = false in dense lists (leaderboard) to keep scrolling
  * buttery — the artwork stays, the motion pauses.
@@ -172,13 +174,10 @@ fun BreathyAvatar(
             .then(semanticsModifier),
         contentAlignment = Alignment.Center
     ) {
-        // ── Aura layer (UNDER the photo) — soft colored breathing glow ────
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            drawFrameAura(effectiveFrame, phase)
-        }
-
+        // v1.0.11 rev 7 — the old "aura" glow canvas that was drawn UNDER the
+        // photo (a fake circular colored halo around the frame) is REMOVED.
+        // The manual GitHub/docs frame artwork ships without any shadow, so
+        // the app must not paint a shadow/halo back behind it.
         // ── Inner avatar circle FIRST — the frame renders IN FRONT of it ──
         // v1.0.11 rev 4 — ONE STANDARDIZED PHOTO APERTURE FOR EVERY FRAME.
         // The photo layer is always the same 420×420 aperture inside the
@@ -468,37 +467,12 @@ private fun DrawScope.drawLegacyFrameArtwork(
 //  Official frame art (Avatar Borders Collection) + signature animations
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Aura/glow color per frame — matched to each wreath's palette. */
-private val FrameAuraColors = mapOf(
-    AvatarFrame.NONE to Color(0xFF9BA88F),
-    AvatarFrame.NATURE to Color(0xFF8B9E6A),
-    AvatarFrame.LEAF to Color(0xFF6FA84E),
-    AvatarFrame.BRONZE to Color(0xFFC89058),
-    AvatarFrame.SILVER to Color(0xFFCBD5DF),
-    AvatarFrame.GOLD to Color(0xFFF0B93B),
-    AvatarFrame.ACHIEVEMENT to Color(0xFF5FA84E),
-    AvatarFrame.EVENT to Color(0xFFF0B93B),
-    AvatarFrame.RANK to Color(0xFF9B6BE0),
-    AvatarFrame.PREMIUM to Color(0xFFE86A5B)
-)
-
 /**
- * Soft colored aura glow drawn UNDER the photo — the breathing backdrop that
- * makes the foreground frame art pop. Runs on its own canvas layer.
+ * v1.0.11 rev 7 — REMOVED: the under-photo aura canvas layer AND its
+ * per-frame color table ([FrameAuraColors] / [drawFrameAura]). The manual
+ * GitHub/docs frame artwork ships without any shadow, so the app must not
+ * paint a circular halo/shadow/glow back behind the frame artwork.
  */
-private fun DrawScope.drawFrameAura(frame: AvatarFrame, phase: Float) {
-    val center = Offset(size.width / 2f, size.height / 2f)
-    val ringRadius = size.minDimension / 2f * 0.86f
-    val aura = FrameAuraColors[frame] ?: Color(0xFF9BA88F)
-    val auraMax = when (frame) {
-        AvatarFrame.NONE -> 0.14f
-        AvatarFrame.NATURE, AvatarFrame.LEAF -> 0.20f
-        AvatarFrame.BRONZE, AvatarFrame.SILVER -> 0.24f
-        AvatarFrame.RANK, AvatarFrame.ACHIEVEMENT -> 0.26f
-        else -> 0.32f // GOLD / EVENT / PREMIUM
-    }
-    drawGlow(center, ringRadius * 1.12f, aura, phase, maxAlpha = auraMax)
-}
 
 /**
  * Draw the official frame artwork with its SIGNATURE animation:

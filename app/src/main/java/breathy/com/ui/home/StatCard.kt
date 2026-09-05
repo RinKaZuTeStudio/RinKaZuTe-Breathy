@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,13 +46,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
 import breathy.com.ui.theme.themeBgSurface
-import breathy.com.ui.theme.themeBgSurfaceVariant
 import breathy.com.ui.theme.themeTextSecondary
 import breathy.com.utils.s
 import kotlinx.coroutines.delay
@@ -61,6 +64,16 @@ import java.util.Locale
 
 /**
  * A compact stat card showing an icon, animated value, and label.
+ *
+ * v1.0.11 rev 7 — DASHBOARD ALIGNMENT PASS (presentation only; values,
+ * icons, labels, colors and calculations are untouched):
+ * - every card in the row stretches to the SAME height (the Home row wraps
+ *   the three cards in an intrinsic-min-height Row and each card fills it),
+ *   so top and bottom edges align and spacing stays even;
+ * - the content uses FIXED slots (icon 24dp · value 28dp · label 28dp) and is
+ *   vertically centered, so all three values sit on one line across the row;
+ * - the value auto-fits (22sp shrinking to 13sp) so long values like
+ *   "999d 23h" or "$123.45" never clip, wrap or overlap.
  *
  * @param value     The display string for the stat value (e.g. "$42.50", "120").
  * @param label     The label text below the value (e.g. "Saved", "Avoided").
@@ -119,67 +132,97 @@ fun StatCard(
         label = "glow_alpha"
     )
 
+    // v1.0.11 rev 7 — auto-fit: start at the designed 22sp and shrink 1sp per
+    // layout pass (down to 13sp) ONLY if the value would overflow its slot.
+    var valueFontSize by remember(value) { mutableFloatStateOf(22f) }
+
     Card(
-        modifier = modifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        },
+        modifier = modifier
+            .fillMaxHeight()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         colors = CardDefaults.cardColors(containerColor = themeBgSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Box {
+        Box(
+            modifier = Modifier.fillMaxHeight()
+        ) {
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Icon
+                // Icon — fixed slot so every card aligns
                 Row(
+                    modifier = Modifier.height(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     icon()
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                // Animated value display
+                // Animated value display — fixed slot + auto-fit, single line
                 val displayText = if (shouldAnimate && numericValue > 0) {
                     displayValue.toString()
                 } else {
                     value
                 }
 
-                Text(
-                    text = displayText,
-                    style = TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = accentColor,
-                        shadow = Shadow(
-                            color = accentColor.copy(alpha = 0.4f),
-                            offset = androidx.compose.ui.geometry.Offset(0f, 0f),
-                            blurRadius = 8f
-                        )
-                    ),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
+                Box(
+                    modifier = Modifier.height(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = displayText,
+                        style = TextStyle(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = valueFontSize.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            shadow = Shadow(
+                                color = accentColor.copy(alpha = 0.4f),
+                                offset = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                blurRadius = 8f
+                            )
+                        ),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        softWrap = false,
+                        onTextLayout = { result ->
+                            if (result.hasVisualOverflow && valueFontSize > 13f) {
+                                valueFontSize -= 1f
+                            }
+                        }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = themeTextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
+                // Label — fixed two-line slot keeps all three labels aligned
+                Box(
+                    modifier = Modifier.height(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = themeTextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             // Neon border glow overlay for achieved cards

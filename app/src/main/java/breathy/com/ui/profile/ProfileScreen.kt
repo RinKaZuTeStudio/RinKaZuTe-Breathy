@@ -111,7 +111,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import breathy.com.ui.components.CollectionArtwork
 import breathy.com.ui.components.NetworkImage
 import breathy.com.ui.components.PremiumGlow
 import breathy.com.ui.components.invalidateImageCache
@@ -136,7 +135,6 @@ import breathy.com.ui.theme.GoldDeep
 import breathy.com.ui.theme.PureWhite
 import breathy.com.ui.theme.GoldSoft
 import breathy.com.ui.theme.NaturalGreen
-import breathy.com.ui.theme.NaturalYellow
 import breathy.com.ui.theme.DeepForest
 import breathy.com.ui.theme.DarkBotanical
 import breathy.com.ui.theme.TextSecondary
@@ -2248,16 +2246,17 @@ private fun AvatarFramePickerSheet(
 
             if (tab == 0) {
                 // ═══ UNIFIED PROFILE PICTURES ═══
-                // v1.0.11 rev 5 — compact, evenly spaced 3-column grid;
-                // rows share equal heights so cards align cleanly.
+                // v1.0.11 rev 7 — PICTURES CARD UI RESTORED to the previous
+                // (v1.0.9–v1.0.11 rev3) visual presentation: full-bleed
+                // ContentScale.Crop thumbnails and the light TextButton action
+                // row. The rev-5 scroll fix (one vertical scroll container,
+                // no nested scrolling) and the 3-column chunked grid are KEPT.
                 val rows = pictures.chunked(3)
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     for (row in rows) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(IntrinsicSize.Min),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             for (picture in row) {
                                 ProfilePictureCard(
@@ -2271,7 +2270,7 @@ private fun AvatarFramePickerSheet(
                                     onEquip = { onEquipPicture(picture) },
                                     onBuy = { onBuyPicture(picture) },
                                     onWatchAd = onWatchAd,
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                             repeat(3 - row.size) {
@@ -2336,11 +2335,13 @@ private fun AvatarFramePickerSheet(
  * Unlock states: Day One (everyone) · milestone days · Gold shop (500+)
  * · 5 rewarded ads · Premium animated pair.
  *
- * v1.0.11 rev 5 — the icon renders the artwork CONTENT-AWARE
- * ([CollectionArtwork]): complete subject, centered, proportional, no empty
- * space above, no distortion, no arbitrary cropping. Every action is a REAL
- * button: full-width, 30dp tall, rounded, centered bold label, clearly
- * distinct from the card background (Breathy sage/forest/gold system).
+ * v1.0.11 rev 7 — VISUAL PRESENTATION RESTORED to the previous design
+ * (the rev-5 content-aware renderer and the full-width action buttons are
+ * reverted for THIS card only): the artwork is again a plain full-bleed
+ * square thumbnail (ContentScale.Crop, 84dp, rounded clip) and the actions
+ * are again the light TextButton / status-text row. Unlock logic, names,
+ * prices, ad counting and callbacks are untouched; the 3-column grid and
+ * the rev-5 scrolling behaviour are kept.
  */
 @Composable
 private fun ProfilePictureCard(
@@ -2378,22 +2379,19 @@ private fun ProfilePictureCard(
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // v1.0.11 rev 5 — content-aware icon: the COMPLETE artwork subject
-        // fills the icon area cleanly (trimmed margins, proportional Fit,
-        // artwork-coloured background — no empty space above, no stretching).
-        Box(
-            modifier = Modifier
-                .size(84.dp)
-                .clip(RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            CollectionArtwork(
-                resId = pictureDrawable(picture),
+        // v1.0.11 rev 7 — previous presentation restored: plain full-bleed
+        // square thumbnail of the artwork (ContentScale.Crop), exactly like
+        // the pre-rev-5 card. No content-aware trimming, no sampled
+        // background — the artwork fills the thumbnail edge to edge.
+        Box(contentAlignment = Alignment.Center) {
+            Image(
+                painter = androidx.compose.ui.res.painterResource(pictureDrawable(picture)),
                 contentDescription = picture.displayLabel(),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .alpha(if (unlocked) 1f else 0.35f)
+                    .size(84.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                alpha = if (unlocked) 1f else 0.35f
             )
             if (!unlocked) {
                 Text(text = "🔒", fontSize = 22.sp)
@@ -2419,55 +2417,68 @@ private fun ProfilePictureCard(
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        // ── ACTION AREA — always a full-width 30dp slot so all cards in a row
-        // align; tappable actions render as REAL buttons.
+        Spacer(modifier = Modifier.height(4.dp))
+        // ── ACTION AREA — restored to the previous light action row:
+        // small TextButtons for tappable actions, plain status text for
+        // non-tappable states (worn / unlock condition / premium badge).
         when {
             isSelected -> {
-                CollectionActionChip(
-                    text = "✓ " + s("WORN", "مُرتداة"),
-                    container = MaterialTheme.colorScheme.primaryContainer,
-                    content = MaterialTheme.colorScheme.onPrimaryContainer
+                Text(
+                    text = s("WORN", "مُرتداة"),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             unlocked -> {
-                CollectionActionButton(
-                    text = s("WEAR", "ارتداء"),
-                    container = MaterialTheme.colorScheme.primary,
-                    content = MaterialTheme.colorScheme.onPrimary,
-                    onClick = onEquip
-                )
+                TextButton(
+                    onClick = onEquip,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    modifier = Modifier.height(26.dp)
+                ) {
+                    Text(text = s("Wear", "ارتداء"), style = MaterialTheme.typography.labelMedium)
+                }
             }
             picture.unlockDays > 0 -> {
-                CollectionActionChip(
+                Text(
                     text = s("Day " + picture.unlockDays, "يوم " + picture.unlockDays),
-                    container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    content = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
             picture.adsRequired > 0 && !owned -> {
-                CollectionActionButton(
-                    text = "▶ " + s("WATCH", "شاهد") + " · " + picAdWatchCount + "/" + picture.adsRequired,
-                    container = MaterialTheme.colorScheme.secondaryContainer,
-                    content = MaterialTheme.colorScheme.onSecondaryContainer,
-                    onClick = onWatchAd
-                )
+                TextButton(
+                    onClick = onWatchAd,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    modifier = Modifier.height(26.dp)
+                ) {
+                    Text(
+                        text = "▶ " + picAdWatchCount + "/" + picture.adsRequired,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
             picture.goldPrice != null && !owned -> {
                 val canAfford = goldBalance >= picture.goldPrice
-                CollectionActionButton(
-                    text = "🪙 %,d".format(picture.goldPrice),
-                    container = if (canAfford) GoldDeep else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    content = if (canAfford) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                TextButton(
+                    onClick = onBuy,
                     enabled = canAfford,
-                    onClick = onBuy
-                )
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    modifier = Modifier.height(26.dp)
+                ) {
+                    Text(
+                        text = "🪙 %,d".format(picture.goldPrice),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = if (canAfford) GoldDeep else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             picture.premiumOnly -> {
-                CollectionActionChip(
+                Text(
                     text = "👑 " + s("Premium", "بريميوم"),
-                    container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    content = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
         }
@@ -2616,9 +2627,6 @@ private fun FrameCard(
         label = "frame_scale_${frame.id}"
     )
 
-    val isHighTier = frame.rarity == breathy.com.data.models.FrameRarity.LEGENDARY ||
-            frame.rarity == breathy.com.data.models.FrameRarity.PREMIUM
-
     Column(
         modifier = modifier
             .alpha(revealAlpha)
@@ -2641,23 +2649,10 @@ private fun FrameCard(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Mini avatar preview with the full designed frame artwork.
-        // High tiers get a soft botanical aura behind the preview.
+        // v1.0.11 rev 7 — the old soft botanical aura behind high-tier
+        // previews is REMOVED: the new GitHub/docs frame artwork ships
+        // without shadows, and no glow/halo may be painted behind it.
         Box(contentAlignment = Alignment.Center) {
-            if (isHighTier && unlocked) {
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(
-                                    NaturalYellow.copy(alpha = 0.35f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-            }
             breathy.com.ui.components.BreathyAvatar(
                 photoURL = null,
                 frame = frame,
