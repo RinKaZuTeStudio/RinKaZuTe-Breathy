@@ -23,9 +23,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,6 +58,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -107,6 +111,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import breathy.com.ui.components.CollectionArtwork
 import breathy.com.ui.components.NetworkImage
 import breathy.com.ui.components.PremiumGlow
 import breathy.com.ui.components.invalidateImageCache
@@ -2140,7 +2145,9 @@ private fun AvatarFramePickerSheet(
 ) {
     val frames = breathy.com.data.models.AvatarFrame.entries
     val pictures = breathy.com.data.models.ProfilePicture.entries
-    val modalBottomSheetState = rememberModalBottomSheetState()
+    // v1.0.11 rev 5 — open FULLY expanded so the whole collection is browsable
+    // and vertical scrolling starts immediately (no partial-sheet drag phase).
+    val modalBottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var tab by remember { androidx.compose.runtime.mutableIntStateOf(0) }
 
     ModalBottomSheet(
@@ -2151,6 +2158,12 @@ private fun AvatarFramePickerSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // v1.0.11 rev 5 — THE COLLECTION SCROLLS. The sheet content is
+                // one vertical scroll container: every picture and every
+                // frame is reachable by normal vertical scrolling. The grid
+                // rows are plain Columns/Rows (no competing gesture handlers),
+                // so nothing intercepts or consumes the vertical drags.
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
@@ -2235,12 +2248,16 @@ private fun AvatarFramePickerSheet(
 
             if (tab == 0) {
                 // ═══ UNIFIED PROFILE PICTURES ═══
+                // v1.0.11 rev 5 — compact, evenly spaced 3-column grid;
+                // rows share equal heights so cards align cleanly.
                 val rows = pictures.chunked(3)
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     for (row in rows) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             for (picture in row) {
                                 ProfilePictureCard(
@@ -2254,7 +2271,7 @@ private fun AvatarFramePickerSheet(
                                     onEquip = { onEquipPicture(picture) },
                                     onBuy = { onBuyPicture(picture) },
                                     onWatchAd = onWatchAd,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
                             }
                             repeat(3 - row.size) {
@@ -2265,12 +2282,18 @@ private fun AvatarFramePickerSheet(
                 }
             } else {
                 // ═══ FRAME COLLECTION ═══
+                // v1.0.11 rev 5 — compact 3-column grid: rows use intrinsic
+                // min height so every card in a row is EQUAL height with the
+                // action pinned to the bottom — no large gaps, everything
+                // visually aligned.
                 val rows = frames.chunked(3)
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     for (row in rows) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             for (frame in row) {
                                 val ownedByGold = ownedFrames.contains(frame.id)
@@ -2281,20 +2304,19 @@ private fun AvatarFramePickerSheet(
                                     isPremium = isPremium,
                                     daysSmokeFree = daysSmokeFree
                                 )
-                                val isSelected = frame == currentFrame
                                 FrameCard(
                                     frame = frame,
                                     unlocked = unlocked,
-                                    isSelected = isSelected,
+                                    isSelected = frame == currentFrame,
                                     level = level,
                                     hasAchievements = hasAchievements,
                                     hasEventWin = hasEventWin,
                                     isPremium = isPremium,
                                     goldBalance = goldBalance,
                                     daysSmokeFree = daysSmokeFree,
+                                    onEquip = { onSelect(frame) },
                                     onBuy = { onPurchase(frame) },
-                                    modifier = Modifier.weight(1f),
-                                    onClick = { if (unlocked) onSelect(frame) }
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
                                 )
                             }
                             // pad the last row
@@ -2313,6 +2335,12 @@ private fun AvatarFramePickerSheet(
  * v1.0.9 — one card in the unified PROFILE PICTURES collection.
  * Unlock states: Day One (everyone) · milestone days · Gold shop (500+)
  * · 5 rewarded ads · Premium animated pair.
+ *
+ * v1.0.11 rev 5 — the icon renders the artwork CONTENT-AWARE
+ * ([CollectionArtwork]): complete subject, centered, proportional, no empty
+ * space above, no distortion, no arbitrary cropping. Every action is a REAL
+ * button: full-width, 30dp tall, rounded, centered bold label, clearly
+ * distinct from the card background (Breathy sage/forest/gold system).
  */
 @Composable
 private fun ProfilePictureCard(
@@ -2350,15 +2378,22 @@ private fun ProfilePictureCard(
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Image(
-                painter = androidx.compose.ui.res.painterResource(pictureDrawable(picture)),
+        // v1.0.11 rev 5 — content-aware icon: the COMPLETE artwork subject
+        // fills the icon area cleanly (trimmed margins, proportional Fit,
+        // artwork-coloured background — no empty space above, no stretching).
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .clip(RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            CollectionArtwork(
+                resId = pictureDrawable(picture),
                 contentDescription = picture.displayLabel(),
                 modifier = Modifier
-                    .size(84.dp)
-                    .clip(RoundedCornerShape(14.dp)),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                alpha = if (unlocked) 1f else 0.35f
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .alpha(if (unlocked) 1f else 0.35f)
             )
             if (!unlocked) {
                 Text(text = "🔒", fontSize = 22.sp)
@@ -2384,68 +2419,134 @@ private fun ProfilePictureCard(
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
+        // ── ACTION AREA — always a full-width 30dp slot so all cards in a row
+        // align; tappable actions render as REAL buttons.
         when {
             isSelected -> {
-                Text(
-                    text = s("WORN", "مُرتداة"),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary
+                CollectionActionChip(
+                    text = "✓ " + s("WORN", "مُرتداة"),
+                    container = MaterialTheme.colorScheme.primaryContainer,
+                    content = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
             unlocked -> {
-                TextButton(
-                    onClick = onEquip,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    modifier = Modifier.height(26.dp)
-                ) {
-                    Text(text = s("Wear", "ارتداء"), style = MaterialTheme.typography.labelMedium)
-                }
+                CollectionActionButton(
+                    text = s("WEAR", "ارتداء"),
+                    container = MaterialTheme.colorScheme.primary,
+                    content = MaterialTheme.colorScheme.onPrimary,
+                    onClick = onEquip
+                )
             }
             picture.unlockDays > 0 -> {
-                Text(
+                CollectionActionChip(
                     text = s("Day " + picture.unlockDays, "يوم " + picture.unlockDays),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    content = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             picture.adsRequired > 0 && !owned -> {
-                TextButton(
-                    onClick = onWatchAd,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    modifier = Modifier.height(26.dp)
-                ) {
-                    Text(
-                        text = "▶ " + picAdWatchCount + "/" + picture.adsRequired,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
+                CollectionActionButton(
+                    text = "▶ " + s("WATCH", "شاهد") + " · " + picAdWatchCount + "/" + picture.adsRequired,
+                    container = MaterialTheme.colorScheme.secondaryContainer,
+                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    onClick = onWatchAd
+                )
             }
             picture.goldPrice != null && !owned -> {
                 val canAfford = goldBalance >= picture.goldPrice
-                TextButton(
-                    onClick = onBuy,
+                CollectionActionButton(
+                    text = "🪙 %,d".format(picture.goldPrice),
+                    container = if (canAfford) GoldDeep else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    content = if (canAfford) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                     enabled = canAfford,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    modifier = Modifier.height(26.dp)
-                ) {
-                    Text(
-                        text = "🪙 %,d".format(picture.goldPrice),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = if (canAfford) GoldDeep else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                    onClick = onBuy
+                )
             }
             picture.premiumOnly -> {
-                Text(
+                CollectionActionChip(
                     text = "👑 " + s("Premium", "بريميوم"),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    content = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+    }
+}
+
+/**
+ * v1.0.11 rev 5 — a REAL tappable button for collection card actions:
+ * proper shape (rounded rect), clear boundaries, comfortable padding/height,
+ * centered bold label, distinct from the card background. No action logic
+ * here — just the visual presentation the caller wires callbacks into.
+ */
+@Composable
+private fun CollectionActionButton(
+    text: String,
+    container: Color,
+    content: Color,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(9.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = container,
+            contentColor = content,
+            disabledContainerColor = container,
+            disabledContentColor = content.copy(alpha = 0.55f)
+        ),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(30.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            ),
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+    }
+}
+
+/**
+ * v1.0.11 rev 5 — NON-interactive status slot for collection cards (worn /
+ * locked condition / premium badge). Same footprint as the action button so
+ * card heights stay aligned, but visually a status chip — never reads as a
+ * tappable control.
+ */
+@Composable
+private fun CollectionActionChip(
+    text: String,
+    container: Color,
+    content: Color
+) {
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(container)
+            .border(1.dp, container.copy(alpha = 0.9f), RoundedCornerShape(9.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            ),
+            color = content,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -2466,6 +2567,23 @@ private fun pictureDrawable(picture: breathy.com.data.models.ProfilePicture): In
     breathy.com.data.models.ProfilePicture.FREEFROMTHECHAIN -> breathy.com.R.drawable.pic_freefromthechain
 }
 
+/**
+ * v1.0.11 rev 5 — one compact card in the FRAME COLLECTION grid.
+ *
+ * Layout contract:
+ * - Same frame artwork as before ([BreathyAvatar] preview + rarity badge) —
+ *   the artwork itself is untouched.
+ * - EVERY frame carries a full-width 30dp action slot pinned to the card
+ *   bottom (rows use intrinsic heights so slots align across the row — no
+ *   large gaps, no unbalanced empty space):
+ *   · equipped        → non-tappable "✓ EQUIPPED" status chip
+ *   · owned, not worn → real "EQUIP" button (forest green) — equips directly
+ *                       from the collection
+ *   · locked + Gold   → real "🪙 BUY · <price>" button (existing purchase
+ *                       logic, disabled until affordable)
+ *   · locked other    → non-tappable unlock-condition chip (never reads as
+ *                       if the user owns it)
+ */
 @Composable
 private fun FrameCard(
     frame: breathy.com.data.models.AvatarFrame,
@@ -2477,9 +2595,9 @@ private fun FrameCard(
     isPremium: Boolean,
     goldBalance: Int,
     daysSmokeFree: Int = 0,
+    onEquip: () -> Unit = {},
     onBuy: () -> Unit = {},
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    modifier: Modifier = Modifier
 ) {
     // Staggered reveal — frames appear one after another (unlock/preview feel)
     var revealed by remember { mutableStateOf(false) }
@@ -2505,7 +2623,7 @@ private fun FrameCard(
         modifier = modifier
             .alpha(revealAlpha)
             .scale(revealScale)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(
                 when {
                     isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -2516,11 +2634,10 @@ private fun FrameCard(
                 if (isSelected) Modifier.border(
                     2.dp,
                     MaterialTheme.colorScheme.primary,
-                    RoundedCornerShape(16.dp)
+                    RoundedCornerShape(14.dp)
                 ) else Modifier
             )
-            .clickable(enabled = unlocked, onClick = onClick)
-            .padding(12.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Mini avatar preview with the full designed frame artwork.
@@ -2529,7 +2646,7 @@ private fun FrameCard(
             if (isHighTier && unlocked) {
                 Box(
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(60.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.radialGradient(
@@ -2545,12 +2662,12 @@ private fun FrameCard(
                 photoURL = null,
                 frame = frame,
                 rankTier = breathy.com.data.models.RankTier.forLevel(level),
-                size = 52.dp,
+                size = 46.dp,
                 contentDescription = frame.displayLabel()
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = frame.displayLabel(),
@@ -2588,7 +2705,7 @@ private fun FrameCard(
                     if (isPremiumRarity) Modifier.background(rarityColor)
                     else Modifier.border(1.dp, rarityColor.copy(alpha = 0.55f), RoundedCornerShape(50))
                 )
-                .padding(horizontal = 8.dp, vertical = 2.dp),
+                .padding(horizontal = 7.dp, vertical = 1.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -2618,6 +2735,10 @@ private fun FrameCard(
             )
         }
 
+        // Push the action slot to the card bottom so every card in the row
+        // aligns (cards are fillMaxHeight inside intrinsic-height rows).
+        Spacer(modifier = Modifier.weight(1f))
+
         Text(
             text = when {
                 unlocked -> if (isSelected) s("Equipped", "مُستخدم") else s("Owned", "مملوك")
@@ -2638,30 +2759,56 @@ private fun FrameCard(
             overflow = TextOverflow.Ellipsis
         )
 
-        // BUY WITH GOLD — one-time purchase for Gold-priced frames (spec §10)
-        if (!unlocked && frame.goldPrice != null) {
-            Spacer(modifier = Modifier.height(6.dp))
-            val canAfford = goldBalance >= frame.goldPrice
-            androidx.compose.material3.TextButton(
-                onClick = onBuy,
-                enabled = canAfford,
-                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                    contentColor = if (canAfford) GoldDeep else MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                modifier = Modifier.semantics {
-                    contentDescription = if (canAfford)
-                        "Buy ${frame.displayLabel()} frame for ${frame.goldPrice} Gold"
-                    else
-                        "${frame.displayLabel()} frame costs ${frame.goldPrice} Gold, you have $goldBalance"
-                }
-            ) {
-                Text(
-                    text = "🪙 " + s("Buy", "اشترِ"),
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 1
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // ── ACTION SLOT — one per frame, aligned across the row ────────────
+        when {
+            // Currently worn → status chip (NOT a button — already equipped).
+            isSelected -> CollectionActionChip(
+                text = "✓ " + s("EQUIPPED", "مُستخدم"),
+                container = MaterialTheme.colorScheme.primaryContainer,
+                content = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            // Owned (progression or Gold) and not worn → REAL equip button.
+            unlocked -> CollectionActionButton(
+                text = s("EQUIP", "ارتداء"),
+                container = MaterialTheme.colorScheme.primary,
+                content = MaterialTheme.colorScheme.onPrimary,
+                onClick = onEquip
+            )
+            // Locked Gold frame → REAL buy button (existing purchase logic;
+            // disabled until the balance covers the price).
+            frame.goldPrice != null -> {
+                val canAfford = goldBalance >= frame.goldPrice
+                CollectionActionButton(
+                    text = "🪙 " + s("%d Gold", "%d ذهب").format(frame.goldPrice),
+                    container = if (canAfford) GoldDeep else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    content = if (canAfford) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    enabled = canAfford,
+                    onClick = onBuy,
+                    modifier = Modifier.semantics {
+                        contentDescription = if (canAfford)
+                            "Buy ${frame.displayLabel()} frame for ${frame.goldPrice} Gold"
+                        else
+                            "${frame.displayLabel()} frame costs ${frame.goldPrice} Gold, you have $goldBalance"
+                    }
                 )
             }
+            // Locked through progression → status chip with the REAL unlock
+            // condition (never implies ownership, never tappable).
+            else -> CollectionActionChip(
+                text = when {
+                    frame == breathy.com.data.models.AvatarFrame.NATURE -> s("Day 7", "اليوم 7")
+                    frame == breathy.com.data.models.AvatarFrame.LEAF -> s("Day 30", "اليوم 30")
+                    frame == breathy.com.data.models.AvatarFrame.RANK -> s("Level 9 · Tree", "المستوى 9 · شجرة")
+                    frame == breathy.com.data.models.AvatarFrame.PREMIUM -> "👑 " + s("Premium", "بريميوم")
+                    frame == breathy.com.data.models.AvatarFrame.EVENT -> s("Win an event", "افز بفعالية")
+                    frame == breathy.com.data.models.AvatarFrame.ACHIEVEMENT -> s("Any achievement", "أي إنجاز")
+                    else -> s("Locked", "مُقفل")
+                },
+                container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                content = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

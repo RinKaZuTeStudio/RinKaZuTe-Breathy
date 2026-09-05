@@ -15,9 +15,6 @@ import com.unity3d.mediation.LevelPlayConfiguration
 import com.unity3d.mediation.LevelPlayInitError
 import com.unity3d.mediation.LevelPlayInitListener
 import com.unity3d.mediation.LevelPlayInitRequest
-import com.unity3d.mediation.rewarded.LevelPlayReward
-import com.unity3d.mediation.rewarded.LevelPlayRewardedAd
-import com.unity3d.mediation.rewarded.LevelPlayRewardedAdListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,7 +22,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.Date
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -41,9 +37,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - **Interstitial**: placement `Interstitial_Android`
  *
  * ── Unity LevelPlay (mediation) ───────────────────────────────────────────
- * Kept ONLY for the placements that Unity Ads cannot serve:
+ * Kept ONLY for the native ad (v1.0.11 rev 5: rewarded shows run on Unity
+ * Ads — LevelPlay is no longer a rewarded show path):
  * - **App Key**:      `27e9c42cd`
- * - **Profile Pic**:  rewarded unit `sdogk85zaxbkjym5` (5 watches → SUNRISE)
  * - **Native**:       unit `5o8vznxxsem6mv51` (rendered sponsored card)
  *
  * ── Premium eligibility is checked PER AD FORMAT (never a global gate) ────
@@ -68,9 +64,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * transactions are prevented twice: per-show [AtomicBoolean] guard here, and
  * a unique show token used as the Gold-ledger dedup key in [DI AppModule].
  *
- * ── Interstitial frequency cap ───────────────────────────────────────────
- * Max 1 per [INTERSTITIAL_FREQUENCY_CAP_MS]; never shown during
- * purchase/subscription/event-registration flows (call sites are fixed).
+ * ── No artificial cooldown ───────────────────────────────────────────────
+ * There is deliberately NO app-side frequency cap or cooldown. An ad is
+ * eligible whenever the ad provider/SDK reports one ready — the SDK is the
+ * single pacing authority. The app never artificially delays an ad just
+ * because a previous one was shown.
  *
  * Thread safety: Unity Ads and LevelPlay public APIs are main-thread APIs.
  * Mutable show state is confined to the main thread; loading flags use
@@ -88,15 +86,19 @@ class AdManager(
         /** Rewarded placement — +200 Gold ONLY on verified COMPLETED shows. */
         const val UNITY_REWARDED_PLACEMENT = "Rewarded_Android"
 
-        /** Full-screen interstitial placement — frequency capped. */
+        /** Full-screen interstitial placement. */
         const val UNITY_INTERSTITIAL_PLACEMENT = "Interstitial_Android"
 
-        // ── Unity LevelPlay production identifiers (native + profile pic) ─
+        // ── Unity LevelPlay production identifiers (native ads) ───────────
         /** LevelPlay App Key (Unity LevelPlay platform → production). */
         const val LEVELPLAY_APP_KEY = "27e9c42cd"
 
-        /** v1.0.9 rewarded ad unit — unlocks the SUNRISE profile picture after
-         *  5 verified completed watches (placement "Profile Pic"). */
+        /** v1.0.9 LevelPlay rewarded ad unit (production, retained for
+         *  reference). v1.0.11 rev 5: the SUNRISE picture flow no longer shows
+         *  through LevelPlay — it runs on the REAL Unity Ads rewarded
+         *  placement [UNITY_REWARDED_PLACEMENT], which is the proven
+         *  production rewarded stack. The unit id is kept untouched because it
+         *  is a production identifier. */
         const val PROFILE_PIC_REWARDED_AD_UNIT_ID = "sdogk85zaxbkjym5"
 
         /** Native ad unit — rendered as a Breathy-styled sponsored card. */
@@ -106,11 +108,6 @@ class AdManager(
         const val REWARDED_GOLD_AMOUNT = 200
 
         // ── Timing ─────────────────────────────────────────────────────────
-        /** Minimum interval between interstitial shows (90 seconds) — free
-         *  users encounter ads regularly while navigating, without the
-         *  experience becoming hostile (policy-safe minimum spacing). */
-        const val INTERSTITIAL_FREQUENCY_CAP_MS = 90L * 1000L
-
         /** Delay before the first ad-load retry after a load failure (15s). */
         private const val AD_RETRY_INITIAL_MS = 15_000L
 
@@ -138,11 +135,8 @@ class AdManager(
 
     // ── Ad references ──────────────────────────────────────────────────────
 
-    private var profilePicRewardedAd: LevelPlayRewardedAd? = null
-
     // ── Loading state ──────────────────────────────────────────────────────
 
-    private val isProfilePicRewardedLoading = AtomicBoolean(false)
     private val isInitializing = AtomicBoolean(false)
     private val isUnityInitializing = AtomicBoolean(false)
     private val isUnityRewardedLoading = AtomicBoolean(false)
@@ -166,18 +160,23 @@ class AdManager(
     /** Unique token for the currently shown rewarded ad (gold dedup key). */
     private var rewardShowToken: String? = null
 
-    /** Unique token for the currently shown profile-picture rewarded ad. */
-    private var profilePicShowToken: String? = null
-
     /** Guards against duplicate grant callbacks for one completed ad. */
     private val rewardGrantedForThisShow = AtomicBoolean(false)
 
-    /** Guards against duplicate picture-unlock callbacks for one completed ad. */
-    private val profilePicGrantedForThisShow = AtomicBoolean(false)
+    /**
+     * What the CURRENTLY SHOWING rewarded ad was started for. One production
+     * rewarded placement ([UNITY_REWARDED_PLACEMENT]) serves both purposes;
+     * the completion callback routes the grant accordingly:
+     * - [RewardedPurpose.GOLD]        → +200 Gold via [rewardGrantCallback].
+     * - [RewardedPurpose.PROFILE_PIC] → 1 watch toward the SUNRISE picture
+     *   unlock via [profilePicGrantCallback].
+     * Confined to the main thread (set in [showRewardedAd], read in the show
+     * listener).
+     */
+    private var rewardedShowPurpose: RewardedPurpose = RewardedPurpose.GOLD
 
-    // ── Frequency capping ──────────────────────────────────────────────────
-
-    private var lastInterstitialShowTime: Long = 0L
+    /** Why a rewarded ad was started — routes the completion grant. */
+    private enum class RewardedPurpose { GOLD, PROFILE_PIC }
 
     // ── Premium flag ───────────────────────────────────────────────────────
 
@@ -199,9 +198,10 @@ class AdManager(
     var rewardGrantCallback: ((token: String) -> Unit)? = null
 
     /**
-     * v1.0.9 — called with a unique token when a PROFILE-PIC rewarded ad
-     * (unit [PROFILE_PIC_REWARDED_AD_UNIT_ID]) COMPLETES. AppModule records
-     * one watch toward the 5-ad SUNRISE picture unlock (ledger-deduped).
+     * v1.0.9 — called with a unique token when a rewarded ad started for the
+     * SUNRISE picture flow COMPLETES (v1.0.11 rev 5: on the Unity Ads
+     * "Rewarded_Android" placement). AppModule records one watch toward the
+     * 5-ad unlock (ledger-deduped).
      */
     var profilePicGrantCallback: ((token: String) -> Unit)? = null
 
@@ -250,7 +250,8 @@ class AdManager(
     /**
      * Initialize both ad stacks once during app startup (MainActivity.onCreate):
      * - Unity Ads (Game ID [UNITY_GAME_ID]) → interstitial + gold rewarded.
-     * - LevelPlay (App Key [LEVELPLAY_APP_KEY]) → native + profile-pic rewarded.
+     * - LevelPlay (App Key [LEVELPLAY_APP_KEY]) → native ad only (v1.0.11
+     *   rev 5: rewarded ads run exclusively on Unity Ads).
      *
      * Rewarded ads must initialize for EVERYONE (Premium included) — rewarded
      * is the voluntary reward mechanic and stays available to subscribers.
@@ -300,7 +301,8 @@ class AdManager(
                     isInitializing.set(false)
                     if (!isSdkReady.compareAndSet(false, true)) return
                     Timber.i("LevelPlay initialized (appKey=%s)", LEVELPLAY_APP_KEY)
-                    loadProfilePicRewardedAd()
+                    // v1.0.11 rev 5: LevelPlay now serves ONLY the native ad.
+                    // The SUNRISE rewarded flow runs on Unity Ads rewarded.
                 }
 
                 override fun onInitFailed(error: LevelPlayInitError) {
@@ -377,20 +379,38 @@ class AdManager(
             state: UnityAds.UnityAdsShowCompletionState
         ) {
             eventListener?.onAdDismissed(AdType.REWARDED)
-            // THE ONLY GOLD GRANT PATH — fires ONLY when the user actually
-            // finished the ad (COMPLETED). SKIPPED/failed shows grant nothing.
-            // Guarded so a duplicated callback can never double-credit.
+            // THE ONLY GRANT PATH — fires ONLY when the user actually finished
+            // the ad (COMPLETED). SKIPPED/failed shows grant nothing. Guarded
+            // so a duplicated callback can never double-credit. The grant is
+            // routed by [rewardedShowPurpose]: the GOLD flow credits +200 Gold
+            // through [rewardGrantCallback]; the PROFILE_PIC (SUNRISE) flow
+            // records one watch through [profilePicGrantCallback].
             val token = rewardShowToken
             if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED && token != null) {
                 if (rewardGrantedForThisShow.compareAndSet(false, true)) {
-                    Timber.i(
-                        "Unity Ads rewarded COMPLETED (placement=%s) — granting +%d Gold (token=%s…)",
-                        placementId, REWARDED_GOLD_AMOUNT, token.take(8)
-                    )
-                    try {
-                        rewardGrantCallback?.invoke(token)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Gold grant for rewarded ad failed")
+                    when (rewardedShowPurpose) {
+                        RewardedPurpose.GOLD -> {
+                            Timber.i(
+                                "Unity Ads rewarded COMPLETED (placement=%s) — granting +%d Gold (token=%s…)",
+                                placementId, REWARDED_GOLD_AMOUNT, token.take(8)
+                            )
+                            try {
+                                rewardGrantCallback?.invoke(token)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Gold grant for rewarded ad failed")
+                            }
+                        }
+                        RewardedPurpose.PROFILE_PIC -> {
+                            Timber.i(
+                                "Unity Ads rewarded COMPLETED (placement=%s) — recording 1 SUNRISE watch (token=%s…)",
+                                placementId, token.take(8)
+                            )
+                            try {
+                                profilePicGrantCallback?.invoke(token)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Profile-pic unlock grant for rewarded ad failed")
+                            }
+                        }
                     }
                 }
             } else if (token == null) {
@@ -414,13 +434,18 @@ class AdManager(
     }
 
     /**
-     * Show the rewarded ad ("Rewarded_Android"). Gold is granted ONLY through
-     * [rewardGrantCallback] when Unity Ads confirms COMPLETED completion.
+     * Show the REAL rewarded ad ("Rewarded_Android") for +200 Gold. The grant
+     * is decided ONLY inside [unityRewardedShowListener] when Unity Ads
+     * reports COMPLETED (routed through [rewardGrantCallback]).
      * Available to EVERYONE — Premium users included (voluntary reward).
      *
      * @return true when the ad was actually shown (or is about to show).
      */
-    fun showRewardedAd(activity: Activity): Boolean {
+    fun showRewardedAd(activity: Activity): Boolean =
+        startRewardedShow(activity, RewardedPurpose.GOLD)
+
+    /** Internal show entry — keeps the private [RewardedPurpose] type hidden. */
+    private fun startRewardedShow(activity: Activity, purpose: RewardedPurpose): Boolean {
         if (!unityRewardedReady) {
             Timber.d("Rewarded ad not ready — requesting load")
             loadRewardedAd()
@@ -428,6 +453,7 @@ class AdManager(
         }
         rewardShowToken = UUID.randomUUID().toString().replace("-", "")
         rewardGrantedForThisShow.set(false)
+        rewardedShowPurpose = purpose
         unityRewardedReady = false // this load is consumed by the show
         return try {
             UnityAds.show(
@@ -445,112 +471,30 @@ class AdManager(
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  Rewarded ad — LevelPlay "Profile Pic" (5 watches → SUNRISE picture)
+    //  Rewarded ad — SUNRISE picture flow (5 completed watches → unlock)
+    //  v1.0.11 rev 5: runs on the REAL Unity Ads rewarded placement
+    //  ("Rewarded_Android") — the proven production rewarded stack. The ad
+    //  opens and plays for real; a watch is recorded ONLY when Unity Ads
+    //  reports COMPLETED, and duplicate callbacks are guarded. LevelPlay no
+    //  longer shows rewarded ads (it keeps serving the native ad).
     //  Premium users: ALLOWED — rewarded format, voluntary mechanic.
     // ═══════════════════════════════════════════════════════════════════════
 
-    /** Load the profile-picture rewarded ad. Safe to call repeatedly. */
-    fun loadProfilePicRewardedAd() {
-        if (!isSdkReady.get()) return
-        if (!isProfilePicRewardedLoading.compareAndSet(false, true)) return
-        val ad = profilePicRewardedAd ?: LevelPlayRewardedAd(PROFILE_PIC_REWARDED_AD_UNIT_ID).also {
-            it.setListener(profilePicRewardedListener)
-            profilePicRewardedAd = it
-        }
-        if (ad.isAdReady) {
-            isProfilePicRewardedLoading.set(false)
-            return
-        }
-        try {
-            ad.loadAd()
-        } catch (e: Exception) {
-            isProfilePicRewardedLoading.set(false)
-            Timber.e(e, "Exception requesting profile-pic rewarded ad load")
-            scheduleLoadRetry { loadProfilePicRewardedAd() }
-        }
-    }
-
-    private val profilePicRewardedListener = object : LevelPlayRewardedAdListener {
-        override fun onAdLoaded(adInfo: LevelPlayAdInfo) {
-            isProfilePicRewardedLoading.set(false)
-            Timber.d("LevelPlay profile-pic rewarded ad loaded")
-            eventListener?.onAdLoaded(AdType.REWARDED)
-        }
-
-        override fun onAdLoadFailed(error: LevelPlayAdError) {
-            isProfilePicRewardedLoading.set(false)
-            Timber.w("LevelPlay profile-pic rewarded ad failed to load: %s — will retry", error.errorMessage)
-            eventListener?.onAdLoadFailed(AdType.REWARDED, error.errorMessage)
-            scheduleLoadRetry { loadProfilePicRewardedAd() }
-        }
-
-        override fun onAdDisplayed(adInfo: LevelPlayAdInfo) {
-            eventListener?.onAdShown(AdType.REWARDED)
-        }
-
-        override fun onAdRewarded(reward: LevelPlayReward, adInfo: LevelPlayAdInfo) {
-            // THE ONLY PICTURE-UNLOCK COUNT PATH — fires when the user actually
-            // completed the ad. Guarded so a duplicated callback cannot double-count.
-            val token = profilePicShowToken
-            if (token == null) {
-                Timber.w("LevelPlay profile-pic rewarded callback without show token — ignoring")
-                return
-            }
-            if (profilePicGrantedForThisShow.compareAndSet(false, true)) {
-                Timber.i("LevelPlay profile-pic rewarded ad COMPLETED — recording 1 watch (token=%s…)", token.take(8))
-                try {
-                    profilePicGrantCallback?.invoke(token)
-                } catch (e: Exception) {
-                    Timber.e(e, "Profile-pic unlock grant for rewarded ad failed")
-                }
-            }
-        }
-
-        override fun onAdDisplayFailed(error: LevelPlayAdError, adInfo: LevelPlayAdInfo) {
-            Timber.w("LevelPlay profile-pic rewarded ad failed to display: %s", error.errorMessage)
-            eventListener?.onAdShowFailed(AdType.REWARDED, error.errorMessage)
-        }
-
-        override fun onAdClicked(adInfo: LevelPlayAdInfo) {}
-
-        override fun onAdClosed(adInfo: LevelPlayAdInfo) {
-            Timber.d("LevelPlay profile-pic rewarded ad closed")
-            eventListener?.onAdDismissed(AdType.REWARDED)
-            // Pre-load the next unlock opportunity.
-            loadProfilePicRewardedAd()
-        }
-
-        override fun onAdInfoChanged(adInfo: LevelPlayAdInfo) {}
-    }
-
     /**
-     * Show the profile-picture rewarded ad. One watch is recorded ONLY through
-     * [profilePicGrantCallback] when LevelPlay confirms completion.
+     * Show the REAL rewarded ad for the SUNRISE picture flow. One watch is
+     * recorded ONLY through [profilePicGrantCallback] when Unity Ads confirms
+     * COMPLETED completion — never on early close, failure or invalid
+     * callbacks, and never without the ad actually playing.
      * Available to EVERYONE — Premium users included.
      *
      * @return true when the ad was actually shown (or is about to show).
      */
-    fun showProfilePicRewardedAd(activity: Activity): Boolean {
-        val ad = profilePicRewardedAd
-        if (ad == null || !ad.isAdReady) {
-            Timber.d("Profile-pic rewarded ad not ready — requesting load")
-            loadProfilePicRewardedAd()
-            return false
-        }
-        profilePicShowToken = UUID.randomUUID().toString().replace("-", "")
-        profilePicGrantedForThisShow.set(false)
-        return try {
-            ad.showAd(activity)
-            true
-        } catch (e: Exception) {
-            Timber.e(e, "Exception showing profile-pic rewarded ad — never crash on ad errors")
-            false
-        }
-    }
+    fun showProfilePicRewardedAd(activity: Activity): Boolean =
+        startRewardedShow(activity, RewardedPurpose.PROFILE_PIC)
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  Interstitial ad — Unity Ads "Interstitial_Android", frequency capped
-    //  Premium users: BLOCKED (per-format eligibility).
+    //  Interstitial ad — Unity Ads "Interstitial_Android" — NO cooldown
+    //  (the SDK is the only pacing authority) · Premium: BLOCKED per-format.
     // ═══════════════════════════════════════════════════════════════════════
 
     /** Load an interstitial ad. Safe to call repeatedly; skipped for Premium. */
@@ -591,7 +535,6 @@ class AdManager(
 
     private val unityInterstitialShowListener = object : IUnityAdsShowListener {
         override fun onUnityAdsShowStart(placementId: String) {
-            lastInterstitialShowTime = Date().time
             eventListener?.onAdShown(AdType.INTERSTITIAL)
         }
 
@@ -626,28 +569,18 @@ class AdManager(
     }
 
     /**
-     * Show an interstitial ad if available and the frequency cap is met.
+     * Show an interstitial ad whenever the SDK has one ready.
      * Calls [onAdDismissed] whether the ad was shown or skipped, so callers
      * can always continue navigation.
      *
-     * Frequency capping: max 1 interstitial per
-     * [INTERSTITIAL_FREQUENCY_CAP_MS]; never for verified Premium users
-     * (per-format eligibility: Premium → interstitial BLOCKED).
+     * NO app-side cooldown: eligibility is decided ENTIRELY by the ad SDK.
+     * The app never artificially delays an ad because a previous one was
+     * shown. Only verified Premium users are excluded (per-format
+     * eligibility: Premium → interstitial BLOCKED).
      */
     fun showInterstitialAd(activity: Activity, onAdDismissed: () -> Unit) {
         if (isPremiumUser) {
             Timber.d("Skipping interstitial show: premium user")
-            onAdDismissed()
-            return
-        }
-
-        val now = Date().time
-        val elapsed = now - lastInterstitialShowTime
-        if (elapsed < INTERSTITIAL_FREQUENCY_CAP_MS) {
-            Timber.d(
-                "Interstitial frequency cap: %ds remaining",
-                (INTERSTITIAL_FREQUENCY_CAP_MS - elapsed) / 1000
-            )
             onAdDismissed()
             return
         }
@@ -678,17 +611,11 @@ class AdManager(
     /** Pending navigation continuation for the showing interstitial (main thread only). */
     private var interstitialDismissed: (() -> Unit)? = null
 
-    /** Whether an interstitial can be shown right now (ready + cap elapsed). */
+    /** Whether an interstitial can be shown right now (ready + not Premium).
+     *  There is NO cooldown — the SDK decides availability. */
     fun canShowInterstitial(): Boolean {
         if (isPremiumUser) return false
-        if (!unityInterstitialReady) return false
-        return Date().time - lastInterstitialShowTime >= INTERSTITIAL_FREQUENCY_CAP_MS
-    }
-
-    /** Seconds remaining until the interstitial cap allows the next show. */
-    fun getInterstitialCooldownSeconds(): Long {
-        val remaining = INTERSTITIAL_FREQUENCY_CAP_MS - (Date().time - lastInterstitialShowTime)
-        return if (remaining > 0) remaining / 1000 else 0L
+        return unityInterstitialReady
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -713,11 +640,9 @@ class AdManager(
      * NOT used for the Premium transition, which only blocks per-format).
      */
     fun release() {
-        profilePicRewardedAd = null
         interstitialDismissed = null
         unityRewardedReady = false
         unityInterstitialReady = false
-        isProfilePicRewardedLoading.set(false)
         isUnityRewardedLoading.set(false)
         isUnityInterstitialLoading.set(false)
         retryJobs.forEach { it.cancel() }

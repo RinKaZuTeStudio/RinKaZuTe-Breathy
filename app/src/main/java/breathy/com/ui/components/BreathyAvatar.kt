@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -43,7 +42,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.res.imageResource
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -206,23 +204,16 @@ fun BreathyAvatar(
             } else {
                 // v1.0.9 UNIFIED PROFILE PICTURE — the official collection artwork
                 // is the avatar EVERYWHERE; Day One is the automatic default.
-                androidx.compose.foundation.Image(
-                    bitmap = ImageBitmap.imageResource(profilePictureRes(effectivePicture)),
+                // v1.0.11 rev 5 — CONTENT-AWARE rendering: uniform background
+                // margins are trimmed away, the COMPLETE subject is fitted
+                // proportionally and centered (never stretched, never cropped
+                // by a blind zoom), and any letterbox area is filled with the
+                // artwork's own background colour — no empty space above,
+                // no distortion, nothing important cropped away.
+                CollectionArtwork(
+                    resId = profilePictureRes(effectivePicture),
                     contentDescription = contentDescription,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        // v1.0.11 FILL FIX — center zoom so the artwork's
-                        // subject fills the frame's inner aperture instead of
-                        // floating small inside its square-card margins.
-                        // Proportional scale about the CENTER (never stretched);
-                        // the parent clip(CircleShape) keeps it inside the opening.
-                        .graphicsLayer {
-                            val z = avatarArtZoom(effectivePicture)
-                            scaleX = z
-                            scaleY = z
-                        },
-                    contentScale = ContentScale.Crop,
-                    filterQuality = FilterQuality.Medium
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
@@ -258,31 +249,15 @@ private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): 
 }
 
 /**
- * v1.0.11 AVATAR FILL FIX — center zoom applied when a collection artwork is
- * drawn inside the avatar circle. The source images are square sticker cards
- * with generous background margins; rendered 1:1 the subject floated small
- * inside the frame's opening ("excessive empty space around it"). Each
- * constant was tuned against the real artwork so the subject fills the
- * aperture edge-to-edge while text/badges on the art stay readable. The
- * scale is proportional about the CENTER — artwork is never stretched or
- * distorted, and the identical mechanism runs for EVERY frame (NONE,
- * NATURE, LEAF, BRONZE, SILVER, GOLD, RANK, ACHIEVEMENT, EVENT, PREMIUM).
+ * v1.0.11 rev 5 — the per-picture center-zoom table was REPLACED by the
+ * content-aware renderer ([CollectionArtwork]). The zoom constants cropped
+ * real artwork away ("badly cropped", "arbitrarily cropped") while leaving
+ * uniform sticker margins visible as dead space. CollectionArtwork measures
+ * each artwork once, trims only its uniform background margins, and fits the
+ * complete subject proportionally inside the aperture — identical geometry
+ * for EVERY frame (NONE, NATURE, LEAF, BRONZE, SILVER, GOLD, RANK,
+ * ACHIEVEMENT, EVENT, PREMIUM), never stretched, never distorted.
  */
-private fun avatarArtZoom(picture: breathy.com.data.models.ProfilePicture): Float = when (picture) {
-    breathy.com.data.models.ProfilePicture.DAY1 -> 1.25f
-    breathy.com.data.models.ProfilePicture.SEVEN_DAYS -> 1.25f
-    breathy.com.data.models.ProfilePicture.THIRTY_DAYS -> 1.25f
-    breathy.com.data.models.ProfilePicture.NINETY_DAYS -> 1.30f
-    breathy.com.data.models.ProfilePicture.SUNRISE -> 1.20f
-    breathy.com.data.models.ProfilePicture.DONT_SMOKE -> 1.30f
-    breathy.com.data.models.ProfilePicture.FORREST -> 1.30f
-    breathy.com.data.models.ProfilePicture.FRESH_BREATH -> 1.25f
-    breathy.com.data.models.ProfilePicture.GOOD_FROM_BAD -> 1.30f
-    breathy.com.data.models.ProfilePicture.HEALTH_HEART -> 1.35f
-    breathy.com.data.models.ProfilePicture.HEALTH_LUNGS -> 1.35f
-    breathy.com.data.models.ProfilePicture.HEALTHY_FUTURE -> 1.25f
-    breathy.com.data.models.ProfilePicture.FREEFROMTHECHAIN -> 1.35f
-}
 
 /**
  * v1.0.11 rev 4 — THE single source of truth for ALL avatar geometry.
@@ -307,10 +282,11 @@ private fun avatarArtZoom(picture: breathy.com.data.models.ProfilePicture): Floa
  *   square (every frame opening is circular). The 512×512 frame artwork is
  *   always drawn IN FRONT of the photo, so the ring covers the photo edge
  *   exactly as designed — only the artwork around the aperture changes.
- * - Profile pictures fill the aperture via proportional CENTER-CROP
- *   (`ContentScale.Crop`) plus a frame-independent center zoom
- *   ([avatarArtZoom]). Images are never stretched or distorted, and the
- *   picture never changes size or position when the user switches frames.
+ * - Profile pictures fill the aperture via the content-aware renderer
+ *   ([CollectionArtwork]): uniform background margins trimmed, the complete
+ *   subject fitted proportionally and centered. Images are never stretched
+ *   or distorted, and the picture never changes size or position when the
+ *   user switches frames.
  */
 object AvatarSizing {
     /** Frame artwork canvas edge, in artwork pixels. */
@@ -359,23 +335,14 @@ private fun AnimatedPremiumAvatar(
         label = "premium_avatar_swap",
         modifier = modifier
     ) { second ->
-        androidx.compose.foundation.Image(
-            bitmap = ImageBitmap.imageResource(
-                if (second) breathy.com.R.drawable.pic_finallyfree
-                else breathy.com.R.drawable.pic_freefromthechain
-            ),
+        // v1.0.11 rev 5 — same content-aware treatment as the static artworks
+        // (complete subject, proportional, centered — no blind zoom crop),
+        // clipped by the avatar circle.
+        CollectionArtwork(
+            resId = if (second) breathy.com.R.drawable.pic_finallyfree
+                    else breathy.com.R.drawable.pic_freefromthechain,
             contentDescription = contentDescription,
-            modifier = Modifier
-                .fillMaxSize()
-                // v1.0.11 FILL FIX — same center-zoom treatment as the static
-                // artworks (FREEFROMTHECHAIN/FINALLYFREE = 1.35f); clipped by
-                // the avatar circle.
-                .graphicsLayer {
-                    scaleX = 1.35f
-                    scaleY = 1.35f
-                },
-            contentScale = ContentScale.Crop,
-            filterQuality = FilterQuality.Medium
+            modifier = modifier
         )
     }
 }

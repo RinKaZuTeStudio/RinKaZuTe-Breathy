@@ -320,10 +320,11 @@ class AppModule(
             }
 
             // ── Profile-Pic rewarded security path (v1.0.9) ──────────────────
-            // Invoked ONLY from the LevelPlay completion callback of the
-            // dedicated "Profile Pic" ad unit (sdogk85zaxbkjym5). Records ONE
-            // watch toward the 5-ad SUNRISE picture unlock; the Firestore
-            // transaction dedups per show token so replays never over-count.
+            // Invoked ONLY from the Unity Ads rewarded completion callback
+            // ("Rewarded_Android", SUNRISE show purpose — v1.0.11 rev 5).
+            // Records ONE watch toward the 5-ad SUNRISE picture unlock; the
+            // Firestore transaction dedups per show token so replays never
+            // over-count.
             adManager.profilePicGrantCallback = { token ->
                 val uid = firebaseAuth.currentUser?.uid
                 if (uid == null) {
