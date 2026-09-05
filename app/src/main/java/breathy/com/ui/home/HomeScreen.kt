@@ -57,6 +57,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -252,6 +253,9 @@ fun HomeScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
+            // v1.0.13 — craving entry point pinned to the BOTTOM-RIGHT end
+            // position explicitly.
+            floatingActionButtonPosition = FabPosition.End,
             floatingActionButton = {
                 CravingFAB(
                     onClick = { showCravingSheet = true }
@@ -1052,7 +1056,7 @@ private fun CravingFAB(
 
     Box(contentAlignment = Alignment.Center) {
         // Glow effect
-        Canvas(modifier = Modifier.size(80.dp)) {
+        Canvas(modifier = Modifier.size(64.dp)) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
@@ -1066,9 +1070,19 @@ private fun CravingFAB(
             )
         }
 
+        // v1.0.13 — COMPACT round craving FAB: the wide icon+text pill was
+        // visually dominant; now it is a small icon-only button. The full
+        // label moves to contentDescription (accessibility) — the sheet it
+        // opens still carries the title. Scaffold pins it bottom-end.
         FloatingActionButton(
             onClick = onClick,
-            modifier = Modifier.scale(pulseScale),
+            modifier = Modifier
+                .size(48.dp)
+                .scale(pulseScale)
+                .semantics {
+                    contentDescription =
+                        s("Breathe Through a Craving", "تنفّس لتجاوز الرغبة")
+                },
             containerColor = AccentOrange,
             contentColor = Color.White,
             elevation = FloatingActionButtonDefaults.elevation(
@@ -1076,18 +1090,7 @@ private fun CravingFAB(
                 hoveredElevation = 0.dp
             )
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
-            ) {
-                Text(text = "🔥", fontSize = 20.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = s("Breathe Through a Craving", "تنفّس لتجاوز الرغبة"),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Text(text = "🔥", fontSize = 18.sp)
         }
     }
 }

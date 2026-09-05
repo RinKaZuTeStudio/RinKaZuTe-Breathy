@@ -203,12 +203,12 @@ fun BreathyAvatar(
             } else {
                 // v1.0.9 UNIFIED PROFILE PICTURE — the official collection artwork
                 // is the avatar EVERYWHERE; Day One is the automatic default.
-                // v1.0.11 rev 5 — CONTENT-AWARE rendering: uniform background
-                // margins are trimmed away, the COMPLETE subject is fitted
-                // proportionally and centered (never stretched, never cropped
-                // by a blind zoom), and any letterbox area is filled with the
-                // artwork's own background colour — no empty space above,
-                // no distortion, nothing important cropped away.
+                // v1.0.13 — the pic_*.webp assets are PRE-NORMALIZED offline
+                // (subject centered, uniform √2-fit scale, seamless edge-clamp
+                // extension), so rendering is pure ContentScale.Fit: the
+                // COMPLETE composition stays inside the 420×420 aperture,
+                // centered, proportional — no zoom, no crop, no distortion,
+                // identical geometry for every frame.
                 CollectionArtwork(
                     resId = profilePictureRes(effectivePicture),
                     contentDescription = contentDescription,
@@ -248,14 +248,16 @@ private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): 
 }
 
 /**
- * v1.0.11 rev 5 — the per-picture center-zoom table was REPLACED by the
- * content-aware renderer ([CollectionArtwork]). The zoom constants cropped
- * real artwork away ("badly cropped", "arbitrarily cropped") while leaving
- * uniform sticker margins visible as dead space. CollectionArtwork measures
- * each artwork once, trims only its uniform background margins, and fits the
- * complete subject proportionally inside the aperture — identical geometry
- * for EVERY frame (NONE, NATURE, LEAF, BRONZE, SILVER, GOLD, RANK,
- * ACHIEVEMENT, EVENT, PREMIUM), never stretched, never distorted.
+ * v1.0.13 — the per-picture center-zoom table AND the rev-5 runtime
+ * content-trim were both REPLACED by offline asset normalization + the
+ * proportional renderer ([CollectionArtwork]). Every pic_*.webp ships as a
+ * 512×512 normalized card: subject centered, whole canvas scaled by
+ * 244/(256·√2) ≈ 0.674 so the complete artwork — corners included — sits
+ * inside the 420×420 aperture circle, border continued seamlessly by
+ * edge-clamping. No per-picture zoom factors exist anywhere in the
+ * codebase; identical geometry for EVERY frame (NONE, NATURE, LEAF,
+ * BRONZE, SILVER, GOLD, RANK, ACHIEVEMENT, EVENT, PREMIUM), never
+ * stretched, never cropped, never zoomed.
  */
 
 /**
@@ -281,11 +283,12 @@ private fun profilePictureRes(picture: breathy.com.data.models.ProfilePicture): 
  *   square (every frame opening is circular). The 512×512 frame artwork is
  *   always drawn IN FRONT of the photo, so the ring covers the photo edge
  *   exactly as designed — only the artwork around the aperture changes.
- * - Profile pictures fill the aperture via the content-aware renderer
- *   ([CollectionArtwork]): uniform background margins trimmed, the complete
- *   subject fitted proportionally and centered. Images are never stretched
- *   or distorted, and the picture never changes size or position when the
- *   user switches frames.
+ * - Profile pictures are rendered by [CollectionArtwork] with pure
+ *   ContentScale.Fit: every pic_*.webp is pre-normalized to 512×512
+ *   (subject centered, proportional √2-fit scale, seamless extension), so
+ *   the complete artwork is always visible INSIDE the aperture. Images are
+ *   never stretched, zoomed or distorted, and the picture never changes
+ *   size or position when the user switches frames.
  */
 object AvatarSizing {
     /** Frame artwork canvas edge, in artwork pixels. */
@@ -334,9 +337,9 @@ private fun AnimatedPremiumAvatar(
         label = "premium_avatar_swap",
         modifier = modifier
     ) { second ->
-        // v1.0.11 rev 5 — same content-aware treatment as the static artworks
-        // (complete subject, proportional, centered — no blind zoom crop),
-        // clipped by the avatar circle.
+        // v1.0.13 — same normalized-asset Fit treatment as the static
+        // artworks (complete composition, proportional, centered — no zoom
+        // crop), clipped by the avatar circle.
         CollectionArtwork(
             resId = if (second) breathy.com.R.drawable.pic_finallyfree
                     else breathy.com.R.drawable.pic_freefromthechain,
