@@ -56,7 +56,8 @@ class UserRepository(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
     private val cloudinaryUploader: CloudinaryUploader,
-    private val firebaseStorage: FirebaseStorage? = null
+    private val firebaseStorage: FirebaseStorage? = null,
+    private val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore? = null
 ) {
 
     companion object {
@@ -265,6 +266,53 @@ class UserRepository(
         }
     }
 
+    /**
+     * v1.0.20 ACCOUNT-SETUP PERSISTENCE HEAL — parse the users/{uid} document
+     * and resolve the two onboarding fields against their authoritative
+     * mirrors for as long as the full profile write has not landed yet
+     * (v8 rules not published yet, sparse sign-up document, offline retry
+     * queue still pending):
+     *
+     *  - NICKNAME: if the document still carries the sparse sign-up fallback
+     *    (blank, or exactly the e-mail prefix), surface the name the user
+     *    actually typed during account setup instead. That exact string is
+     *    mirrored to Firebase Auth displayName at onboarding save and on
+     *    every profile edit (v1.0.19). Nothing is generated, re-cased or
+     *    defaulted here — the user's exact input is shown exactly as entered.
+     *  - QUIT DATE: if the document has none yet, use the locally persisted
+     *    pending-profile copy (OnboardingLocalStore) — the exact date the
+     *    user picked on the quit-date step. daysSmokeFree, money saved,
+     *    cigarettes avoided and the Recovery Journey milestones therefore
+     *    always compute from the SAVED quit date, never from screen-open
+     *    time and never from an invented date.
+     *
+     * Once the retry queue lands the full profile in Firestore, the document
+     * values win and this resolution silently becomes a no-op. The stored
+     * Firestore document is only ever corrected by the v1.0.19 rules-safe
+     * write path — this helper never writes anything.
+     */
+    private fun parseHealedUser(map: Map<String, Any?>): User {
+        var user = User.fromFirestoreMap(map)
+        val uid = auth.currentUser?.uid.orEmpty()
+        if (user.quitDate == null && onboardingLocalStore != null && uid.isNotBlank()) {
+            val pending = onboardingLocalStore.readPendingProfile(uid)
+            if (pending != null && pending.quitDateMillis > 0L) {
+                user = user.copy(
+                    quitDate = com.google.firebase.Timestamp(java.util.Date(pending.quitDateMillis))
+                )
+            }
+        }
+        val emailPrefix = auth.currentUser?.email?.substringBefore('@')
+        val isStaleSignupFallback = user.nickname.isBlank() ||
+                (emailPrefix != null && user.nickname == emailPrefix)
+        if (isStaleSignupFallback) {
+            auth.currentUser?.displayName?.takeIf { it.isNotBlank() }?.let { mirrored ->
+                user = user.copy(nickname = mirrored)
+            }
+        }
+        return user
+    }
+
     private fun listenToUserDocument(uid: String) {
         // Remove previous listener before attaching a new one
         userListenerRegistration?.remove()
@@ -280,7 +328,7 @@ class UserRepository(
                 }
                 if (snapshot != null && snapshot.exists()) {
                     try {
-                        _currentUser.value = User.fromFirestoreMap(snapshot.data ?: emptyMap())
+                        _currentUser.value = parseHealedUser(snapshot.data ?: emptyMap())
                     } catch (e: Exception) {
                         Timber.e(e, "Failed to parse user document for %s", uid)
                         if (_currentUser.value == null) {
@@ -1116,7 +1164,7 @@ class UserRepository(
                 }
                 if (snapshot != null && snapshot.exists()) {
                     try {
-                        trySend(User.fromFirestoreMap(snapshot.data ?: emptyMap()))
+                        trySend(parseHealedUser(snapshot.data ?: emptyMap()))
                     } catch (e: Exception) {
                         Timber.e(e, "observeUser: Failed to parse user document for %s — emitting fallback", userId)
                         trySend(createFallbackUser())

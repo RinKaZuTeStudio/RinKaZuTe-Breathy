@@ -148,7 +148,11 @@ class AppModule(
             firestore = firestore,
             auth = firebaseAuth,
             cloudinaryUploader = cloudinaryUploader,
-            firebaseStorage = firebaseStorage
+            firebaseStorage = firebaseStorage,
+            // v1.0.20 — lets the read path resolve the locally persisted
+            // quit date (and the mirrored display name) until the full
+            // onboarding write lands in Firestore.
+            onboardingLocalStore = onboardingLocalStore
         )
     }
 
@@ -426,7 +430,8 @@ class AppModule(
         firestore = firestore,
         auth = firebaseAuth,
         cloudinaryUploader = cloudinaryUploader,
-        firebaseStorage = firebaseStorage
+        firebaseStorage = firebaseStorage,
+        onboardingLocalStore = onboardingLocalStore
     )
 
     /**

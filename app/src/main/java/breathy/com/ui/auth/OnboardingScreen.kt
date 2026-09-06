@@ -826,7 +826,32 @@ fun OnboardingScreen(
                 onLetsGoClick = viewModel::saveProfile
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            // ── v1.0.20 — SKIP pinned to the BOTTOM-LEFT of the screen ────
+            // Own full-width row beneath the nav buttons, start-aligned:
+            // bottom-left in LTR, clearly visible, 48dp tap target, and it
+            // can no longer sit between Back and Next. Hidden on the final
+            // step (Let's Go replaces it) and while the profile is saving.
+            if (uiState.currentStep < uiState.totalSteps - 1 && !uiState.isLoading) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    TextButton(
+                        onClick = viewModel::onSkip,
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text(
+                            text = s("Skip", "تخطي"),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -1761,19 +1786,9 @@ private fun OnboardingNavigation(
             Spacer(modifier = Modifier.width(1.dp))
         }
 
-        // ── Skip button (visible on steps 0-2) ──────────────────────────
-        if (currentStep < totalSteps - 1) {
-            TextButton(
-                onClick = onSkipClick,
-                modifier = Modifier.height(48.dp)
-            ) {
-                Text(
-                    text = s("Skip", "تخطي"),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp
-                )
-            }
-        }
+        // ── Skip button — REMOVED from this row in v1.0.20 ────────────
+        // (moved to its own bottom-left row directly beneath the nav
+        // buttons — see OnboardingScreen; this row keeps Back / Next only)
 
         // ── Next / Let's Go button ───────────────────────────────────────
         if (currentStep < totalSteps - 1) {

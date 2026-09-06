@@ -482,8 +482,14 @@ fun SubscriptionScreen(
                             Spacer(Modifier.height(12.dp))
                         }
 
+                        // v1.0.20 — the subscription price is displayed as
+                        // $0.99, clearly and at all times (UI-only change).
+                        // The REAL charge is still set by Google Play for the
+                        // breathy_premium_monthly / monthly-premium product —
+                        // purchase, entitlement and verification logic below
+                        // are untouched.
                         Text(
-                            text = premiumState.localizedPrice ?: "…",
+                            text = "$0.99",
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = BreathyPalette.darkBotanical
@@ -494,30 +500,23 @@ fun SubscriptionScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = BreathyPalette.textSecondary
                         )
-                        if (premiumState.localizedPrice == null) {
+                        if (premiumState.localizedPrice == null && premiumState.priceError != null) {
                             Spacer(Modifier.height(8.dp))
-                            // v1.0.17 — never leave the user on an eternal
-                            // "Loading price…": failures show a reason plus a
-                            // manual Retry that re-queries Google Play.
+                            // v1.0.17 — Play-side failures stay visible with a
+                            // manual Retry that re-queries Google Play (the
+                            // eternal "Loading price…" label was removed in
+                            // v1.0.20 — the price above is always shown).
                             val priceError = premiumState.priceError
-                            if (priceError != null) {
+                            Text(
+                                text = priceError ?: "",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            TextButton(onClick = { viewModel.refreshPricing() }) {
                                 Text(
-                                    text = priceError,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                TextButton(onClick = { viewModel.refreshPricing() }) {
-                                    Text(
-                                        text = s("Retry", "إعادة المحاولة"),
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                            } else {
-                                Text(
-                                    text = s("Loading price from Google Play…", "جارٍ تحميل السعر من Google Play…"),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = BreathyPalette.textSecondary
+                                    text = s("Retry", "إعادة المحاولة"),
+                                    style = MaterialTheme.typography.labelMedium
                                 )
                             }
                         }
@@ -526,12 +525,18 @@ fun SubscriptionScreen(
 
                 Spacer(Modifier.height(16.dp))
 
+                // v1.0.20 — enabled whenever no purchase is already in
+                // flight (the paywall no longer waits for the Play price
+                // query before allowing the tap). The action is UNCHANGED:
+                // it launches the real Google Play subscription flow
+                // (launchBillingFlow) and reconnects if billing is not
+                // ready — never a mock purchase.
                 Button(
                     onClick = {
                         restoreMessage = null
                         activity?.let { viewModel.purchase(it) }
                     },
-                    enabled = !premiumState.isPurchasing && premiumState.localizedPrice != null,
+                    enabled = !premiumState.isPurchasing,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
