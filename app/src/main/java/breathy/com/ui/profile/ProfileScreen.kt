@@ -2012,6 +2012,15 @@ class ProfileViewModel(
                 }
                 userRepository.updateUserFields(userId, mapOf("nickname" to nickname))
                 userRepository.updatePublicProfileFields(userId, mapOf("nickname" to nickname))
+                // v1.0.19 — mirror to Firebase Auth displayName so self-heal /
+                // fallback writers never resurrect the e-mail prefix.
+                auth.currentUser?.updateProfile(
+                    com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                        .setDisplayName(nickname)
+                        .build()
+                )?.addOnFailureListener { e ->
+                    Timber.w(e, "Auth displayName sync failed (non-fatal)")
+                }
                 Timber.i("Nickname updated")
             } catch (e: CancellationException) {
                 throw e

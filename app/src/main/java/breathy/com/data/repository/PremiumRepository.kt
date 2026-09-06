@@ -116,6 +116,9 @@ class PremiumRepository(
         /** Connection retry backoff (ms). */
         private const val RETRY_BACKOFF_MS = 2_000L
 
+        /** Max automatic BillingClient connection retries before surfacing an error. */
+        private const val MAX_CONNECT_RETRIES = 5
+
         /** Max automatic retries for the price query before we surface a manual Retry. */
         private const val PRICE_MAX_AUTO_RETRIES = 5
 
@@ -170,6 +173,9 @@ class PremiumRepository(
 
     /** Auto-retry counter for the Play price query (reset on success / manual refresh). */
     private var priceQueryAttempts = 0
+
+    /** Auto-retry counter for the BillingClient connection (reset on success). */
+    private var connectAttempts = 0
 
     /** Generation token — stale query callbacks/timeouts are ignored. */
     private var priceQueryGeneration = 0
@@ -258,9 +264,22 @@ class PremiumRepository(
                         Timber.i("PremiumRepo: BillingClient connected")
                         onConnected(onReady)
                     } else {
-                        Timber.w("PremiumRepo: Billing setup failed: %s — will retry", result.debugMessage)
-                        _state.update { it.copy(isChecking = false) }
-                        scheduleRetry(onReady)
+                        Timber.w(
+                            "PremiumRepo: Billing setup failed (code %s): %s",
+                            result.responseCode, result.debugMessage
+                        )
+                        connectAttempts++
+                        if (connectAttempts >= MAX_CONNECT_RETRIES) {
+                            // v1.0.19 — Play Billing itself is unavailable on this
+                            // device; never leave the UI on "Loading price…".
+                            onPriceUnavailable(
+                                "Google Play Billing is not available on this device. " +
+                                    "Update the Google Play Store app and try again."
+                            )
+                        } else {
+                            _state.update { it.copy(isChecking = false) }
+                            scheduleRetry(onReady)
+                        }
                     }
                 }
 
@@ -294,6 +313,7 @@ class PremiumRepository(
     }
 
     private fun onConnected(onReady: (() -> Unit)?) {
+        connectAttempts = 0
         queryProductDetails()
         recheckEntitlement()
         onReady?.invoke()
@@ -306,14 +326,14 @@ class PremiumRepository(
      */
     fun refreshPricing() {
         priceQueryAttempts = 0
-        _state.update { it.copy(priceError = null) }
-        connectAndRefresh()
+        _state.update { it.copy(priceError = null, isChecking = true) }
+        if (billingClient?.isReady == true) queryProductDetails() else connectAndRefresh()
     }
 
     /** Surface a price-loading failure in the UI state (never silent). */
     private fun onPriceUnavailable(message: String) {
         Timber.w("PremiumRepo: price unavailable — %s", message)
-        _state.update { it.copy(priceError = message) }
+        _state.update { it.copy(priceError = message, isChecking = false) }
     }
 
     /** Bounded automatic retry of the price query (stops after [PRICE_MAX_AUTO_RETRIES]). */
@@ -336,8 +356,13 @@ class PremiumRepository(
     // ═════════════════════════════════════════════════════════════════════
 
     private fun queryProductDetails() {
-        val client = billingClient ?: return
-        if (!client.isReady) return
+        val client = billingClient
+        if (client == null || !client.isReady) {
+            // Never silently drop a price request — re-drive the connection
+            // (idempotent) so a pending query always lands somewhere.
+            connectAndRefresh()
+            return
+        }
 
         val product = QueryProductDetailsParams.Product.newBuilder()
             .setProductId(PRODUCT_ID_PREMIUM)
@@ -394,7 +419,26 @@ class PremiumRepository(
             }
             val basePlanOffer = offerDetails.firstOrNull { it.basePlanId == BASE_PLAN_ID }
             val chosenOffer = launchOffer ?: basePlanOffer
-            cachedOfferToken = chosenOffer?.offerToken
+            if (chosenOffer == null) {
+                // v1.0.19 — Play returned the product but NO purchasable offer
+                // for this device account. Root causes: the base plan is not
+                // active in the account's country, or the Play catalog has not
+                // refreshed yet. Previously this fell through SILENTLY, leaving
+                // the UI on "Loading price…" forever — the exact reported bug.
+                Timber.w(
+                    "PremiumRepo: product %s returned without an offer for base plan %s (offers=%s)",
+                    PRODUCT_ID_PREMIUM, BASE_PLAN_ID,
+                    offerDetails.map { it.basePlanId to it.offerId }
+                )
+                onPriceUnavailable(
+                    "The monthly plan is not available for this Google Play account yet. " +
+                        "If you are the app owner, check the base plan's country list in " +
+                        "Play Console, then tap Retry."
+                )
+                schedulePriceRetry()
+                return@queryProductDetailsAsync
+            }
+            cachedOfferToken = chosenOffer.offerToken
 
             val price = chosenOffer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice
             val currency = chosenOffer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.priceCurrencyCode
@@ -402,7 +446,8 @@ class PremiumRepository(
                 it.copy(
                     localizedPrice = price ?: it.localizedPrice,
                     currencyCode = currency ?: it.currencyCode,
-                    hasLaunchOffer = launchOffer != null
+                    hasLaunchOffer = launchOffer != null,
+                    isChecking = false
                 )
             }
             Timber.i(

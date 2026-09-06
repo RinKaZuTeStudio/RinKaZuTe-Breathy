@@ -500,8 +500,23 @@ class AuthViewModel(
                 repeat(3) { attempt ->
                     try {
                         withTimeoutOrNull(10_000L) {
+                            // v1.0.19 NICKNAME FIX — never move the users/{uid}
+                            // identity anchors (createdAt/email) on UPDATE; the v8
+                            // rules reject such writes, which used to make this
+                            // retry fail forever and leave the stale sign-up
+                            // nickname (e-mail prefix) in place.
+                            val userRef = firestore.collection("users").document(userId)
+                            val existing = try {
+                                userRef.get().await()
+                            } catch (e: Exception) { null }
+                            val effectiveUserMap = if (existing?.exists() == true) {
+                                userMap.toMutableMap().apply {
+                                    remove("createdAt")
+                                    existing.getString("email")?.let { this["email"] = it }
+                                }
+                            } else userMap
                             val batch = firestore.batch()
-                            batch.set(firestore.collection("users").document(userId), userMap)
+                            batch.set(userRef, effectiveUserMap)
                             batch.set(
                                 firestore.collection("publicProfiles").document(userId),
                                 publicMap,

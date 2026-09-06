@@ -430,6 +430,20 @@ class OnboardingViewModel(
                 // enum-serialization issues with Firestore's POJO converter.
                 saveProfileToFirestore(userProfile, publicProfile, userId)
 
+                // v1.0.19 — mirror the chosen nickname to Firebase Auth
+                // displayName: self-heal writers resolve the nickname from it
+                // when the Firestore document is missing, so it must never
+                // remain the e-mail prefix.
+                try {
+                    currentUser.updateProfile(
+                        com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                            .setDisplayName(state.nickname.trim())
+                            .build()
+                    ).await()
+                } catch (e: Exception) {
+                    Timber.w(e, "$TAG: Auth displayName sync failed (non-fatal)")
+                }
+
                 // Cancel safety-net since we completed normally
                 safetyNetJob.cancel()
 
@@ -504,7 +518,25 @@ class OnboardingViewModel(
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
             val batch = firestore.batch()
-            batch.set(firestore.collection(USERS_COLLECTION).document(userId), userMap)
+            // v1.0.19 NICKNAME FIX — the v8 ruleset anchors users/{uid} identity:
+            // an UPDATE may not change `createdAt` and must keep the same
+            // `email`. This write used to send createdAt = Timestamp.now() as a
+            // FULL set(), so for every account whose sparse document already
+            // existed (created at sign-up), the rules REJECTED the whole batch —
+            // the onboarding nickname never reached Firestore and the app kept
+            // showing the sign-up fallback nickname (the e-mail prefix).
+            val userRef = firestore.collection(USERS_COLLECTION).document(userId)
+            val existingUser = withTimeoutOrNull(FIRESTORE_WRITE_TIMEOUT_MS) {
+                try { userRef.get().await() } catch (e: Exception) { null }
+            }
+            val effectiveUserMap = if (existingUser?.exists() == true) {
+                userMap.toMutableMap().apply {
+                    // identity anchors must stay exactly as they were
+                    remove("createdAt")
+                    existingUser.getString("email")?.let { this["email"] = it }
+                }
+            } else userMap
+            batch.set(userRef, effectiveUserMap)
             batch.set(
                 firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId),
                 publicMap
