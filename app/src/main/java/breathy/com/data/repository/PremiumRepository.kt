@@ -12,6 +12,7 @@ import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
+import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
 import com.google.firebase.Timestamp
@@ -215,9 +216,11 @@ class PremiumRepository(
 
     private fun ensureClient(): BillingClient {
         billingClient?.let { return it }
+        // PBL 8.0.0 — enablePendingPurchases now requires explicit
+        // PendingPurchasesParams (no-arg overload was removed).
         val client = BillingClient.newBuilder(appContext)
             .setListener(this)
-            .enablePendingPurchases()
+            .enablePendingPurchases(PendingPurchasesParams.newBuilder().build())
             .build()
         billingClient = client
         return client
@@ -297,12 +300,15 @@ class PremiumRepository(
             .setProductList(listOf(product))
             .build()
 
-        client.queryProductDetailsAsync(params) { result, detailsList ->
+        // PBL 8.0.0 — the callback now delivers a QueryProductDetailsResult
+        // wrapper; the product list lives in queryResult.productDetailsList.
+        client.queryProductDetailsAsync(params) { result, queryResult ->
             if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                 Timber.w("PremiumRepo: product query failed: %s", result.debugMessage)
                 return@queryProductDetailsAsync
             }
-            val details = detailsList.firstOrNull { it.productId == PRODUCT_ID_PREMIUM }
+            val details = queryResult.productDetailsList
+                .firstOrNull { it.productId == PRODUCT_ID_PREMIUM }
             if (details == null) {
                 Timber.w("PremiumRepo: product %s not found in Play Console", PRODUCT_ID_PREMIUM)
                 return@queryProductDetailsAsync
