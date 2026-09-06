@@ -6,7 +6,7 @@ targetSdk = "36"
 
 # Kotlin & Android
 agp = "8.9.2"
-kotlin = "2.0.21"
+kotlin = "2.2.10"
 
 # Compose — Compose Compiler is now part of the Kotlin plugin (2.0+)
 composeBom = "2024.09.00"
@@ -36,7 +36,7 @@ camerax = "1.4.1"
 imageCropper = "4.6.0"
 
 # Billing
-billing = "8.0.0"
+billing = "8.3.0"
 
 # Ads
 levelplay = "9.2.0"
