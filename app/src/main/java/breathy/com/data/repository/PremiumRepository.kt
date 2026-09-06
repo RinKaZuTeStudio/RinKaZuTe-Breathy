@@ -20,6 +20,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,6 +116,12 @@ class PremiumRepository(
         /** Connection retry backoff (ms). */
         private const val RETRY_BACKOFF_MS = 2_000L
 
+        /** Max automatic retries for the price query before we surface a manual Retry. */
+        private const val PRICE_MAX_AUTO_RETRIES = 5
+
+        /** Hard timeout for a single queryProductDetailsAsync round-trip. */
+        private const val PRICE_QUERY_TIMEOUT_MS = 15_000L
+
         /**
          * Google Play licensing PUBLIC verification key for this app.
          * This is public verification material (from Play Console → Monetize
@@ -136,6 +143,8 @@ class PremiumRepository(
         val isChecking: Boolean = true,
         /** Localized price string from Google Play (e.g. "$2.99"). */
         val localizedPrice: String? = null,
+        /** Why the Play price is not available yet (null = no price problem). */
+        val priceError: String? = null,
         /** Localized currency code from Google Play. */
         val currencyCode: String? = null,
         /** Whether a launch offer is currently available on the base plan. */
@@ -158,6 +167,12 @@ class PremiumRepository(
 
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    /** Auto-retry counter for the Play price query (reset on success / manual refresh). */
+    private var priceQueryAttempts = 0
+
+    /** Generation token — stale query callbacks/timeouts are ignored. */
+    private var priceQueryGeneration = 0
 
     private val _state = MutableStateFlow(PremiumState())
     val state: StateFlow<PremiumState> = _state.asStateFlow()
@@ -284,6 +299,38 @@ class PremiumRepository(
         onReady?.invoke()
     }
 
+    /**
+     * v1.0.17 — public manual retry for the Play price. Used by the
+     * subscription screen when automatic retries are exhausted, so the UI
+     * never sits on "Loading price from Google Play" forever.
+     */
+    fun refreshPricing() {
+        priceQueryAttempts = 0
+        _state.update { it.copy(priceError = null) }
+        connectAndRefresh()
+    }
+
+    /** Surface a price-loading failure in the UI state (never silent). */
+    private fun onPriceUnavailable(message: String) {
+        Timber.w("PremiumRepo: price unavailable — %s", message)
+        _state.update { it.copy(priceError = message) }
+    }
+
+    /** Bounded automatic retry of the price query (stops after [PRICE_MAX_AUTO_RETRIES]). */
+    private fun schedulePriceRetry() {
+        if (priceQueryAttempts >= PRICE_MAX_AUTO_RETRIES) {
+            Timber.w("PremiumRepo: price auto-retry exhausted — manual refresh required")
+            return
+        }
+        priceQueryAttempts++
+        val gen = priceQueryGeneration
+        scope.launch {
+            kotlinx.coroutines.delay(RETRY_BACKOFF_MS * priceQueryAttempts)
+            if (gen != priceQueryGeneration) return@launch // a newer query owns the flow
+            if (billingClient?.isReady == true) queryProductDetails() else connectAndRefresh()
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     //  Product details (localized price + offer token)
     // ═════════════════════════════════════════════════════════════════════
@@ -300,19 +347,43 @@ class PremiumRepository(
             .setProductList(listOf(product))
             .build()
 
+        // v1.0.17 — the price query can no longer stall the UI: every
+        // failure path (non-OK response, empty product list, Play timeout)
+        // now sets a user-visible [PremiumState.priceError] and schedules a
+        // bounded automatic retry. Stale callbacks (after a newer query or a
+        // manual refresh) are ignored via the generation token.
+        val generation = ++priceQueryGeneration
+        val timeoutJob: Job = scope.launch {
+            kotlinx.coroutines.delay(PRICE_QUERY_TIMEOUT_MS)
+            if (generation == priceQueryGeneration) {
+                onPriceUnavailable("Google Play is taking too long to respond.")
+                schedulePriceRetry()
+            }
+        }
+
         // PBL 8.0.0 — the callback now delivers a QueryProductDetailsResult
         // wrapper; the product list lives in queryResult.productDetailsList.
         client.queryProductDetailsAsync(params) { result, queryResult ->
+            if (generation != priceQueryGeneration) return@queryProductDetailsAsync // stale
+            timeoutJob.cancel()
             if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                 Timber.w("PremiumRepo: product query failed: %s", result.debugMessage)
+                onPriceUnavailable("Google Play returned an error while loading the price.")
+                schedulePriceRetry()
                 return@queryProductDetailsAsync
             }
             val details = queryResult.productDetailsList
                 .firstOrNull { it.productId == PRODUCT_ID_PREMIUM }
             if (details == null) {
                 Timber.w("PremiumRepo: product %s not found in Play Console", PRODUCT_ID_PREMIUM)
+                onPriceUnavailable(
+                    "Premium subscription is not available in Google Play for this account yet. " +
+                        "It may still be rolling out in your country."
+                )
+                schedulePriceRetry()
                 return@queryProductDetailsAsync
             }
+            priceQueryAttempts = 0
             premiumProductDetails = details
 
             // Prefer the launch-offer on the monthly-premium base plan when active;

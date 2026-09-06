@@ -285,6 +285,15 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * v1.0.17 — Surface a sign-in failure that happened OUTSIDE this
+     * ViewModel (e.g., Google returned no ID token / ApiException in
+     * MainActivity). Guarantees the user always sees what went wrong.
+     */
+    fun setExternalError(message: String) {
+        _uiState.update { it.copy(isLoading = false, errorMessage = message) }
+    }
+
     fun sendPasswordReset() {
         val state = _uiState.value
         if (state.email.isBlank()) {
@@ -612,6 +621,8 @@ fun AuthScreen(
     onGoogleSignInRequest: () -> Unit = {},
     googleIdToken: String? = null,
     onGoogleTokenConsumed: () -> Unit = {},
+    googleSignInError: String? = null,
+    onGoogleErrorConsumed: () -> Unit = {},
     viewModel: AuthViewModel = run {
         val context = LocalContext.current
         val appModule = (context.applicationContext as BreathyApplication).appModule
@@ -629,6 +640,17 @@ fun AuthScreen(
         if (googleIdToken != null) {
             viewModel.signInWithGoogle(googleIdToken)
             onGoogleTokenConsumed()
+        }
+    }
+
+    // v1.0.17 — Surface Google Sign-In failures from the Activity. The picker
+    // may complete yet the token exchange fail (signing-certificate mismatch,
+    // network...). Those failures used to be log-only — the screen appeared
+    // frozen. Now they become a visible, friendly error.
+    LaunchedEffect(googleSignInError) {
+        if (googleSignInError != null) {
+            viewModel.setExternalError(googleSignInError)
+            onGoogleErrorConsumed()
         }
     }
 

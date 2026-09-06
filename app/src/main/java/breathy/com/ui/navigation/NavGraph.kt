@@ -192,6 +192,8 @@ fun BreathyNavHost(
     onGoogleSignInRequest: () -> Unit = {},
     googleIdToken: String? = null,
     onGoogleTokenConsumed: () -> Unit = {},
+    googleSignInError: String? = null,
+    onGoogleErrorConsumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val navController = rememberNavController()
@@ -322,7 +324,9 @@ fun BreathyNavHost(
                     onNavigateToAgeCompletion = { navigateTo(BreathyRoutes.AGE_COMPLETION) },
                     onGoogleSignInRequest = onGoogleSignInRequest,
                     googleIdToken = googleIdToken,
-                    onGoogleTokenConsumed = onGoogleTokenConsumed
+                    onGoogleTokenConsumed = onGoogleTokenConsumed,
+                    googleSignInError = googleSignInError,
+                    onGoogleErrorConsumed = onGoogleErrorConsumed
                 )
             }
 

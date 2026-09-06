@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -81,6 +82,9 @@ class SubscriptionViewModel(
         // the paywall is opened.
         premiumRepository.connectAndRefresh()
     }
+
+    /** v1.0.17 — manual retry for the Play price (delegates to the repository). */
+    fun refreshPricing() = premiumRepository.refreshPricing()
 
     /** Launch the real Google Play purchase flow. */
     fun purchase(activity: Activity) {
@@ -492,11 +496,30 @@ fun SubscriptionScreen(
                         )
                         if (premiumState.localizedPrice == null) {
                             Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = s("Loading price from Google Play…", "جارٍ تحميل السعر من Google Play…"),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = BreathyPalette.textSecondary
-                            )
+                            // v1.0.17 — never leave the user on an eternal
+                            // "Loading price…": failures show a reason plus a
+                            // manual Retry that re-queries Google Play.
+                            val priceError = premiumState.priceError
+                            if (priceError != null) {
+                                Text(
+                                    text = priceError,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                TextButton(onClick = { viewModel.refreshPricing() }) {
+                                    Text(
+                                        text = s("Retry", "إعادة المحاولة"),
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = s("Loading price from Google Play…", "جارٍ تحميل السعر من Google Play…"),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = BreathyPalette.textSecondary
+                                )
+                            }
                         }
                     }
                 }

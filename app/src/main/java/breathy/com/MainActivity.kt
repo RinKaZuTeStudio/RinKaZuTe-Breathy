@@ -22,6 +22,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import timber.log.Timber
 
 /**
@@ -41,6 +43,13 @@ class MainActivity : ComponentActivity() {
 
     /** Google Sign-In ID token, shared with Compose navigation via state. */
     private var googleIdToken by mutableStateOf<String?>(null)
+
+    /**
+     * v1.0.17 — Google Sign-In failure message, surfaced to the Auth screen.
+     * Fixes the production "taps Google Sign-In, picks an account, nothing
+     * happens" report: every failure path now becomes a visible error.
+     */
+    private var googleSignInError by mutableStateOf<String?>(null)
 
     /** Lazy reference to the app-scoped [AppModule] for manual DI. */
     private val appModule: AppModule by lazy {
@@ -107,7 +116,9 @@ class MainActivity : ComponentActivity() {
                         onDeepLinkConsumed = { deepLinkRoute = null },
                         onGoogleSignInRequest = { launchGoogleSignIn() },
                         googleIdToken = googleIdToken,
-                        onGoogleTokenConsumed = { googleIdToken = null }
+                        onGoogleTokenConsumed = { googleIdToken = null },
+                        googleSignInError = googleSignInError,
+                        onGoogleErrorConsumed = { googleSignInError = null }
                     )
                 }
             }
@@ -159,12 +170,32 @@ class MainActivity : ComponentActivity() {
                 Timber.d("Google Sign-In successful, got idToken")
                 googleIdToken = idToken
             } else {
+                // v1.0.17 — null token means Google rejected the token request
+                // for this build (typically package/sha1 not registered in
+                // Firebase). Never silent: tell the user.
                 Timber.e("Google Sign-In returned null idToken")
+                googleSignInError =
+                    "Google sign-in could not be completed (missing ID token). " +
+                        "Please try again — if it persists, this app build's signing " +
+                        "certificate is not registered in Firebase."
             }
         } catch (e: ApiException) {
             Timber.e(e, "Google Sign-In failed with status code: ${e.statusCode}")
+            if (e.statusCode != GoogleSignInStatusCodes.CANCELED) {
+                googleSignInError = when (e.statusCode) {
+                    CommonStatusCodes.DEVELOPER_ERROR ->
+                        "Sign-in configuration error: this app build's signing " +
+                            "certificate is not registered in Firebase."
+                    12500 ->
+                        "Sign-in configuration error: the Google account could not " +
+                            "be verified for this app build."
+                    7 -> "Network error. Please check your connection and try again."
+                    else -> "Google sign-in failed. Please try again."
+                }
+            }
         } catch (e: Exception) {
             Timber.e(e, "Google Sign-In failed unexpectedly")
+            googleSignInError = "Google sign-in failed. Please try again."
         }
     }
 
