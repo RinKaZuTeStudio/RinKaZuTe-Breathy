@@ -98,26 +98,29 @@ class AdManager(
         const val UNITY_INTERSTITIAL_PLACEMENT = "Interstitial_Android"
 
         // ── AdMob production ad-unit identifiers (exact, never test IDs) ─
-        // These are the production AdMob units associated with the Breathy
-        // mediation waterfall (LevelPlay console network config). The Google
-        // Mobile Ads SDK is NOT embedded standalone (no APPLICATION_ID
-        // meta-data exists — it was removed at v1.0.3); these unit IDs are
-        // consumed server-side by the mediation waterfall and are recorded
-        // here verbatim as the production source of truth.
+        // NEW AdMob app (v1.0.21 migration — publisher 9434446627275871,
+        // app ca-app-pub-9434446627275871~1020887836). These are the
+        // production AdMob units associated with the Breathy mediation
+        // waterfall (LevelPlay console network config). The Google Mobile
+        // Ads SDK is NOT embedded standalone (no APPLICATION_ID meta-data
+        // exists — it was removed at v1.0.3); these unit IDs are consumed
+        // server-side by the mediation waterfall and are recorded here
+        // verbatim as the production source of truth.
         /** AdMob App Open ad unit (production). */
-        const val ADMOB_APP_OPEN_AD_UNIT_ID = "ca-app-pub-9434446627275871/5853663684"
+        const val ADMOB_APP_OPEN_AD_UNIT_ID = "ca-app-pub-9434446627275871/1257681230"
 
-        /** AdMob Gold Rewarded ad unit (production) — pairs with
-         *  [UNITY_REWARDED_PLACEMENT]. */
-        const val ADMOB_GOLD_REWARDED_AD_UNIT_ID = "ca-app-pub-9434446627275871/8503877756"
+        /** AdMob Gold Rewarded ad unit (production, Rewarded Ad 1) — pairs
+         *  with [UNITY_REWARDED_PLACEMENT]. */
+        const val ADMOB_GOLD_REWARDED_AD_UNIT_ID = "ca-app-pub-9434446627275871/5304737452"
 
         /** AdMob Interstitial ad unit (production) — pairs with
          *  [UNITY_INTERSTITIAL_PLACEMENT]. */
-        const val ADMOB_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-9434446627275871/1600874709"
+        const val ADMOB_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-9434446627275871/6356974992"
 
-        /** AdMob Picture Rewarded ad unit (production) — pairs with the
-         *  dedicated SUNRISE picture placement [UNITY_PICTURE_REWARDED_PLACEMENT]. */
-        const val ADMOB_PICTURE_REWARDED_AD_UNIT_ID = "ca-app-pub-9434446627275871/8657966595"
+        /** AdMob Picture Rewarded ad unit (production, Rewarded Ad 2) — pairs
+         *  with the dedicated SUNRISE picture placement
+         *  [UNITY_PICTURE_REWARDED_PLACEMENT]. */
+        const val ADMOB_PICTURE_REWARDED_AD_UNIT_ID = "ca-app-pub-9434446627275871/1296220001"
 
         // ── Unity LevelPlay production identifiers (native ads) ───────────
         /** LevelPlay App Key (Unity LevelPlay platform → production). */

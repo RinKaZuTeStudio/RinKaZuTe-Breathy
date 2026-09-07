@@ -203,9 +203,11 @@ firebase deploy --only storage
 
 | Property | Value |
 |----------|-------|
-| App ID | `ca-app-pub-9434446627275871~3054699475` |
-| Open App Ad | `ca-app-pub-9434446627275871/9005175949` |
-| Interstitial Ad | `ca-app-pub-9434446627275871/7446506098` |
+| App ID | `ca-app-pub-9434446627275871~1020887836` |
+| Open App Ad | `ca-app-pub-9434446627275871/1257681230` |
+| Interstitial Ad | `ca-app-pub-9434446627275871/6356974992` |
+| Rewarded Ad 1 (Gold) | `ca-app-pub-9434446627275871/5304737452` |
+| Rewarded Ad 2 (Picture) | `ca-app-pub-9434446627275871/1296220001` |
 
 ---
 

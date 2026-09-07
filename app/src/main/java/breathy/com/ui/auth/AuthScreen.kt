@@ -436,7 +436,13 @@ class AuthViewModel(
                         // Profile complete except AGE? Existing accounts created
                         // before the age requirement get a ONE-TIME completion
                         // step (never an infinite loop — once saved, the check passes).
-                        val hasAge = (document.getLong("age") ?: 0L) > 0
+                        // v1.0.21 — an account that already selected an age at
+                        // account setup but whose full write has not landed yet
+                        // (pending profile carries the age) must NOT be re-prompted:
+                        // the read-path heal in UserRepository.parseHealedUser
+                        // surfaces the saved age everywhere.
+                        val hasAge = (document.getLong("age") ?: 0L) > 0 ||
+                                (onboardingLocalStore.readPendingProfile(userId)?.age ?: 0) > 0
                         if (!hasAge) {
                             Timber.i("$TAG: User uid=%s missing age — navigating to age completion", userId)
                             _uiState.update {

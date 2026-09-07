@@ -267,24 +267,34 @@ class UserRepository(
     }
 
     /**
-     * v1.0.20 ACCOUNT-SETUP PERSISTENCE HEAL — parse the users/{uid} document
-     * and resolve the two onboarding fields against their authoritative
+     * v1.0.20/v1.0.21 ACCOUNT-SETUP PERSISTENCE HEAL — parse the users/{uid}
+     * document and resolve the onboarding fields against their authoritative
      * mirrors for as long as the full profile write has not landed yet
      * (v8 rules not published yet, sparse sign-up document, offline retry
      * queue still pending):
      *
-     *  - NICKNAME: if the document still carries the sparse sign-up fallback
-     *    (blank, or exactly the e-mail prefix), surface the name the user
-     *    actually typed during account setup instead. That exact string is
-     *    mirrored to Firebase Auth displayName at onboarding save and on
-     *    every profile edit (v1.0.19). Nothing is generated, re-cased or
-     *    defaulted here — the user's exact input is shown exactly as entered.
+     *  - NICKNAME: if a pending profile exists, the full onboarding write has
+     *    NOT landed yet — the document nickname is therefore still the sparse
+     *    sign-up fallback (e-mail prefix for e-mail sign-ups, Google display
+     *    name for Google sign-ups) and is replaced with the name the user
+     *    actually typed during account setup (the pending profile's exact
+     *    string). Without a pending profile the v1.0.20 rule applies: blank
+     *    or exactly the e-mail prefix is healed from the Firebase Auth
+     *    displayName mirror. Nothing is generated, re-cased or defaulted
+     *    here — the user's exact input is shown exactly as entered.
      *  - QUIT DATE: if the document has none yet, use the locally persisted
      *    pending-profile copy (OnboardingLocalStore) — the exact date the
      *    user picked on the quit-date step. daysSmokeFree, money saved,
      *    cigarettes avoided and the Recovery Journey milestones therefore
      *    always compute from the SAVED quit date, never from screen-open
      *    time and never from an invented date.
+     *  - AGE (v1.0.21 — the field the v1.0.20 heal overlooked): if the
+     *    document carries no usable age yet, use the locally persisted
+     *    pending-profile age — the exact value the user selected on the
+     *    account-setup age step. The Profile screen, the AgeCompletion
+     *    routing and every consumer of [User.age] therefore keep showing
+     *    the SAVED age instead of reverting to blank until the remote
+     *    write lands.
      *
      * Once the retry queue lands the full profile in Firestore, the document
      * values win and this resolution silently becomes a no-op. The stored
@@ -294,20 +304,35 @@ class UserRepository(
     private fun parseHealedUser(map: Map<String, Any?>): User {
         var user = User.fromFirestoreMap(map)
         val uid = auth.currentUser?.uid.orEmpty()
-        if (user.quitDate == null && onboardingLocalStore != null && uid.isNotBlank()) {
-            val pending = onboardingLocalStore.readPendingProfile(uid)
-            if (pending != null && pending.quitDateMillis > 0L) {
-                user = user.copy(
-                    quitDate = com.google.firebase.Timestamp(java.util.Date(pending.quitDateMillis))
-                )
-            }
+        val pending = if (onboardingLocalStore != null && uid.isNotBlank()) {
+            onboardingLocalStore.readPendingProfile(uid)
+        } else null
+        if (user.quitDate == null && pending != null && pending.quitDateMillis > 0L) {
+            user = user.copy(
+                quitDate = com.google.firebase.Timestamp(java.util.Date(pending.quitDateMillis))
+            )
         }
-        val emailPrefix = auth.currentUser?.email?.substringBefore('@')
-        val isStaleSignupFallback = user.nickname.isBlank() ||
-                (emailPrefix != null && user.nickname == emailPrefix)
-        if (isStaleSignupFallback) {
-            auth.currentUser?.displayName?.takeIf { it.isNotBlank() }?.let { mirrored ->
-                user = user.copy(nickname = mirrored)
+        // v1.0.21 AGE HEAL — same source-of-truth rule as the quit date: the
+        // locally persisted pending profile carries the exact age the user
+        // selected at account setup, so surface it whenever the Firestore
+        // document does not have one yet.
+        val docAge = user.age
+        if ((docAge == null || docAge <= 0) && pending != null && pending.age > 0) {
+            user = user.copy(age = pending.age)
+        }
+        // NICKNAME HEAL — pending profile first (the write never landed, so
+        // the document nickname is still the sparse sign-up fallback), then
+        // the v1.0.20 Auth displayName mirror for blank/e-mail-prefix docs.
+        if (pending != null && pending.nickname.isNotBlank() && pending.nickname != user.nickname) {
+            user = user.copy(nickname = pending.nickname)
+        } else {
+            val emailPrefix = auth.currentUser?.email?.substringBefore('@')
+            val isStaleSignupFallback = user.nickname.isBlank() ||
+                    (emailPrefix != null && user.nickname == emailPrefix)
+            if (isStaleSignupFallback) {
+                auth.currentUser?.displayName?.takeIf { it.isNotBlank() }?.let { mirrored ->
+                    user = user.copy(nickname = mirrored)
+                }
             }
         }
         return user
