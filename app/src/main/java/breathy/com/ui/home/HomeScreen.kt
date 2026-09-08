@@ -400,13 +400,9 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // ── Sponsored (native ad, LevelPlay "Ad1") ─────────────
-                    // One placement between content cards; hidden entirely for
-                    // verified Premium subscribers. Never blocks any action.
-                    breathy.com.ui.components.BreathyNativeAdCard(
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    // ── Sponsored card removed (v1.0.23) ───────────────────
+                    // The LevelPlay native ad was retired with the Unity
+                    // mediation stack; home content flows directly.
 
                     // ── Featured Event (canonical artwork, spec §21) ────────
                     FeaturedEventCard(

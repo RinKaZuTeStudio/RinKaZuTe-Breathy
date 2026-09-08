@@ -30,7 +30,7 @@ import timber.log.Timber
  * Single-activity host for the Breathy application.
  *
  * Responsibilities:
- * - Initializes the Unity LevelPlay ad SDK (the only ad system)
+ * - Initializes the Google Mobile Ads SDK (AdMob-only serving, v1.0.23)
  * - Re-verifies the Google Play Premium entitlement on start + foreground
  * - Handles Google Sign-In via [GoogleSignInClient]
  * - Requests POST_NOTIFICATIONS permission on Android 13+
@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // ── LevelPlay ads (the ONLY ad system — AdMob fully removed) ────────
+        // ── AdMob ads (Google Mobile Ads SDK — v1.0.23 AdMob-only serving) ──
         appModule.adManager.initialize()
 
         // ── Premium entitlement re-check ─────────────────────────────────────
@@ -127,6 +127,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        // ── App Open ad (v1.0.23 — AdMob App Open, AdMob-only serving) ─────
+        // Paced internally (max one show per 4h) and fully Premium-blocked;
+        // never throws and never blocks navigation.
+        try {
+            appModule.adManager.maybeShowAppOpenAd(this)
+        } catch (e: Exception) {
+            Timber.e(e, "App Open ad show failed")
+        }
 
         // ── Premium entitlement re-check on EVERY foreground return ────────
         // The source of truth is the verified Google Play purchase state.

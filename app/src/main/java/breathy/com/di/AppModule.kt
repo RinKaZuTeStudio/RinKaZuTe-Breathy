@@ -273,27 +273,28 @@ class AppModule(
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Ad manager — two production stacks (v1.0.11 rev 4):
-     * - Unity Ads (Game ID 800367613): interstitial ("Interstitial_Android",
-     *   frequency-capped) + gold rewarded ("Rewarded_Android" → +200 Gold).
-     * - Unity LevelPlay (App Key 27e9c42cd): native ads + the dedicated
-     *   "Profile Pic" rewarded unit (5 watches → SUNRISE picture).
+     * Ad manager — AdMob-only serving (v1.0.23, Google Mobile Ads SDK):
+     * - App Open (`ca-app-pub-9434446627275871/1257681230`) — Premium BLOCKED.
+     * - Interstitial (`…/6356974992`) — Premium BLOCKED.
+     * - Gold rewarded (`…/5304737452` → +200 Gold) — ALLOWED for everyone.
+     * - Picture rewarded (`…/1296220001`, 5 watches → SUNRISE picture) — ALLOWED.
      *
-     * Premium eligibility is PER FORMAT: native/interstitial are blocked for
-     * verified Premium subscribers; rewarded ads stay ALLOWED for everyone —
-     * they are a voluntary reward mechanic (+200 Gold), not an interruption.
+     * Premium eligibility is PER FORMAT: app-open/interstitial are blocked
+     * for verified Premium subscribers; rewarded ads stay ALLOWED for
+     * everyone — they are a voluntary reward mechanic (+200 Gold), not an
+     * interruption.
      */
     val adManager: AdManager by lazy {
-        Timber.d("Initializing AdManager (Unity Ads + LevelPlay)")
+        Timber.d("Initializing AdManager (Google Mobile Ads SDK — AdMob-only)")
         AdManager(applicationContext).also { adManager ->
             // Keep ad behaviour in lock-step with the verified premium entitlement:
-            // premium → native/interstitial blocked; rewarded stays available.
+            // premium → app-open/interstitial blocked; rewarded stays available.
             adManager.attachPremiumState(premiumRepository.state)
 
             // ── Gold Ads rewarded security path ─────────────────────────────
-            // Invoked ONLY from the Unity Ads completion callback
-            // (onUnityAdsShowComplete with COMPLETED state) — never on ad
-            // open/click. The show token powers
+            // Invoked ONLY from AdMob's OnUserEarnedRewardListener (the SDK
+            // fires it exclusively when the user finished the ad) — never on
+            // ad open/click. The show token powers
             // the Gold-ledger dedup key, so retries/duplicate callbacks can
             // never double-credit a single completed ad.
             val goldScope = kotlinx.coroutines.CoroutineScope(
@@ -324,8 +325,8 @@ class AppModule(
             }
 
             // ── Profile-Pic rewarded security path (v1.0.9) ──────────────────
-            // Invoked ONLY from the Unity Ads rewarded completion callback
-            // ("Rewarded_Android", SUNRISE show purpose — v1.0.11 rev 5).
+            // Invoked ONLY from AdMob's OnUserEarnedRewardListener for the
+            // DEDICATED Picture rewarded unit (SUNRISE show purpose, v1.0.23).
             // Records ONE watch toward the 5-ad SUNRISE picture unlock; the
             // Firestore transaction dedups per show token so replays never
             // over-count.

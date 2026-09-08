@@ -193,7 +193,7 @@ fun GoldHistoryScreen(
             // ── Balance card ────────────────────────────────────────────
             GoldBalanceCard(balance = uiState.balance)
 
-            // ── Gold Ads (rewarded, LevelPlay — limitless +200 Gold) ───
+            // ── Gold Ads (rewarded, AdMob — limitless +200 Gold) ───
             breathy.com.ui.components.GoldAdsCard()
 
             // ── Transactions ────────────────────────────────────────────

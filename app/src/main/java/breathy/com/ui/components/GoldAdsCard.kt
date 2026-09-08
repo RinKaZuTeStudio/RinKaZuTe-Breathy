@@ -41,11 +41,11 @@ import breathy.com.utils.AdManager
 import breathy.com.utils.s
 
 /**
- * GoldAdsCard — the LevelPlay rewarded placement ("Gold Ads" → +200 Gold).
+ * GoldAdsCard — the AdMob Gold rewarded ad ("Gold Ads" → +200 Gold).
  *
  * - LIMITLESS: no daily cap — the user can watch as many rewarded ads as
  *   they want; each COMPLETED ad credits exactly +200 Gold.
- * - The Gold is granted ONLY after the LevelPlay completion callback
+ * - The Gold is granted ONLY after AdMob's OnUserEarnedRewardListener
  *   (onAdRewarded) fires — never for merely opening the ad. Duplicate
  *   callbacks for one show are guarded (AtomicBoolean) and the Gold-ledger
  *   dedup key (`goldads_{showToken}`) makes replays impossible.

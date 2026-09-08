@@ -18,8 +18,8 @@ android {
         applicationId = "breathy.com"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 29
-        versionName = "1.0.22"
+        versionCode = 30
+        versionName = "1.0.23"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -145,11 +145,9 @@ dependencies {
     implementation(libs.billing)
     implementation(libs.billing.ktx)
 
-    // ── Unity LevelPlay (mediation SDK — native + profile-pic rewarded) ───
-    implementation(libs.levelplay)
-
-    // ── Unity Ads SDK (Game ID 800367613 — interstitial + gold rewarded) ──
-    implementation(libs.unity.ads)
+    // ── Google Mobile Ads SDK (v1.0.23 — replaces the retired Unity Ads /
+    //    LevelPlay mediation stack; AdMob-only serving) ────────────────────
+    implementation(libs.play.services.ads)
 
     // ── Google Sign-In ──────────────────────────────────────────────────────
     implementation(libs.play.services.auth)

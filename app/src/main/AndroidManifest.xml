@@ -46,8 +46,16 @@
             </intent-filter>
         </service>
 
-        <!-- Unity LevelPlay is initialized in code (LevelPlay.init) — no
-             manifest meta-data required. AdMob has been fully removed. -->
+        <!-- v1.0.23 — Google Mobile Ads SDK (AdMob-only serving since the
+             Unity Ads / LevelPlay retirement). The new AdMob app ID is
+             REQUIRED by the SDK — the app previously ran without the
+             standalone Mobile Ads SDK (meta-data removed at v1.0.3). -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-9434446627275871~1020887836" />
+
+        <!-- AdMob ad activity declarations are merged automatically from the
+             Google Mobile Ads SDK library manifest. -->
 
         <!-- Firebase -->
         <meta-data

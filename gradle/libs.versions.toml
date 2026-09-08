@@ -41,6 +41,7 @@ billing = "8.3.0"
 # Ads
 levelplay = "9.2.0"
 unityAds = "4.16.0"
+playServicesAds = "24.4.0"
 
 # Google Sign-In
 playServicesAuth = "21.3.0"
@@ -120,9 +121,9 @@ image-cropper = { group = "com.vanniktech", name = "android-image-cropper", vers
 billing = { group = "com.android.billingclient", name = "billing", version.ref = "billing" }
 billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 
-# AdMob
-levelplay = { group = "com.ironsource.sdk", name = "mediationsdk", version.ref = "levelplay" }
-unity-ads = { group = "com.unity3d.ads", name = "unity-ads", version.ref = "unityAds" }
+# AdMob (v1.0.23 — Google Mobile Ads SDK replaces the retired Unity Ads /
+# LevelPlay mediation stack)
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 
 # Google Sign-In
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
