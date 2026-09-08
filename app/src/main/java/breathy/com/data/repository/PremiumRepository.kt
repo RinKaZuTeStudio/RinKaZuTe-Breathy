@@ -131,8 +131,13 @@ class PremiumRepository(
         private const val CONNECT_WATCHDOG_MS = 20_000L
 
         /** v1.0.22 — bounded wait for a purchase tap until the client is
-         *  connected AND the product details + offer token are loaded. */
-        private const val PURCHASE_READINESS_TIMEOUT_MS = 20_000L
+         *  connected AND the product details + offer token are loaded.
+         *  v1.0.24 — 30s: the window must also cover the connection retry
+         *  chain (2s backoff × 5) plus one full queryProductDetails round
+         *  trip, so a slow-but-recovering Play Store still launches instead
+         *  of timing out into an error. Still strictly bounded — never an
+         *  infinite preparing state. */
+        private const val PURCHASE_READINESS_TIMEOUT_MS = 30_000L
 
         /**
          * Google Play licensing PUBLIC verification key for this app.
@@ -211,6 +216,16 @@ class PremiumRepository(
     private var cachedOfferToken: String? = null
 
     private val isConnecting = AtomicBoolean(false)
+
+    /**
+     * v1.0.24 — set when the BillingClient connection is declared hard-dead
+     * (max connect retries exhausted via the watchdog or the setup callback).
+     * Lets a pending purchase-wait exit EARLY with the concrete reason
+     * instead of riding the full readiness timeout, and guarantees the UI
+     * never sits in isPreparingPurchase longer than the bounded window.
+     */
+    @Volatile
+    private var billingHardFailure: Boolean = false
 
     /**
      * v1.0.22 — generation token for BillingClient connection attempts.
@@ -303,6 +318,7 @@ class PremiumRepository(
                     isConnecting.set(false)
                     connectAttempts++
                     if (connectAttempts >= MAX_CONNECT_RETRIES) {
+                        billingHardFailure = true // v1.0.24 — release pending purchase waits
                         onPriceUnavailable(
                             "Google Play Billing is not responding on this device. " +
                                 "Update the Google Play Store app and try again."
@@ -312,23 +328,29 @@ class PremiumRepository(
                     }
                 }
             }
+            billingHardFailure = false // v1.0.24 — a fresh attempt clears a past failure
             client.startConnection(object : BillingClientStateListener {
                 override fun onBillingSetupFinished(result: BillingResult) {
                     // Invalidate the watchdog — the connection attempt resolved.
                     connectionGeneration.incrementAndGet()
                     isConnecting.set(false)
                     if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                        Timber.i("PremiumRepo: BillingClient connected")
+                        Timber.i(
+                            "PremiumRepo: BillingClient connected (responseCode=%s, debugMessage='%s')",
+                            result.responseCode, result.debugMessage
+                        )
+                        billingHardFailure = false
                         onConnected(onReady)
                     } else {
                         Timber.w(
-                            "PremiumRepo: Billing setup failed (code %s): %s",
+                            "PremiumRepo: Billing setup FAILED (responseCode=%s, debugMessage='%s')",
                             result.responseCode, result.debugMessage
                         )
                         connectAttempts++
                         if (connectAttempts >= MAX_CONNECT_RETRIES) {
                             // v1.0.19 — Play Billing itself is unavailable on this
                             // device; never leave the UI on "Loading price…".
+                            billingHardFailure = true // v1.0.24 — release pending purchase waits
                             onPriceUnavailable(
                                 "Google Play Billing is not available on this device. " +
                                     "Update the Google Play Store app and try again."
@@ -367,7 +389,11 @@ class PremiumRepository(
                 kotlinx.coroutines.delay(250)
             }
         }
-        if (billingClient?.isReady == true) callback()
+        // v1.0.24 — ALWAYS fire, even when the client never became ready. A
+        // dropped callback silently swallowed everything piggybacking on this
+        // connection attempt and (before the v1.0.24 launchPurchaseWhenReady
+        // rework) left isPreparingPurchase stuck true forever.
+        callback()
     }
 
     private fun scheduleRetry(onReady: (() -> Unit)?) {
@@ -456,6 +482,13 @@ class PremiumRepository(
         client.queryProductDetailsAsync(params) { result, queryResult ->
             if (generation != priceQueryGeneration) return@queryProductDetailsAsync // stale
             timeoutJob.cancel()
+            // v1.0.24 — full Play-side visibility: response code + debugMessage
+            // for every product query, plus the complete offer inventory.
+            Timber.i(
+                "PremiumRepo: queryProductDetails responseCode=%s debugMessage='%s' products=%d",
+                result.responseCode, result.debugMessage,
+                queryResult.productDetailsList?.size ?: 0
+            )
             if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                 Timber.w("PremiumRepo: product query failed: %s", result.debugMessage)
                 onPriceUnavailable("Google Play returned an error while loading the price.")
@@ -479,6 +512,19 @@ class PremiumRepository(
             // Prefer the launch-offer on the monthly-premium base plan when active;
             // otherwise fall back to the plain base plan offer token.
             val offerDetails = details.subscriptionOfferDetails.orEmpty()
+            // v1.0.24 — log the FULL offer inventory (base plan, offer id, token,
+            // pricing phases) so a bad Play Console setup is diagnosable from
+            // logcat alone.
+            Timber.i(
+                "PremiumRepo: offer inventory for %s: %s",
+                PRODUCT_ID_PREMIUM,
+                offerDetails.map { o ->
+                    "${o.basePlanId}/${o.offerId ?: "<base-plan>"} token=${o.offerToken.take(12)}… phases=" +
+                        o.pricingPhases.pricingPhaseList.joinToString("|") { ph ->
+                            "${ph.formattedPrice}/${ph.billingPeriod}"
+                        }
+                }
+            )
             val launchOffer = offerDetails.firstOrNull {
                 it.basePlanId == BASE_PLAN_ID && it.offerId == OFFER_ID
             }
@@ -504,6 +550,15 @@ class PremiumRepository(
                 return@queryProductDetailsAsync
             }
             cachedOfferToken = chosenOffer.offerToken
+            // v1.0.24 — record WHY this offer was chosen (launch-offer when
+            // available, plain base-plan offer otherwise — never a failure).
+            Timber.i(
+                "PremiumRepo: offer SELECTED %s (token=%s…) — launchOffer=%s basePlanFallback=%s",
+                if (launchOffer != null) "launch-offer" else "base-plan-offer",
+                chosenOffer.offerToken.take(12),
+                launchOffer != null,
+                launchOffer == null && basePlanOffer != null
+            )
 
             val price = chosenOffer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice
             val currency = chosenOffer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.priceCurrencyCode
@@ -558,17 +613,37 @@ class PremiumRepository(
             }
             .build()
 
-        val result = client.launchBillingFlow(activity, flowParams)
+        val result = try {
+            client.launchBillingFlow(activity, flowParams)
+        } catch (e: Exception) {
+            // v1.0.24 — a thrown launch (dead Play process, security exception,
+            // activity finishing) must NEVER wedge the purchase flags.
+            Timber.w(e, "PremiumRepo: launchBillingFlow THREW — resetting purchase state")
+            _state.update {
+                it.copy(
+                    isPurchasing = false,
+                    isPreparingPurchase = false,
+                    purchaseError = "Google Play could not start the purchase " +
+                        "(${e.message ?: e.javaClass.simpleName}). Make sure you are signed " +
+                        "in to Google Play and try again."
+                )
+            }
+            return false
+        }
+        // v1.0.24 — ALWAYS log the launch verdict (code + debugMessage).
+        Timber.i(
+            "PremiumRepo: launchBillingFlow → responseCode=%s debugMessage='%s'",
+            result.responseCode, result.debugMessage
+        )
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
             _state.update {
                 it.copy(
                     isPurchasing = false,
-                    // v1.0.22 — never silent: surface WHY the Play sheet did
-                    // not open (previously this only logged and the user saw
-                    // a dead button with no feedback).
-                    purchaseError = "Google Play could not start the purchase" +
-                        " (code ${result.responseCode}). Make sure you are signed" +
-                        " in to Google Play and try again."
+                    isPreparingPurchase = false,
+                    // v1.0.24 — surface the exact Play verdict, not a generic note.
+                    purchaseError = "Google Play could not start the purchase (code ${result.responseCode}" +
+                        (if (result.debugMessage.isNotBlank()) ": ${result.debugMessage}" else "") +
+                        "). Make sure you are signed in to Google Play and try again."
                 )
             }
             Timber.w("PremiumRepo: billing flow failed to launch: %s", result.debugMessage)
@@ -585,6 +660,18 @@ class PremiumRepository(
      * opens the Play purchase sheet automatically. The caller receives one
      * result; every failure sets [PremiumState.purchaseError] so the paywall
      * can show the exact reason instead of a dead button.
+     *
+     * v1.0.24 — DEADLOCK ELIMINATION. The old implementation registered its
+     * continuation as the connectAndRefresh callback, but that callback could
+     * be DROPPED on three separate paths (the 15s piggyback wait, connect
+     * retry exhaustion, watchdog exhaustion) — isPreparingPurchase then
+     * stayed TRUE forever and the button spun on "connecting…" without ever
+     * opening Google Play. Now the bounded wait below is the SINGLE OWNER of
+     * the prepare lifecycle: connectAndRefresh() is fired WITHOUT a callback
+     * (fire-and-forget kick), and the wait always terminates — launching the
+     * real Play sheet on success, or populating purchaseError (with the
+     * concrete Play reason when known) on failure. isPreparingPurchase is
+     * reset on EVERY exit path.
      */
     fun launchPurchaseWhenReady(activity: Activity, onResult: (Boolean) -> Unit) {
         _state.update { it.copy(purchaseError = null) }
@@ -592,30 +679,36 @@ class PremiumRepository(
         if (client != null && client.isReady &&
             premiumProductDetails != null && cachedOfferToken != null
         ) {
+            // Already launchable — open the Play sheet immediately.
             onResult(launchPurchase(activity))
             return
         }
         // Not launchable yet — prepare visibly, then auto-open the sheet.
         _state.update { it.copy(isPreparingPurchase = true) }
         connectAttempts = 0 // explicit user action — grant a fresh bounded retry budget
-        connectAndRefresh {
-            scope.launch {
-                val ready = waitForPurchaseReadiness()
-                _state.update { it.copy(isPreparingPurchase = false) }
-                if (ready) {
-                    onResult(launchPurchase(activity))
-                } else {
-                    Timber.w("PremiumRepo: purchase abandoned — billing not ready after wait")
-                    _state.update {
-                        it.copy(
-                            isPreparingPurchase = false,
-                            purchaseError = "Could not reach Google Play Billing." +
+        billingHardFailure = false // v1.0.24 — the user's tap deserves a fresh attempt
+        connectAndRefresh() // v1.0.24 — fire-and-forget; the wait below owns the outcome
+        scope.launch {
+            val ready = waitForPurchaseReadiness()
+            _state.update { it.copy(isPreparingPurchase = false) }
+            if (ready) {
+                onResult(launchPurchase(activity))
+            } else {
+                Timber.w(
+                    "PremiumRepo: purchase abandoned — billing not ready after wait (hardFailure=%s, priceError=%s)",
+                    billingHardFailure, _state.value.priceError
+                )
+                val knownReason = _state.value.priceError
+                _state.update {
+                    it.copy(
+                        isPreparingPurchase = false,
+                        purchaseError = knownReason
+                            ?: ("Could not reach Google Play Billing." +
                                 " Check your internet connection, make sure the Google" +
-                                " Play Store app is up to date, then try again."
-                        )
-                    }
-                    onResult(false)
+                                " Play Store app is up to date, then try again.")
+                    )
                 }
+                onResult(false)
             }
         }
     }
@@ -624,6 +717,9 @@ class PremiumRepository(
      * v1.0.22 — bounded wait until the client is connected AND the product
      * details + offer token are loaded (the exact prerequisites for
      * [launchPurchase] to actually open the Play sheet).
+     * v1.0.24 — also exits EARLY when the connection is declared hard-dead
+     * (max retries exhausted), surfacing the concrete reason immediately
+     * instead of riding the full timeout.
      */
     private suspend fun waitForPurchaseReadiness(): Boolean =
         withTimeoutOrNull(PURCHASE_READINESS_TIMEOUT_MS) {
@@ -631,6 +727,7 @@ class PremiumRepository(
                 premiumProductDetails == null ||
                 cachedOfferToken == null
             ) {
+                if (billingHardFailure) return@withTimeoutOrNull false
                 kotlinx.coroutines.delay(250)
             }
             true
@@ -640,19 +737,39 @@ class PremiumRepository(
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
+                Timber.i(
+                    "PremiumRepo: onPurchasesUpdated OK — %d purchase(s)",
+                    purchases?.size ?: 0
+                )
                 if (purchases.isNullOrEmpty()) {
-                    _state.update { it.copy(isPurchasing = false) }
+                    _state.update { it.copy(isPurchasing = false, isPreparingPurchase = false) }
                     return
                 }
                 handlePurchases(purchases)
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> {
-                Timber.i("PremiumRepo: purchase cancelled by user")
-                _state.update { it.copy(isPurchasing = false) }
+                Timber.i(
+                    "PremiumRepo: purchase cancelled by user (responseCode=%s, debugMessage='%s')",
+                    result.responseCode, result.debugMessage
+                )
+                _state.update { it.copy(isPurchasing = false, isPreparingPurchase = false) }
             }
             else -> {
-                Timber.w("PremiumRepo: purchase failed: %s", result.debugMessage)
-                _state.update { it.copy(isPurchasing = false) }
+                // v1.0.24 — every failure path populates purchaseError with the
+                // exact Play verdict (code + debugMessage) and resets both flags.
+                Timber.w(
+                    "PremiumRepo: purchase FAILED (responseCode=%s, debugMessage='%s')",
+                    result.responseCode, result.debugMessage
+                )
+                _state.update {
+                    it.copy(
+                        isPurchasing = false,
+                        isPreparingPurchase = false,
+                        purchaseError = "Google Play purchase failed (code ${result.responseCode}" +
+                            (if (result.debugMessage.isNotBlank()) ": ${result.debugMessage}" else "") +
+                            ")."
+                    )
+                }
             }
         }
     }
@@ -668,7 +785,7 @@ class PremiumRepository(
             val processed = processSinglePurchase(purchase)
             anyPremiumActive = anyPremiumActive || processed
         }
-        _state.update { it.copy(isPurchasing = false) }
+        _state.update { it.copy(isPurchasing = false, isPreparingPurchase = false) }
         if (!anyPremiumActive) recheckEntitlement()
     }
 
