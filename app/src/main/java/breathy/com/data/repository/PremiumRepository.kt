@@ -125,6 +125,15 @@ class PremiumRepository(
         /** Hard timeout for a single queryProductDetailsAsync round-trip. */
         private const val PRICE_QUERY_TIMEOUT_MS = 15_000L
 
+        /** v1.0.22 — watchdog for a connection attempt whose setup callback
+         *  never arrives (Play Store mid-update, binder death). After this
+         *  window the connection is re-driven instead of wedging forever. */
+        private const val CONNECT_WATCHDOG_MS = 20_000L
+
+        /** v1.0.22 — bounded wait for a purchase tap until the client is
+         *  connected AND the product details + offer token are loaded. */
+        private const val PURCHASE_READINESS_TIMEOUT_MS = 20_000L
+
         /**
          * Google Play licensing PUBLIC verification key for this app.
          * This is public verification material (from Play Console → Monetize
@@ -154,6 +163,20 @@ class PremiumRepository(
         val hasLaunchOffer: Boolean = false,
         /** True while a purchase flow is running. */
         val isPurchasing: Boolean = false,
+        /**
+         * True while the repository is preparing the purchase the user just
+         * requested (connecting to Google Play / finishing the product query)
+         * before the Play sheet can open. v1.0.22 — the Subscribe button is
+         * NEVER allowed to fail silently: this flag gives visible feedback
+         * ("connecting…") for the window where the sheet cannot open yet.
+         */
+        val isPreparingPurchase: Boolean = false,
+        /**
+         * v1.0.22 — why the Google Play purchase sheet did not open on the
+         * last Subscribe tap (null = no failure). Surfaced in the paywall UI
+         * next to the button; replaces the previous silent `return false`.
+         */
+        val purchaseError: String? = null,
         /** The active subscription document (Firestore mirror), when available. */
         val subscription: Subscription? = null,
         /** Detailed lifecycle state derived from the last verified Play query. */
@@ -188,6 +211,18 @@ class PremiumRepository(
     private var cachedOfferToken: String? = null
 
     private val isConnecting = AtomicBoolean(false)
+
+    /**
+     * v1.0.22 — generation token for BillingClient connection attempts.
+     * Incremented on every startConnection and on every setup callback so a
+     * stale watchdog can never re-drive a connection that has already
+     * resolved. This exists because the previous code could PERMANENTLY wedge
+     * the purchase flow: [onBillingServiceDisconnected] never reset
+     * [isConnecting], so every later connectAndRefresh became a silent no-op
+     * piggyback and the Subscribe button stopped opening Google Play forever
+     * (the reported bug).
+     */
+    private val connectionGeneration = java.util.concurrent.atomic.AtomicInteger(0)
 
     // ═════════════════════════════════════════════════════════════════
     //  Account binding — premium NEVER leaks between accounts
@@ -257,8 +292,30 @@ class PremiumRepository(
                 onConnected(onReady)
                 return
             }
+            // v1.0.22 — watchdog: if the setup callback never arrives (Play
+            // Store mid-update, binder death), re-drive the connection instead
+            // of leaving isConnecting stuck true forever.
+            val attemptGeneration = connectionGeneration.incrementAndGet()
+            scope.launch {
+                kotlinx.coroutines.delay(CONNECT_WATCHDOG_MS)
+                if (attemptGeneration == connectionGeneration.get() && isConnecting.get()) {
+                    Timber.w("PremiumRepo: connection watchdog fired — re-driving BillingClient connection")
+                    isConnecting.set(false)
+                    connectAttempts++
+                    if (connectAttempts >= MAX_CONNECT_RETRIES) {
+                        onPriceUnavailable(
+                            "Google Play Billing is not responding on this device. " +
+                                "Update the Google Play Store app and try again."
+                        )
+                    } else {
+                        connectAndRefresh(onReady)
+                    }
+                }
+            }
             client.startConnection(object : BillingClientStateListener {
                 override fun onBillingSetupFinished(result: BillingResult) {
+                    // Invalidate the watchdog — the connection attempt resolved.
+                    connectionGeneration.incrementAndGet()
                     isConnecting.set(false)
                     if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                         Timber.i("PremiumRepo: BillingClient connected")
@@ -285,6 +342,14 @@ class PremiumRepository(
 
                 override fun onBillingServiceDisconnected() {
                     Timber.w("PremiumRepo: Billing service disconnected")
+                    // v1.0.22 ROOT-CAUSE FIX for "Subscribe never opens Google
+                    // Play": this callback previously did NOT reset
+                    // [isConnecting], so every later connectAndRefresh became a
+                    // silent no-op piggyback and startConnection() could never
+                    // be called again — exactly the deadlock that made the
+                    // purchase button dead. Per Google's guidance the client
+                    // MUST be allowed to reconnect here.
+                    isConnecting.set(false)
                     scheduleRetry(onReady)
                 }
             })
@@ -475,7 +540,7 @@ class PremiumRepository(
             connectAndRefresh()
             return false
         }
-        _state.update { it.copy(isPurchasing = true) }
+        _state.update { it.copy(isPurchasing = true, purchaseError = null) }
 
         val productParams = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(details)
@@ -495,12 +560,81 @@ class PremiumRepository(
 
         val result = client.launchBillingFlow(activity, flowParams)
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
-            _state.update { it.copy(isPurchasing = false) }
+            _state.update {
+                it.copy(
+                    isPurchasing = false,
+                    // v1.0.22 — never silent: surface WHY the Play sheet did
+                    // not open (previously this only logged and the user saw
+                    // a dead button with no feedback).
+                    purchaseError = "Google Play could not start the purchase" +
+                        " (code ${result.responseCode}). Make sure you are signed" +
+                        " in to Google Play and try again."
+                )
+            }
             Timber.w("PremiumRepo: billing flow failed to launch: %s", result.debugMessage)
             return false
         }
         return true
     }
+
+    /**
+     * v1.0.22 — user-facing purchase entry point. The Subscribe button must
+     * NEVER fail silently: if Google Play Billing is not ready yet (cold
+     * start, Play Store busy, product query still in flight), this connects,
+     * WAITS (bounded) for client + product details + offer token, and then
+     * opens the Play purchase sheet automatically. The caller receives one
+     * result; every failure sets [PremiumState.purchaseError] so the paywall
+     * can show the exact reason instead of a dead button.
+     */
+    fun launchPurchaseWhenReady(activity: Activity, onResult: (Boolean) -> Unit) {
+        _state.update { it.copy(purchaseError = null) }
+        val client = billingClient
+        if (client != null && client.isReady &&
+            premiumProductDetails != null && cachedOfferToken != null
+        ) {
+            onResult(launchPurchase(activity))
+            return
+        }
+        // Not launchable yet — prepare visibly, then auto-open the sheet.
+        _state.update { it.copy(isPreparingPurchase = true) }
+        connectAttempts = 0 // explicit user action — grant a fresh bounded retry budget
+        connectAndRefresh {
+            scope.launch {
+                val ready = waitForPurchaseReadiness()
+                _state.update { it.copy(isPreparingPurchase = false) }
+                if (ready) {
+                    onResult(launchPurchase(activity))
+                } else {
+                    Timber.w("PremiumRepo: purchase abandoned — billing not ready after wait")
+                    _state.update {
+                        it.copy(
+                            isPreparingPurchase = false,
+                            purchaseError = "Could not reach Google Play Billing." +
+                                " Check your internet connection, make sure the Google" +
+                                " Play Store app is up to date, then try again."
+                        )
+                    }
+                    onResult(false)
+                }
+            }
+        }
+    }
+
+    /**
+     * v1.0.22 — bounded wait until the client is connected AND the product
+     * details + offer token are loaded (the exact prerequisites for
+     * [launchPurchase] to actually open the Play sheet).
+     */
+    private suspend fun waitForPurchaseReadiness(): Boolean =
+        withTimeoutOrNull(PURCHASE_READINESS_TIMEOUT_MS) {
+            while (billingClient?.isReady != true ||
+                premiumProductDetails == null ||
+                cachedOfferToken == null
+            ) {
+                kotlinx.coroutines.delay(250)
+            }
+            true
+        } ?: false
 
     /** PurchasesUpdatedListener — entry point for every completed flow. */
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {

@@ -1,6 +1,8 @@
 package breathy.com.ui.subscription
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,12 +88,15 @@ class SubscriptionViewModel(
     /** v1.0.17 — manual retry for the Play price (delegates to the repository). */
     fun refreshPricing() = premiumRepository.refreshPricing()
 
-    /** Launch the real Google Play purchase flow. */
+    /** Launch the real Google Play purchase flow (v1.0.22 — never silent:
+     *  connects + waits bounded when Billing is not ready, auto-opens the
+     *  Play sheet when prepared, and every failure lands in
+     *  premiumState.purchaseError for the paywall to display). */
     fun purchase(activity: Activity) {
-        val started = premiumRepository.launchPurchase(activity)
-        if (!started) {
-            Timber.w("SubscriptionScreen: billing flow could not start — reconnecting")
-            premiumRepository.connectAndRefresh()
+        premiumRepository.launchPurchaseWhenReady(activity) { started ->
+            if (!started) {
+                Timber.w("SubscriptionScreen: purchase flow could not start — reason shown via purchaseError")
+            }
         }
     }
 
@@ -119,7 +124,16 @@ fun SubscriptionScreen(
     }
 ) {
     val premiumState by viewModel.premiumState.collectAsStateWithLifecycle()
-    val activity = LocalContext.current as? Activity
+    // v1.0.22 — resolve the Activity robustly: LocalContext can be a
+    // ContextThemeWrapper/ContextWrapper depending on the host, and the old
+    // `as? Activity` cast would silently swallow the Subscribe tap (the
+    // button did nothing at all). Unwrap the wrapper chain instead.
+    val appContext = LocalContext.current
+    val activity = remember(appContext) {
+        var ctx: Context? = appContext
+        while (ctx is ContextWrapper && ctx !is Activity) ctx = ctx.baseContext
+        ctx as? Activity
+    }
     var restoreMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(premiumState.isPremium) {
@@ -531,12 +545,16 @@ fun SubscriptionScreen(
                 // it launches the real Google Play subscription flow
                 // (launchBillingFlow) and reconnects if billing is not
                 // ready — never a mock purchase.
+                // v1.0.22 — the tap can no longer do nothing: if Billing is
+                // not ready the repository connects + waits (bounded) and
+                // then auto-opens the Play sheet; every failure now shows
+                // [premiumState.purchaseError] right below this button.
                 Button(
                     onClick = {
                         restoreMessage = null
                         activity?.let { viewModel.purchase(it) }
                     },
-                    enabled = !premiumState.isPurchasing,
+                    enabled = !premiumState.isPurchasing && !premiumState.isPreparingPurchase,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
@@ -546,7 +564,7 @@ fun SubscriptionScreen(
                         contentColor = BreathyPalette.warmWhite
                     )
                 ) {
-                    if (premiumState.isPurchasing) {
+                    if (premiumState.isPurchasing || premiumState.isPreparingPurchase) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(22.dp),
                             strokeWidth = 2.dp,
@@ -558,6 +576,18 @@ fun SubscriptionScreen(
                             fontWeight = FontWeight.Bold
                         )
                     }
+                }
+
+                // v1.0.22 — the Subscribe tap is NEVER silent anymore: if the
+                // Play sheet could not open, the exact reason appears here.
+                premiumState.purchaseError?.let { error ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
                 }
 
                 Spacer(Modifier.height(10.dp))
