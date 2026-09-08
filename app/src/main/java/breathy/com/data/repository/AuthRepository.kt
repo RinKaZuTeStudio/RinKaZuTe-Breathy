@@ -300,6 +300,32 @@ class AuthRepository(
     /** Return the currently signed-in user synchronously. */
     fun getCurrentUser(): FirebaseUser? = auth.currentUser
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  v1.0.26 — account-verification helpers
+    //  ("login to the same account asks me to fill the info as a new user")
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Provider IDs currently attached to the signed-in Firebase account
+     * (e.g. "password", "google.com"); "firebase" pseudo-provider excluded.
+     */
+    fun currentUserProviderIds(): List<String> =
+        auth.currentUser?.providerData
+            ?.mapNotNull { it.providerId }
+            ?.filter { it != "firebase" }
+            .orEmpty()
+
+    /**
+     * Look up which sign-in methods are registered for an email address
+     * (Identity Toolkit lookup — independent of Firestore rules and of which
+     * uid the caller resolved to). Empty list = no account for the email
+     * (or the lookup failed/timed out — callers must treat empty as unknown).
+     */
+    suspend fun fetchSignInMethods(email: String): List<String> =
+        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+            auth.fetchSignInMethodsForEmail(email).await().signInMethods.orEmpty()
+        } ?: emptyList()
+
     /**
      * Sign the user out.
      * Clears the FCM token from Firestore first to prevent stale notifications.

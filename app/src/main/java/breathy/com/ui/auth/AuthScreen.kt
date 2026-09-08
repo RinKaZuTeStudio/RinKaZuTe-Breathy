@@ -378,40 +378,80 @@ class AuthViewModel(
 
         viewModelScope.launch {
             try {
-                // Try SERVER source first, fall back to CACHE if rules deny access.
-                // Use a timeout so the user isn't stuck loading forever.
-                var document = withTimeoutOrNull(8_000L) {
-                    try {
-                        firestore.collection("users").document(userId)
-                            .get(com.google.firebase.firestore.Source.SERVER)
-                            .await()
-                    } catch (e: Exception) {
-                        Timber.w(e, "$TAG: Server read failed for uid=%s — trying cache", userId)
+                // v1.0.26 — BOUNDED VERIFICATION with retries. The old code made
+                // ONE read round (server → cache, 8s total) and, on a fresh
+                // install where the local onboarding flag is gone (uninstall →
+                // reinstall, or installing the release build over a
+                // differently-signed build — Android wipes app data), a single
+                // failed/timed-out read routed an EXISTING account into
+                // onboarding: "login to the same account asks me to fill the
+                // info as a new user". Now: up to 3 attempts (server → cache
+                // each, 1.5s backoff). A document that was never READ can never
+                // route to onboarding — an inconclusive verification leaves the
+                // user on the auth screen with a retryable error instead.
+                var document: com.google.firebase.firestore.DocumentSnapshot? = null
+                for (attempt in 1..3) {
+                    document = withTimeoutOrNull(8_000L) {
                         try {
                             firestore.collection("users").document(userId)
-                                .get(com.google.firebase.firestore.Source.CACHE)
+                                .get(com.google.firebase.firestore.Source.SERVER)
                                 .await()
-                        } catch (cacheEx: Exception) {
-                            Timber.w(cacheEx, "$TAG: Cache read also failed for uid=%s", userId)
-                            null
+                        } catch (e: Exception) {
+                            Timber.w(e, "$TAG: Server read failed for uid=%s (attempt %d/3) — trying cache", userId, attempt)
+                            try {
+                                firestore.collection("users").document(userId)
+                                    .get(com.google.firebase.firestore.Source.CACHE)
+                                    .await()
+                            } catch (cacheEx: Exception) {
+                                Timber.w(cacheEx, "$TAG: Cache read also failed for uid=%s (attempt %d/3)", userId, attempt)
+                                null
+                            }
                         }
                     }
+                    if (document != null) break
+                    Timber.w("$TAG: profile verification attempt %d/3 returned nothing for uid=%s", attempt, userId)
+                    if (attempt < 3) kotlinx.coroutines.delay(1_500L)
                 }
 
                 _uiState.update { it.copy(isLoading = false) }
 
-                // v1.0.9 FIX — a TIMEOUT (or total read failure) must NEVER be
-                // treated as "new account". withTimeoutOrNull(8s) returns NULL
-                // without throwing, which used to fall straight into the
-                // "needs onboarding" branch below and re-onboarded an account
-                // that is fully registered on the server. From this version,
-                // a missing document behaves exactly like the catch path:
-                // any local onboarding state (flag OR pending write) wins.
-                if (document == null || !document.exists()) {
+                // v1.0.9 FIX (kept) — any local onboarding state (flag OR pending
+                // write) always wins over a missing/unreadable document.
+                // v1.0.26 FIX — INCONCLUSIVE verification (all read attempts
+                // failed: document == null) must NEVER route to onboarding for
+                // accounts WITHOUT local state either. Previously the fall-through
+                // `else` branch treated a failed verification exactly like a
+                // verified-empty account and re-onboarded a registered user.
+                // The onboarding route below now runs ONLY when a document was
+                // actually READ — i.e. the account is PROVEN missing or sparse.
+                if (document == null) {
                     val hasLocal = onboardingLocalStore.isCompleted(userId) ||
                             onboardingLocalStore.readPendingProfile(userId) != null
                     if (hasLocal) {
-                        Timber.w("$TAG: uid=%s server read failed/timed out but LOCAL onboarding state exists — going Home", userId)
+                        Timber.w("$TAG: uid=%s verification failed after 3 attempts but LOCAL onboarding state exists — going Home", userId)
+                        retryPendingProfileUpload(userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                        }
+                        return@launch
+                    }
+                    Timber.e("$TAG: uid=%s account verification INCONCLUSIVE after 3 attempts — staying on auth with a retryable error (never re-onboarding on a failed check)", userId)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = s(
+                                "We couldn't verify your account. Check your internet connection and sign in again — your profile and progress will be restored.",
+                                "تعذّر التحقق من حسابك. تحقق من اتصال الإنترنت وسجّل الدخول مرة أخرى — سيتم استعادة ملفك الشخصي وتقدّمك."
+                            )
+                        )
+                    }
+                    return@launch
+                }
+                if (!document.exists()) {
+                    val hasLocal = onboardingLocalStore.isCompleted(userId) ||
+                            onboardingLocalStore.readPendingProfile(userId) != null
+                    if (hasLocal) {
+                        Timber.w("$TAG: uid=%s doc missing on server but LOCAL onboarding state exists — going Home", userId)
                         retryPendingProfileUpload(userId)
                         _uiState.update {
                             it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
@@ -467,8 +507,18 @@ class AuthViewModel(
                         }
                     }
 
-                    // ── Truly new / incomplete account ─────────────────────
+                    // ── Verified new / incomplete account ───────────────
                     else -> {
+                        // v1.0.26 — same-email-different-provider guard: if this
+                        // email is ALSO registered with another sign-in method
+                        // (e.g. the user signed up with email+password and now
+                        // tapped Google), this uid is a brand-new account and
+                        // onboarding it would create a duplicate profile and
+                        // orphan the original one. Tell the user to sign in with
+                        // the original method instead of navigating.
+                        if (guardDuplicateProviderBeforeOnboarding()) {
+                            return@launch
+                        }
                         Timber.i("$TAG: User uid=%s needs onboarding — navigating to Onboarding", userId)
                         _uiState.update {
                             it.copy(navigationEvent = AuthNavigationEvent.NavigateToOnboarding)
@@ -490,6 +540,52 @@ class AuthViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * v1.0.26 — SAME-EMAIL-DIFFERENT-PROVIDER GUARD. Runs before the verified
+     * "needs onboarding" navigation. If the signed-in user's email is ALSO
+     * registered with a sign-in method the current account does NOT use
+     * (e.g. the user originally signed up with email+password and just tapped
+     * Google), the current uid is a brand-new Firebase account and onboarding
+     * it would silently create a duplicate profile and orphan the original
+     * one ("login to the same account asks me to fill the info as a new
+     * user"). In that case an actionable error is shown and navigation is
+     * suppressed — the user signs in with the original method and their real
+     * profile (verified complete in Firestore) routes them Home.
+     *
+     * @return true when a guard message was shown (caller must NOT navigate).
+     */
+    private suspend fun guardDuplicateProviderBeforeOnboarding(): Boolean {
+        val firebaseUser = authRepository.getCurrentUser() ?: return false
+        val email = firebaseUser.email ?: return false
+        val currentProviders = authRepository.currentUserProviderIds()
+        val registered = authRepository.fetchSignInMethods(email)
+        if (registered.isEmpty()) return false // unknown or no account — don't block
+        val others = registered.filter { it !in currentProviders }
+        if (others.isEmpty()) return false // only the current method — genuinely this account
+        val otherLabel = others.map { providerLabel(it) }.distinct().joinToString(" / ")
+        Timber.w(
+            "$TAG: uid=%s verified-incomplete but email=%s also registered via %s (current=%s) — suppressing onboarding, asking to sign in with the original method",
+            firebaseUser.uid, email, others, currentProviders
+        )
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                errorMessage = s(
+                    "An account with this email already exists — sign in with $otherLabel to restore your previous profile and progress.",
+                    "يوجد حساب بهذا البريد الإلكتروني بالفعل — سجّل الدخول باستخدام $otherLabel لاستعادة ملفك الشخصي وتقدّمك السابق."
+                )
+            )
+        }
+        return true
+    }
+
+    /** Human-readable label for a Firebase Auth provider id. */
+    private fun providerLabel(id: String): String = when (id) {
+        "password" -> s("Email & Password", "البريد وكلمة المرور")
+        "google.com" -> s("Google", "‏Google")
+        else -> id
     }
 
     /**
