@@ -228,6 +228,16 @@ class PremiumRepository(
     private var billingHardFailure: Boolean = false
 
     /**
+     * v1.0.25 — the LAST concrete verdict Google Play returned for a
+     * connection attempt ("code X: debugMessage"), or null when Play never
+     * responded at all (pure disconnects). Appended to the user-facing
+     * exhaustion messages so the REAL Play reason is visible on screen —
+     * not only in logcat. Cleared on every fresh attempt and on success.
+     */
+    @Volatile
+    private var lastBillingFailureDetail: String? = null
+
+    /**
      * v1.0.22 — generation token for BillingClient connection attempts.
      * Incremented on every startConnection and on every setup callback so a
      * stale watchdog can never re-drive a connection that has already
@@ -319,9 +329,11 @@ class PremiumRepository(
                     connectAttempts++
                     if (connectAttempts >= MAX_CONNECT_RETRIES) {
                         billingHardFailure = true // v1.0.24 — release pending purchase waits
+                        val detail = lastBillingFailureDetail // v1.0.25 — show the real Play verdict
                         onPriceUnavailable(
-                            "Google Play Billing is not responding on this device. " +
-                                "Update the Google Play Store app and try again."
+                            "Google Play Billing is not responding on this device" +
+                                (if (detail != null) " (Play said: $detail)." else ".") +
+                                " Update the Google Play Store app and try again."
                         )
                     } else {
                         connectAndRefresh(onReady)
@@ -340,20 +352,31 @@ class PremiumRepository(
                             result.responseCode, result.debugMessage
                         )
                         billingHardFailure = false
+                        lastBillingFailureDetail = null // v1.0.25 — success clears the stale verdict
                         onConnected(onReady)
                     } else {
                         Timber.w(
                             "PremiumRepo: Billing setup FAILED (responseCode=%s, debugMessage='%s')",
                             result.responseCode, result.debugMessage
                         )
+                        // v1.0.25 — remember the concrete Play verdict so the
+                        // exhaustion error can show it on screen. This is where
+                        // e.g. DEVELOPER_ERROR (sideloaded build not matching the
+                        // Play Console entry) or BILLING_UNAVAILABLE (Play Store
+                        // outdated) become user-visible instead of logcat-only.
+                        lastBillingFailureDetail =
+                            "code ${result.responseCode}" +
+                            (if (result.debugMessage.isNotBlank()) ": ${result.debugMessage}" else "")
                         connectAttempts++
                         if (connectAttempts >= MAX_CONNECT_RETRIES) {
                             // v1.0.19 — Play Billing itself is unavailable on this
                             // device; never leave the UI on "Loading price…".
                             billingHardFailure = true // v1.0.24 — release pending purchase waits
+                            val detail = lastBillingFailureDetail // v1.0.25 — show the real Play verdict
                             onPriceUnavailable(
-                                "Google Play Billing is not available on this device. " +
-                                    "Update the Google Play Store app and try again."
+                                "Google Play Billing is not available on this device" +
+                                    (if (detail != null) " (Play said: $detail)." else ".") +
+                                    " Update the Google Play Store app and try again."
                             )
                         } else {
                             _state.update { it.copy(isChecking = false) }
@@ -372,6 +395,32 @@ class PremiumRepository(
                     // purchase button dead. Per Google's guidance the client
                     // MUST be allowed to reconnect here.
                     isConnecting.set(false)
+                    // v1.0.25 — disconnects now consume the SAME bounded retry
+                    // budget as every other connection failure. Previously a
+                    // device that could not reach the Play Billing service at
+                    // all (no internet, Play Store updating/disabled, ad-blocking
+                    // Private DNS or VPN, no GMS) looped here FOREVER:
+                    // connectAttempts never grew, no error was ever set, and a
+                    // pending purchase tap rode the full 30s readiness window
+                    // into the generic "Could not reach Google Play Billing"
+                    // message with zero diagnostics. Now the budget runs out
+                    // (~10s) into billingHardFailure + a specific reason.
+                    connectAttempts++
+                    if (connectAttempts >= MAX_CONNECT_RETRIES) {
+                        Timber.w(
+                            "PremiumRepo: Billing connection dropped %d times — declaring Play Billing unreachable",
+                            connectAttempts
+                        )
+                        billingHardFailure = true
+                        val detail = lastBillingFailureDetail
+                        onPriceUnavailable(
+                            "Google Play Billing could not stay connected to the Play Store app" +
+                                (if (detail != null) " (Play said: $detail)." else ".") +
+                                " Check your internet connection, make sure the Google" +
+                                " Play Store app is up to date, then try again."
+                        )
+                        return
+                    }
                     scheduleRetry(onReady)
                 }
             })
@@ -417,6 +466,9 @@ class PremiumRepository(
      */
     fun refreshPricing() {
         priceQueryAttempts = 0
+        connectAttempts = 0 // v1.0.25 — a manual retry earns a full bounded budget
+        billingHardFailure = false // v1.0.25 — same fresh-start rule as a purchase tap
+        lastBillingFailureDetail = null // v1.0.25 — collect a fresh verdict
         _state.update { it.copy(priceError = null, isChecking = true) }
         if (billingClient?.isReady == true) queryProductDetails() else connectAndRefresh()
     }
@@ -567,6 +619,7 @@ class PremiumRepository(
                     localizedPrice = price ?: it.localizedPrice,
                     currencyCode = currency ?: it.currencyCode,
                     hasLaunchOffer = launchOffer != null,
+                    priceError = null, // v1.0.25 — a successful query clears a stale failure message
                     isChecking = false
                 )
             }
@@ -687,6 +740,7 @@ class PremiumRepository(
         _state.update { it.copy(isPreparingPurchase = true) }
         connectAttempts = 0 // explicit user action — grant a fresh bounded retry budget
         billingHardFailure = false // v1.0.24 — the user's tap deserves a fresh attempt
+        lastBillingFailureDetail = null // v1.0.25 — the new attempt collects its own verdict
         connectAndRefresh() // v1.0.24 — fire-and-forget; the wait below owns the outcome
         scope.launch {
             val ready = waitForPurchaseReadiness()
