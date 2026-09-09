@@ -320,11 +320,26 @@ class AuthRepository(
      * (Identity Toolkit lookup — independent of Firestore rules and of which
      * uid the caller resolved to). Empty list = no account for the email
      * (or the lookup failed/timed out — callers must treat empty as unknown).
+     *
+     * v1.0.27 — every failure mode returns empty ("unknown"). withTimeoutOrNull
+     * only converts TIMEOUTS: a non-timeout exception (FirebaseNetworkException
+     * on a flaky connection, IllegalArgumentException on a malformed email)
+     * used to propagate out of this function, escape the duplicate-provider
+     * guard in AuthViewModel, land in the legacy outer catch of
+     * checkUserProfileAndNavigate and — for an account without local state —
+     * route an EXISTING user into onboarding. A failed lookup is "unknown",
+     * never a verdict.
      */
     suspend fun fetchSignInMethods(email: String): List<String> =
-        withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
-            auth.fetchSignInMethodsForEmail(email).await().signInMethods.orEmpty()
-        } ?: emptyList()
+        try {
+            withTimeoutOrNull(NETWORK_TIMEOUT_MS) {
+                auth.fetchSignInMethodsForEmail(email).await().signInMethods.orEmpty()
+            } ?: emptyList()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Timber.w(e, "AuthRepository: fetchSignInMethods(%s) failed — treating as unknown", email)
+            emptyList()
+        }
 
     /**
      * Sign the user out.

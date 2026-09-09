@@ -526,17 +526,38 @@ class AuthViewModel(
                     }
                 }
             } catch (e: Exception) {
-                // Firestore read failed entirely (offline, no cache). A user
-                // with ANY local onboarding state must NEVER be re-onboarded.
+                // v1.0.27 — this catch path is INCONCLUSIVE verification too.
+                // It is reachable when something between the profile read and
+                // the routing decision throws: disk I/O on the local flag, a
+                // failure escaping the duplicate-provider lookup, etc. The
+                // legacy v1.0.8 fall-through sent users WITHOUT local state to
+                // NavigateToOnboarding from here — re-classifying an existing
+                // account as new on an unexpected error, exactly the reported
+                // "login to the same account asks me to fill the info" bug.
+                // Rules now match the v1.0.26 guarantee everywhere:
+                //   • ANY local onboarding state → Home (v1.0.9, kept).
+                //   • No local state → stay on the auth screen with a
+                //     retryable error. NEVER route to Onboarding from a
+                //     failure — only a document that was actually READ and
+                //     verified missing/sparse may do that.
                 val hasLocal = onboardingLocalStore.isCompleted(userId) ||
                         onboardingLocalStore.readPendingProfile(userId) != null
-                Timber.e(e, "$TAG: Profile read failed for uid=%s — local state=%s", userId, hasLocal)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        navigationEvent = if (hasLocal) AuthNavigationEvent.NavigateToHome
-                        else AuthNavigationEvent.NavigateToOnboarding
-                    )
+                Timber.e(e, "$TAG: Profile verification threw for uid=%s — local state=%s", userId, hasLocal)
+                if (hasLocal) {
+                    retryPendingProfileUpload(userId)
+                    _uiState.update {
+                        it.copy(isLoading = false, navigationEvent = AuthNavigationEvent.NavigateToHome)
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = s(
+                                "We couldn't verify your account. Check your internet connection and sign in again — your profile and progress will be restored.",
+                                "تعذّر التحقق من حسابك. تحقق من اتصال الإنترنت وسجّل الدخول مرة أخرى — سيتم استعادة ملفك الشخصي وتقدّمك."
+                            )
+                        )
+                    }
                 }
             }
         }
