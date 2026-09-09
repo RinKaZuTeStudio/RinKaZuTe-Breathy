@@ -158,6 +158,17 @@ class AuthViewModel(
     /** Tracks whether we've already auto-navigated to prevent re-triggering. */
     private var hasAutoNavigated = false
 
+    /**
+     * v1.0.28 — uid whose profile verification is currently in flight, or
+     * null. The auth-state collector AND the manual sign-in onSuccess both
+     * call [checkUserProfileAndNavigate] within milliseconds of each other
+     * (signing in makes currentUser emit AND resolves the signInWithCredential
+     * future). Without a guard, TWO concurrent verifications race their
+     * _uiState writes — one call's Home/error could overwrite the other's.
+     * The first call owns the decision; duplicates are no-ops.
+     */
+    private var verificationInFlight: String? = null
+
     init {
         // Auto-navigate already-authenticated users on app reopen.
         // This is the fix for the "instant crash on reopen" — previously,
@@ -365,8 +376,16 @@ class AuthViewModel(
      *     Only a truly sparse account with NO local state goes to Onboarding.
      */
     private fun checkUserProfileAndNavigate(userId: String) {
+        // v1.0.28 — one verification per uid at a time (see verificationInFlight).
+        if (verificationInFlight == userId) {
+            Timber.i("$TAG: uid=%s verification already in flight — ignoring duplicate trigger", userId)
+            return
+        }
+        verificationInFlight = userId
+
         // ── Layer 1: local completion flag — instant, offline-proof ────────
         if (onboardingLocalStore.isCompleted(userId)) {
+            verificationInFlight = null
             Timber.i("$TAG: uid=%s has LOCAL onboarding flag — navigating to Home (no network needed)", userId)
             _uiState.update { it.copy(isLoading = false) }
             retryPendingProfileUpload(userId)
@@ -390,6 +409,7 @@ class AuthViewModel(
                 // route to onboarding — an inconclusive verification leaves the
                 // user on the auth screen with a retryable error instead.
                 var document: com.google.firebase.firestore.DocumentSnapshot? = null
+                var lastError: Exception? = null
                 for (attempt in 1..3) {
                     document = withTimeoutOrNull(8_000L) {
                         try {
@@ -397,12 +417,14 @@ class AuthViewModel(
                                 .get(com.google.firebase.firestore.Source.SERVER)
                                 .await()
                         } catch (e: Exception) {
+                            lastError = e
                             Timber.w(e, "$TAG: Server read failed for uid=%s (attempt %d/3) — trying cache", userId, attempt)
                             try {
                                 firestore.collection("users").document(userId)
                                     .get(com.google.firebase.firestore.Source.CACHE)
                                     .await()
                             } catch (cacheEx: Exception) {
+                                lastError = cacheEx
                                 Timber.w(cacheEx, "$TAG: Cache read also failed for uid=%s (attempt %d/3)", userId, attempt)
                                 null
                             }
@@ -435,14 +457,15 @@ class AuthViewModel(
                         }
                         return@launch
                     }
-                    Timber.e("$TAG: uid=%s account verification INCONCLUSIVE after 3 attempts — staying on auth with a retryable error (never re-onboarding on a failed check)", userId)
+                    val hint = verificationErrorHint(lastError)
+                    Timber.e("$TAG: uid=%s account verification INCONCLUSIVE after 3 attempts — staying on auth with a retryable error (never re-onboarding on a failed check)%s", userId, hint)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             errorMessage = s(
                                 "We couldn't verify your account. Check your internet connection and sign in again — your profile and progress will be restored.",
                                 "تعذّر التحقق من حسابك. تحقق من اتصال الإنترنت وسجّل الدخول مرة أخرى — سيتم استعادة ملفك الشخصي وتقدّمك."
-                            )
+                            ) + hint
                         )
                     }
                     return@launch
@@ -555,12 +578,31 @@ class AuthViewModel(
                             errorMessage = s(
                                 "We couldn't verify your account. Check your internet connection and sign in again — your profile and progress will be restored.",
                                 "تعذّر التحقق من حسابك. تحقق من اتصال الإنترنت وسجّل الدخول مرة أخرى — سيتم استعادة ملفك الشخصي وتقدّمك."
-                            )
+                            ) + verificationErrorHint(e)
                         )
                     }
                 }
+            } finally {
+                // v1.0.28 — the decision is complete; a later sign-in attempt
+                // (retry) must be allowed to start a fresh verification.
+                verificationInFlight = null
             }
         }
+    }
+
+    /**
+     * v1.0.28 — short diagnostic suffix for the inconclusive-verification
+     * error carrying the REAL Firestore failure code on screen (same
+     * philosophy as v1.0.25's billing "Play said:" verdicts): a rules problem
+     * (PERMISSION_DENIED), an outage (UNAVAILABLE) or a timeout becomes
+     * diagnosable from a screenshot instead of hiding behind a generic
+     * connectivity sentence.
+     */
+    private fun verificationErrorHint(e: Exception?): String = when {
+        e == null -> " (error: TIMEOUT)"
+        e is com.google.firebase.firestore.FirebaseFirestoreException ->
+            " (error: ${e.code.name})" // Code is a Java enum — name() = "PERMISSION_DENIED" etc.
+        else -> " (error: ${e.javaClass.simpleName})"
     }
 
     /**
