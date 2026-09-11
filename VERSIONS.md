@@ -1,5 +1,52 @@
 # Breathy — Version History
 
+## v1.0.29 (versionCode 36) — 2026-09-11
+
+### Fixed
+- **BOTTOM-NAV STRIP — LAST TWO SCREENS**: `goldHistory` and `payoutSetup` are
+  bottom-bar routes whose nested Scaffolds still re-applied the system
+  navigation-bar insets (the exact v1.0.12 root cause already fixed on the five
+  main tabs). Both now set `contentWindowInsets = WindowInsets(0,0,0,0)` — the
+  empty strip stuck above the bottom navigation bar is gone on Gold History and
+  Payout Setup.
+- **PAYWALL PRICE**: the Subscribe card now shows the REAL localized price from
+  Google Play once `queryProductDetails` returns it (`localizedPrice ?: "$0.99"`).
+  $0.99 remains the always-visible display fallback — the paywall never waits
+  on Play to render.
+- **DAY30 CENTERED (asset-level, per spec)**: measurement showed the v1.0.14
+  replacement artwork's medallion sits ~150px below canvas center (raw, never
+  re-normalized). `pic_30days.jpg` content shifted up 145px at source (no
+  scaling — original composition preserved; vacated strip filled with the same
+  seamless edge-clamp rule as the v1.0.13 normalization). The medallion now
+  centers at 256×256-equivalent inside the 512×512 canvas and in every avatar.
+
+### Verified unchanged (spec audit — working systems left untouched)
+- Existing-account login protection (v1.0.26/27/28 flow re-inspected line by
+  line: bounded 3× verification, INCONCLUSIVE never re-onboards, single
+  NavigateToOnboarding site behind the duplicate-provider guard,
+  verificationInFlight guard).
+- Play Billing flow (v1.0.22–25: generation tokens, watchdog, bounded
+  readiness, launch-offer → base-plan fallback, USER_CANCELED reset,
+  acknowledgement, restore, obfuscatedAccountId account binding).
+- Premium per account (entitlementUid, login/logout/switch re-resolution,
+  ACTIVE / CANCELED_BUT_STILL_ENTITLED / EXPIRED / REVOKED / PENDING / PAUSED).
+- AdMob production IDs unchanged and verified in DEX + merged manifest
+  (app ~1020887836; gold /5304737452, picture /1296220001,
+  interstitial /6356974992, app-open /1257681230); two dedicated rewarded
+  instances; grants only in OnUserEarnedReward with per-show dedup.
+- Leaderboard real-users-only + podium + YOUR POSITION panel + server-side
+  member count; Firestore rules v8; pending-profile queue (cleared only after
+  a verified server write); avatar constants (512/512/420/0.8203125), frame
+  in front of photo, true-aperture clip, picture-card specs (84dp Crop 14dp,
+  card 16dp/8dp/1dp/2dp), CravingFAB 48dp bottom-end.
+
+### Artifacts
+- breathy-v1.0.29.apk (118,891,191 B, sha256 309c00db…)
+- breathy-v1.0.29.aab (69,838,527 B, sha256 99824675…)
+- Signing unchanged: release.keystore, cert SHA-1 fc79b670d48fccead5e1859a0c1e5cb9e31b1be8
+- aapt2: versionCode='36' versionName='1.0.29' targetSdkVersion:'36'
+
+
 ## v1.0.8 (versionCode 9) — 2026-09-04
 
 ### Fixed

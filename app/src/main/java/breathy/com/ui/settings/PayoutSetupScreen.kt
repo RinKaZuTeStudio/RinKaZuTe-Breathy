@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -121,6 +122,12 @@ fun PayoutSetupScreen(
     val canSave = emailValid && !isSaving && !isLoading && email.trim() != loadedEmail
 
     Scaffold(
+        // v1.0.29 — nested-Scaffold inset fix (same root cause as the v1.0.12
+        // fix on the five main tabs): payoutSetup keeps the bottom bar visible,
+        // so the nested Scaffold must not re-apply the system navigation-bar
+        // insets — they used to render as an empty strip stuck above the
+        // bottom navigation bar on this screen.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {

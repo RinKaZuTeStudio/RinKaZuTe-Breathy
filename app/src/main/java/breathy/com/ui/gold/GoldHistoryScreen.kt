@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -158,6 +159,13 @@ fun GoldHistoryScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        // v1.0.29 — nested-Scaffold inset fix (same root cause as the v1.0.12
+        // fix on Home/Community/Leaderboard/Events/Profile): goldHistory is a
+        // bottom-bar route, so the main NavGraph Scaffold already reserves the
+        // system navigation-bar area. Without this, the nested Scaffold
+        // re-applied those insets as content padding — an unwanted empty strip
+        // stuck above the bottom navigation bar on the Gold History screen.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = WarmWhite,
         topBar = {
             CenterAlignedTopAppBar(

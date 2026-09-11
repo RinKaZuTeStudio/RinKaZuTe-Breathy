@@ -496,14 +496,15 @@ fun SubscriptionScreen(
                             Spacer(Modifier.height(12.dp))
                         }
 
-                        // v1.0.20 — the subscription price is displayed as
-                        // $0.99, clearly and at all times (UI-only change).
-                        // The REAL charge is still set by Google Play for the
-                        // breathy_premium_monthly / monthly-premium product —
-                        // purchase, entitlement and verification logic below
-                        // are untouched.
+                        // v1.0.20 — $0.99 is always visible as the display
+                        // price (the paywall never waits for Google Play).
+                        // v1.0.29 — once the REAL localized price arrives from
+                        // Google Play (queryProductDetails), it REPLACES the
+                        // display value; until then $0.99 stays on screen. The
+                        // actual charge remains whatever Play charges for
+                        // breathy_premium_monthly / monthly-premium.
                         Text(
-                            text = "$0.99",
+                            text = premiumState.localizedPrice ?: "$0.99",
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = BreathyPalette.darkBotanical
