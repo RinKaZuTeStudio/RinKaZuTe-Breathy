@@ -193,8 +193,10 @@ class LeaderboardRepository(
 
             val xp = (doc.getLong(xpField) ?: 0L).toInt()
 
-            if (xp <= 0) continue
-
+            // Real accounts with zero XP are valid leaderboard members. They
+            // remain rankable; no fake score is injected. This also ensures a
+            // newly created account is present immediately after its profile
+            // has been created in publicProfiles.
             val nickname = doc.getString("nickname")
                 ?.takeIf { it.isNotBlank() }
                 ?: continue
@@ -202,7 +204,7 @@ class LeaderboardRepository(
             entries += ArchivedEntry(
                 uid = doc.id,
                 nickname = nickname,
-                xp = xp,
+                xp = xp.coerceAtLeast(0),
                 rank = entries.size + 1
             )
 
