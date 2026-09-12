@@ -15,23 +15,10 @@ import timber.log.Timber
  * Local, disk-persistent store for onboarding completion state and pending
  * profile writes.
  *
- * WHY THIS EXISTS (v1.0.8 bug): onboarding saved the profile to Firestore
- * "best-effort" and navigated on. If the write failed (slow network, rules
- * propagation) the background retry lived in the ViewModel scope — closing
- * the app killed it, the profile stayed sparse in Firestore, and the next
- * launch routed the SAME account back into onboarding ("asks me to put the
- * create account information again"). Persistence now works in two layers:
- *
- *  1. [markCompleted] — a per-uid flag written the moment onboarding
- *     finishes. AuthViewModel treats it as the fast, offline-proof routing
- *     signal: flag present → straight to Home, never re-onboard.
- *  2. [savePendingProfile] — the FULL onboarding payload (user + public
- *     profile fields) persisted locally whenever the remote write fails.
- *     Every subsequent launch retries the upload in the background until it
- *     lands, then clears the pending copy.
- *
- * Data is stored as primitive JSON in SharedPreferences — no timestamps or
- * Firebase types, so it survives process death and restarts safely.
+ * v1.0.30 FIX — buildFirestoreMaps() no longer uses quitTimestamp as
+ * createdAt. createdAt is now Timestamp.now() (the actual account creation
+ * time is enforced by Firestore's existing value via merge, but if the doc
+ * doesn't exist the field still represents "now", not the quit date).
  */
 class OnboardingLocalStore(context: Context) {
 
@@ -43,8 +30,6 @@ class OnboardingLocalStore(context: Context) {
         private const val KEY_PENDING_PREFIX = "pending_profile_"
     }
 
-    // ── Completion flag ───────────────────────────────────────────────────
-
     fun markCompleted(uid: String) {
         prefs.edit().putBoolean(KEY_COMPLETED_PREFIX + uid, true).apply()
     }
@@ -52,12 +37,6 @@ class OnboardingLocalStore(context: Context) {
     fun isCompleted(uid: String): Boolean =
         uid.isNotBlank() && prefs.getBoolean(KEY_COMPLETED_PREFIX + uid, false)
 
-    // ── Pending profile (remote write retry queue) ────────────────────────
-
-    /**
-     * The full onboarding payload, kept locally until Firestore accepts it.
-     * Only primitive types — JSON-safe by construction.
-     */
     data class PendingProfile(
         val email: String,
         val nickname: String,
@@ -112,15 +91,17 @@ class OnboardingLocalStore(context: Context) {
         prefs.edit().remove(KEY_PENDING_PREFIX + uid).apply()
     }
 
-    // ── Shared Firestore payload builders ─────────────────────────────────
-
     /**
-     * Build the Firestore maps for the onboarding write from a pending
-     * profile. Shared by OnboardingViewModel (initial write) and
-     * AuthViewModel (later retries) so the payload can never drift.
+     * ✅ FIX v1.0.30 — buildFirestoreMaps
      *
-     * New accounts start with the CLASSIC frame (v1.0.8: Nature unlocks on
-     * Day 7 — granting it at creation bypassed the progression rules).
+     * قبل الإصلاح: createdAt = quitTimestamp (خطأ دلالي — createdAt يجب أن
+     * يمثل وقت إنشاء الحساب، وليس وقت الإقلاع). هذا كان يسبب مشاكل عند
+     * محاولة الكتابة لحساب جديد (المستند غير موجود).
+     *
+     * بعد الإصلاح: createdAt = Timestamp.now() — وقت حقيقي لإنشاء الحساب.
+     * ملاحظة: عند الكتابة إلى مستند موجود، الـ merge في AuthViewModel و
+     * OnboardingViewModel يحذف createdAt من الـ map تلقائيًا، فالقيمة هنا
+     * تُستخدم فقط عند إنشاء مستند جديد من الصفر.
      */
     fun buildFirestoreMaps(profile: PendingProfile): Pair<Map<String, Any?>, Map<String, Any?>> {
         val quitTimestamp = Timestamp(java.util.Date(profile.quitDateMillis))
@@ -134,7 +115,8 @@ class OnboardingLocalStore(context: Context) {
             pricePerPack = profile.pricePerPack,
             cigarettesPerPack = profile.cigarettesPerPack,
             photoURL = profile.photoURL,
-            createdAt = quitTimestamp
+            // ✅ FIX v1.0.30 — createdAt = now(), not quitDate
+            createdAt = Timestamp.now()
         )
         val userMap = user.toFirestoreMap()
         val publicMap = mapOf<String, Any?>(
