@@ -1,5 +1,7 @@
 package breathy.com.ui.components
 
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,20 +52,72 @@ import breathy.com.utils.s
  *   (onAdRewarded) fires — never for merely opening the ad. Duplicate
  *   callbacks for one show are guarded (AtomicBoolean) and the Gold-ledger
  *   dedup key (`goldads_{showToken}`) makes replays impossible.
- * - Verified Premium subscribers see this card TOO (v1.0.7): Gold Ads is a
+ * - Verified Premium subscribers see this card TOO: Gold Ads is a
  *   REWARD placement, not an interruption — subscribers may still want Gold.
  * - The ad reloads automatically after every completion/closed callback.
+ *
+ * UI fixes in this version:
+ * - Resolve the actual hosting ComponentActivity even when Compose is inside
+ *   one or more ContextWrapper layers.
+ * - Subscribe to the AdManager lifecycle listener while this card is mounted,
+ *   so the button returns to its idle state after the rewarded ad closes or
+ *   fails instead of remaining stuck on "Loading ad…" forever.
  */
 @Composable
 fun GoldAdsCard(
     modifier: Modifier = Modifier
 ) {
-    val app = LocalContext.current.applicationContext as? BreathyApplication ?: return
+    val context = LocalContext.current
+    val app = context.applicationContext as? BreathyApplication ?: return
     val adManager = app.appModule.adManager
 
-    val activity = LocalContext.current as? ComponentActivity
+    val activity = remember(context) {
+        context.findComponentActivity()
+    }
+
     var note by remember { mutableStateOf<String?>(null) }
     var isShowing by remember { mutableStateOf(false) }
+
+    DisposableEffect(adManager) {
+        val previousListener = adManager.eventListener
+        val listener = object : AdManager.AdEventListener {
+            override fun onAdShown(adType: AdManager.AdType) {
+                previousListener?.onAdShown(adType)
+                if (adType == AdManager.AdType.REWARDED) {
+                    isShowing = true
+                }
+            }
+
+            override fun onAdDismissed(adType: AdManager.AdType) {
+                previousListener?.onAdDismissed(adType)
+                if (adType == AdManager.AdType.REWARDED) {
+                    isShowing = false
+                }
+            }
+
+            override fun onAdShowFailed(adType: AdManager.AdType, error: String) {
+                previousListener?.onAdShowFailed(adType, error)
+                if (adType == AdManager.AdType.REWARDED) {
+                    isShowing = false
+                    note = s("The ad could not be shown. Please try again.", "تعذر عرض الإعلان. حاول مرة أخرى.")
+                }
+            }
+
+            override fun onAdLoaded(adType: AdManager.AdType) {
+                previousListener?.onAdLoaded(adType)
+            }
+
+            override fun onAdLoadFailed(adType: AdManager.AdType, error: String) {
+                previousListener?.onAdLoadFailed(adType, error)
+            }
+        }
+        adManager.eventListener = listener
+        onDispose {
+            if (adManager.eventListener === listener) {
+                adManager.eventListener = previousListener
+            }
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -128,7 +183,10 @@ fun GoldAdsCard(
                     val started = adManager.showRewardedAd(act)
                     if (!started) {
                         isShowing = false
-                        note = s("The ad is still preparing — try again in a few seconds.", "الإعلان قيد التحضير — حاول مجدداً بعد بضع ثوانٍ.")
+                        note = s(
+                            "The ad is still preparing — try again in a few seconds.",
+                            "الإعلان قيد التحضير — حاول مجدداً بعد بضع ثوانٍ."
+                        )
                     }
                 },
                 enabled = !isShowing,
@@ -155,4 +213,15 @@ fun GoldAdsCard(
             }
         }
     }
+}
+
+private fun Context.findComponentActivity(): ComponentActivity? {
+    var current: Context? = this
+    while (current is ContextWrapper) {
+        if (current is ComponentActivity) return current
+        val base = current.baseContext
+        if (base === current) break
+        current = base
+    }
+    return current as? ComponentActivity
 }
