@@ -2,7 +2,6 @@ package breathy.com
 
 import android.app.Application
 import breathy.com.di.AppModule
-import com.google.android.gms.ads.MobileAds
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
@@ -13,31 +12,18 @@ import timber.log.Timber
 /**
  * Application class for Breathy.
  *
- * Responsibilities:
- * - Initializes Firebase ([FirebaseApp.initializeApp])
- * - Configures Firestore offline persistence and cache size on BOTH the
- *   default database and the named production database used by AppModule
- * - Initializes Google Mobile Ads before any ad load/show attempt
- * - Enables/disables Crashlytics based on build type
- * - Plants Timber logging trees (debug tree or Crashlytics-forwarding tree)
- * - Creates the manual dependency injection [AppModule]
- * - Installs a global uncaught-exception handler to prevent hard crashes
+ * v1.0.30 FIX — REMOVED the direct MobileAds.initialize() call here.
+ * AdManager is now the SINGLE owner of AdMob initialization (see
+ * MainActivity.onCreate → appModule.adManager.initialize()). This
+ * eliminates the double-initialization that was confusing the SDK state
+ * and preventing ads from loading reliably on cold start.
  */
 class BreathyApplication : Application() {
 
-    /**
-     * App-scoped dependency container.
-     * Lazily created on first access so that Firebase is fully initialized
-     * before any Firebase service instances are obtained.
-     */
     val appModule: AppModule by lazy {
         AppModule(this)
     }
 
-    /**
-     * Global coroutine exception handler that logs errors instead of crashing.
-     * This prevents uncaught coroutine exceptions from killing the app process.
-     */
     val globalExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Timber.e(throwable, "Uncaught coroutine exception")
         try {
@@ -49,13 +35,10 @@ class BreathyApplication : Application() {
         super.onCreate()
         instance = this
 
-        // ── In-app language (v1.0.9: English / العربية) ──────────────────────
+        // ── In-app language (English / العربية) ──────────────────────────────
         breathy.com.utils.AppLanguage.init(this)
 
         // ── Global Crash Safety Net ────────────────────────────────────────────
-        // Catch any uncaught exception on the main thread so the app doesn't
-        // hard-crash. This is a last resort — all Firestore / auth operations
-        // should already have their own try-catch blocks.
         installUncaughtExceptionHandler()
 
         // ── Firebase Initialization ──────────────────────────────────────────
@@ -63,8 +46,6 @@ class BreathyApplication : Application() {
             FirebaseApp.initializeApp(this)
             Timber.d("Firebase initialized successfully")
         } catch (e: Exception) {
-            // In rare cases (e.g., missing google-services.json in debug),
-            // initialization may fail — log but don't crash.
             Timber.e(e, "Firebase initialization failed")
         }
 
@@ -78,33 +59,18 @@ class BreathyApplication : Application() {
         plantTimberTrees()
 
         // ── Google Mobile Ads ────────────────────────────────────────────────
-        // Initialize once at process startup, before MainActivity and before
-        // any individual ad format is requested. Google recommends initializing
-        // the Mobile Ads SDK early in app startup.
-        try {
-            MobileAds.initialize(this) { status ->
-                Timber.i(
-                    "Google Mobile Ads initialized (adapters=%d)",
-                    status.adapterStatusMap.size
-                )
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Google Mobile Ads initialization failed")
-        }
+        // ✅ FIX v1.0.30 — REMOVED the direct MobileAds.initialize() call.
+        // AdManager owns AdMob initialization now and tracks the ready state
+        // internally so ads can actually load. See MainActivity.onCreate().
 
         // ── Notification Channels ────────────────────────────────────────────
-        // Created eagerly so channels exist before any notification is posted.
         try {
-            appModule.notificationHelper // triggers lazy init of AppModule → NotificationHelper
+            appModule.notificationHelper
         } catch (e: Exception) {
             Timber.e(e, "Failed to initialize notification helper")
         }
     }
 
-    /**
-     * Configures Firestore with offline persistence enabled and a 100 MB cache
-     * on every database instance the application actually uses.
-     */
     private fun configureFirestore() {
         try {
             val settings = FirebaseFirestoreSettings.Builder()
@@ -112,15 +78,11 @@ class BreathyApplication : Application() {
                 .setCacheSizeBytes(FIRESTORE_CACHE_SIZE_BYTES)
                 .build()
 
-            // AppModule uses this named production database. Configure it
-            // explicitly so account/onboarding reads and writes survive process
-            // restarts on the real data source rather than only on the default DB.
             FirebaseFirestore.getInstance(
                 FirebaseApp.getInstance(),
                 "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7"
             ).firestoreSettings = settings
 
-            // Keep the default instance configured for legacy/auxiliary paths.
             FirebaseFirestore.getInstance().firestoreSettings = settings
 
             Timber.d(
@@ -132,11 +94,6 @@ class BreathyApplication : Application() {
         }
     }
 
-    /**
-     * Enables Crashlytics collection only in release builds.
-     * Debug builds avoid polluting the Crashlytics dashboard with stack traces
-     * from development iterations.
-     */
     private fun configureCrashlytics() {
         try {
             FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(
@@ -147,11 +104,6 @@ class BreathyApplication : Application() {
         }
     }
 
-    /**
-     * Plants the appropriate Timber tree based on the build type:
-     * - **Debug**: [Timber.DebugTree] prints to Logcat with PrettyStackTree
-     * - **Release**: [ReleaseCrashlyticsTree] forwards errors to Crashlytics
-     */
     private fun plantTimberTrees() {
         if (BuildConfig.DEBUG) {
             Timber.plant(BreathyDebugTree())
@@ -160,24 +112,12 @@ class BreathyApplication : Application() {
         }
     }
 
-    // ── Custom Timber Trees ─────────────────────────────────────────────────
-
-    /**
-     * Debug tree that tags logs with the calling class name for easy
-     * Logcat filtering.
-     */
     private class BreathyDebugTree : Timber.DebugTree() {
         override fun createStackElementTag(element: StackTraceElement): String {
-            // Format: "Breathy: ClassName.methodName:lineNumber"
             return "Breathy: ${super.createStackElementTag(element)}.${element.methodName}:${element.lineNumber}"
         }
     }
 
-    /**
-     * Release tree that forwards logged errors to Firebase Crashlytics.
-     * Only errors and assertions are forwarded to avoid PII and noise.
-     * Warnings and below are silently dropped in release builds.
-     */
     private class ReleaseCrashlyticsTree : Timber.Tree() {
         override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
             if (priority >= android.util.Log.ERROR) {
@@ -191,33 +131,20 @@ class BreathyApplication : Application() {
     }
 
     companion object {
-        /** Global reference to the application context for utility access. */
         lateinit var instance: BreathyApplication
             private set
 
-        /** 100 MB cache size for Firestore offline persistence. */
         private const val FIRESTORE_CACHE_SIZE_BYTES = 100L * 1024L * 1024L
     }
 
-    /**
-     * Installs a global uncaught-exception handler that logs the error
-     * instead of letting it crash the app. This is a safety net for any
-     * exceptions that escape the per-feature try-catch blocks.
-     *
-     * For Firestore errors (PERMISSION_DENIED, UNAVAILABLE, etc.) and other
-     * recoverable errors, the app survives instead of crashing. Critical
-     * errors (OutOfMemoryError, StackOverflowError) still crash.
-     */
     private fun installUncaughtExceptionHandler() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Timber.e(throwable, "Uncaught exception on thread: %s", thread.name)
-            // Also report to Crashlytics if available
             try {
                 FirebaseCrashlytics.getInstance().recordException(throwable)
-            } catch (_: Exception) { /* Crashlytics not available */ }
+            } catch (_: Exception) { }
 
-            // Check if this is a recoverable error — survive those
             val message = throwable.message ?: ""
             val causeMessage = throwable.cause?.message ?: ""
             val fullMessage = "$message $causeMessage"
@@ -230,7 +157,6 @@ class BreathyApplication : Application() {
                 fullMessage.contains("ABORTED", ignoreCase = true) ||
                 fullMessage.contains("INTERNAL", ignoreCase = true) && fullMessage.contains("firestore", ignoreCase = true) ||
                 fullMessage.contains("FirebaseFirestoreException", ignoreCase = true) ||
-                // Also survive Firestore callback errors on main thread
                 fullMessage.contains("Could not reach Cloud Firestore backend", ignoreCase = true)
 
             val isCriticalError = throwable is OutOfMemoryError ||
@@ -238,11 +164,8 @@ class BreathyApplication : Application() {
                     throwable is ThreadDeath
 
             if (isCriticalError || !isRecoverableError) {
-                // Critical or unknown error — let the default handler crash the app
                 defaultHandler?.uncaughtException(thread, throwable)
             }
-            // For recoverable errors, just log — don't crash.
-            // The app can still function with local/cached data.
         }
     }
 }
