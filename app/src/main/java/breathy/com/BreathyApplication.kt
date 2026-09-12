@@ -118,17 +118,42 @@ class BreathyApplication : Application() {
         }
     }
 
-    private class ReleaseCrashlyticsTree : Timber.Tree() {
-        override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-            if (priority >= android.util.Log.ERROR) {
-                if (t != null) {
-                    FirebaseCrashlytics.getInstance().recordException(t)
-                } else {
-                    FirebaseCrashlytics.getInstance().log("$tag: $message")
-                }
+  /**
+ * Release tree that:
+ * 1. Prints EVERYTHING to Logcat (so you can diagnose Release issues)
+ * 2. Forwards errors to Crashlytics
+ *
+ * ⚠️ بعد تشخيص المشاكل، غيّر `logcatEnabled` إلى false قبل النشر النهائي
+ *    لإخفاء السجلات عن المستخدمين.
+ */
+private class ReleaseCrashlyticsTree : Timber.Tree() {
+    // ✏️ غيّر إلى false قبل النشر النهائي على Play Store
+    private val logcatEnabled = true
+
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+        // 1) اطبع في Logcat دائمًا (للتشخيص)
+        if (logcatEnabled) {
+            val tagSafe = tag ?: "Breathy"
+            when (priority) {
+                android.util.Log.VERBOSE -> android.util.Log.v(tagSafe, message, t)
+                android.util.Log.DEBUG   -> android.util.Log.d(tagSafe, message, t)
+                android.util.Log.INFO    -> android.util.Log.i(tagSafe, message, t)
+                android.util.Log.WARN    -> android.util.Log.w(tagSafe, message, t)
+                android.util.Log.ERROR   -> android.util.Log.e(tagSafe, message, t)
+                else                     -> android.util.Log.d(tagSafe, message, t)
+            }
+        }
+
+        // 2) أرسل الأخطاء إلى Crashlytics
+        if (priority >= android.util.Log.ERROR) {
+            if (t != null) {
+                FirebaseCrashlytics.getInstance().recordException(t)
+            } else {
+                FirebaseCrashlytics.getInstance().log("$tag: $message")
             }
         }
     }
+}
 
     companion object {
         lateinit var instance: BreathyApplication
