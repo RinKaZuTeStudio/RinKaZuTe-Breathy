@@ -2,6 +2,7 @@ package breathy.com
 
 import android.app.Application
 import breathy.com.di.AppModule
+import com.google.android.gms.ads.MobileAds
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
@@ -15,6 +16,7 @@ import timber.log.Timber
  * Responsibilities:
  * - Initializes Firebase ([FirebaseApp.initializeApp])
  * - Configures Firestore offline persistence and cache size
+ * - Initializes Google Mobile Ads before any ad load/show attempt
  * - Enables/disables Crashlytics based on build type
  * - Plants Timber logging trees (debug tree or Crashlytics-forwarding tree)
  * - Creates the manual dependency injection [AppModule]
@@ -73,6 +75,21 @@ class BreathyApplication : Application() {
 
         // ── Timber Logging ───────────────────────────────────────────────────
         plantTimberTrees()
+
+        // ── Google Mobile Ads ────────────────────────────────────────────────
+        // Initialize once at process startup, before MainActivity and before
+        // any individual ad format is requested. Google recommends initializing
+        // the Mobile Ads SDK early in app startup.
+        try {
+            MobileAds.initialize(this) { status ->
+                Timber.i(
+                    "Google Mobile Ads initialized (adapters=%d)",
+                    status.adapterStatusMap.size
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Google Mobile Ads initialization failed")
+        }
 
         // ── Notification Channels ────────────────────────────────────────────
         // Created eagerly so channels exist before any notification is posted.
