@@ -114,6 +114,7 @@ import breathy.com.utils.s
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -154,10 +155,10 @@ data class OnboardingUiState(
 ) {
     val canProceed: Boolean
         get() = when (currentStep) {
-            0 -> true // quitDate always has a default
-            1 -> true // quitType always has a default
+            0 -> true
+            1 -> true
             2 -> cigarettesPerDay > 0 && pricePerPack > 0.0 && cigarettesPerPack > 0
-            3 -> age != null && age in 10..120 // age is REQUIRED
+            3 -> age != null && age in 10..120
             4 -> nickname.isNotBlank() && nickname.length >= 2
             else -> false
         }
@@ -188,7 +189,6 @@ class OnboardingViewModel(
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
 
-    /** Track the current save job so we can cancel it if needed. */
     private var saveJob: Job? = null
 
     init {
@@ -205,41 +205,28 @@ class OnboardingViewModel(
 
     fun onCigarettesPerDayChanged(count: Int) {
         _uiState.update {
-            it.copy(
-                cigarettesPerDay = count.coerceAtLeast(1),
-                errorMessage = null
-            )
+            it.copy(cigarettesPerDay = count.coerceAtLeast(1), errorMessage = null)
         }
         recalculateSavings()
     }
 
     fun onPricePerPackChanged(price: Double) {
         _uiState.update {
-            it.copy(
-                pricePerPack = price.coerceAtLeast(0.0),
-                errorMessage = null
-            )
+            it.copy(pricePerPack = price.coerceAtLeast(0.0), errorMessage = null)
         }
         recalculateSavings()
     }
 
     fun onCigarettesPerPackChanged(count: Int) {
         _uiState.update {
-            it.copy(
-                cigarettesPerPack = count.coerceAtLeast(1),
-                errorMessage = null
-            )
+            it.copy(cigarettesPerPack = count.coerceAtLeast(1), errorMessage = null)
         }
         recalculateSavings()
     }
 
     fun onNicknameChanged(nickname: String) {
         _uiState.update {
-            it.copy(
-                nickname = nickname,
-                nicknameError = null,
-                errorMessage = null
-            )
+            it.copy(nickname = nickname, nicknameError = null, errorMessage = null)
         }
     }
 
@@ -267,7 +254,6 @@ class OnboardingViewModel(
     }
 
     fun onSkip() {
-        // Skip to the last step (profile step) or mark as complete
         _uiState.update { it.copy(currentStep = _uiState.value.totalSteps - 1, errorMessage = null) }
     }
 
@@ -275,27 +261,15 @@ class OnboardingViewModel(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    /**
-     * Save the onboarding profile data to Firestore.
-     * Creates both the private User document and the public PublicProfile document
-     * in an atomic write batch.
-     *
-     * The write is best-effort: if Firestore is unavailable (e.g. rules not
-     * published yet, network timeout, permission denied), the user still
-     * navigates to the home screen. A safety-net timer guarantees navigation
-     * even if the coroutine hangs.
-     */
     fun saveProfile() {
         val state = _uiState.value
         val currentUser = firebaseAuth.currentUser
 
-        // Guard: already saving? Prevent double-tap
         if (state.isLoading) {
             Timber.w("$TAG: saveProfile called while already loading — ignoring")
             return
         }
 
-        // Cancel any previous save job (shouldn't happen, but defensive)
         saveJob?.cancel()
 
         if (currentUser == null) {
@@ -305,7 +279,6 @@ class OnboardingViewModel(
             return
         }
 
-        // Validate nickname one more time
         if (state.nickname.isBlank() || state.nickname.length < 2) {
             _uiState.update {
                 it.copy(
@@ -316,11 +289,8 @@ class OnboardingViewModel(
             return
         }
 
-        // Check nickname uniqueness before saving
         _uiState.update { it.copy(isLoading = true, errorMessage = null, nicknameError = null) }
 
-        // ── Safety-net: guarantee navigation even if the coroutine hangs ──────
-        // This prevents the user from being stuck on loading forever.
         val safetyNetJob = viewModelScope.launch {
             delay(FALLBACK_NAVIGATION_DELAY_MS)
             if (_uiState.value.isLoading && !_uiState.value.isComplete) {
@@ -331,13 +301,6 @@ class OnboardingViewModel(
 
         saveJob = viewModelScope.launch {
             try {
-                // Check nickname availability inside the coroutine (suspend call).
-                // v1.0.11 NICKNAME FIX: exclude the user's OWN profile from the
-                // uniqueness check — the signup flow already created a sparse
-                // publicProfile carrying the auto-generated nickname (email
-                // prefix / Google display name). Without the exclusion, typing
-                // that same natural nickname was rejected as "already taken"
-                // and the nickname could never be saved.
                 val isAvailable = userRepository.isNicknameAvailable(
                     nickname = state.nickname,
                     excludeUserId = currentUser.uid
@@ -357,8 +320,6 @@ class OnboardingViewModel(
                 val userId = currentUser.uid
                 val quitTimestamp = Timestamp(Date(state.quitDate))
 
-                // Upload photo to Cloudinary first, then save the remote URL
-                // This ensures the URL persists across app restarts
                 val resolvedPhotoUrl: String? = try {
                     if (state.photoUri != null) {
                         Timber.d("$TAG: Uploading profile photo to Cloudinary...")
@@ -374,7 +335,6 @@ class OnboardingViewModel(
                             }
                         }
                     } else {
-                        // No local photo selected — use Google account photo if available
                         currentUser.photoUrl?.toString()
                     }
                 } catch (e: Exception) {
@@ -382,7 +342,6 @@ class OnboardingViewModel(
                     currentUser.photoUrl?.toString()
                 }
 
-                // Build the typed User model — matching the Firestore schema
                 val userProfile = User(
                     email = currentUser.email ?: "",
                     nickname = state.nickname.trim(),
@@ -404,10 +363,6 @@ class OnboardingViewModel(
                     quitDate = quitTimestamp
                 )
 
-                // v1.0.8 FIX: persist completion LOCALLY before anything else.
-                // Even if the Firestore write fails, the next launch routes
-                // this account straight to Home (never re-onboards) and the
-                // pending-profile queue retries the upload in the background.
                 onboardingLocalStore.markCompleted(userId)
                 onboardingLocalStore.clearPendingProfile(userId)
                 onboardingLocalStore.savePendingProfile(
@@ -425,15 +380,8 @@ class OnboardingViewModel(
                     )
                 )
 
-                // Use a write batch for atomicity (best-effort with timeout)
-                // Use toFirestoreMap() for explicit field mapping to avoid
-                // enum-serialization issues with Firestore's POJO converter.
                 saveProfileToFirestore(userProfile, publicProfile, userId)
 
-                // v1.0.19 — mirror the chosen nickname to Firebase Auth
-                // displayName: self-heal writers resolve the nickname from it
-                // when the Firestore document is missing, so it must never
-                // remain the e-mail prefix.
                 try {
                     currentUser.updateProfile(
                         com.google.firebase.auth.UserProfileChangeRequest.Builder()
@@ -444,32 +392,19 @@ class OnboardingViewModel(
                     Timber.w(e, "$TAG: Auth displayName sync failed (non-fatal)")
                 }
 
-                // Cancel safety-net since we completed normally
                 safetyNetJob.cancel()
-
-                // Always mark as complete and navigate to home
                 _uiState.update { it.copy(isLoading = false, isComplete = true) }
             } catch (e: CancellationException) {
-                // Don't treat cancellation as an error, but reset loading state
                 safetyNetJob.cancel()
                 _uiState.update { it.copy(isLoading = false) }
             } catch (e: Exception) {
                 Timber.e(e, "$TAG: Unexpected error during onboarding")
-                // Cancel safety-net and still navigate — don't block the user
                 safetyNetJob.cancel()
                 _uiState.update { it.copy(isLoading = false, isComplete = true) }
             }
         }
     }
 
-    /**
-     * Best-effort Firestore write with its own timeout.
-     * Catches ALL exceptions (including FirebaseFirestoreException with
-     * permission-denied) and never re-throws — the caller always navigates.
-     *
-     * If the initial write fails, schedules a background retry after 5 seconds
-     * so the data is eventually persisted even if rules take time to propagate.
-     */
     private suspend fun saveProfileToFirestore(
         userProfile: User,
         publicProfile: PublicProfile,
@@ -477,10 +412,9 @@ class OnboardingViewModel(
     ) {
         val success = tryWriteToFirestore(userProfile, publicProfile, userId)
         if (!success) {
-            // Schedule a background retry after a delay — rules may not have propagated yet
             viewModelScope.launch {
                 repeat(3) { attempt ->
-                    delay(5_000L * (attempt + 1)) // 5s, 10s, 15s
+                    delay(5_000L * (attempt + 1))
                     Timber.d("$TAG: Retrying Firestore write (attempt %d) for uid=%s", attempt + 1, userId)
                     if (tryWriteToFirestore(userProfile, publicProfile, userId)) {
                         Timber.i("$TAG: Retry succeeded for uid=%s on attempt %d", userId, attempt + 1)
@@ -493,8 +427,16 @@ class OnboardingViewModel(
     }
 
     /**
-     * Attempt a single Firestore write. Returns true on success, false on failure.
-     * Never throws — all exceptions are caught and logged.
+     * ✅ FIX v1.0.30 — tryWriteToFirestore
+     *
+     * المشكلة السابقة: كان يستخدم batch.set() بدون SetOptions.merge()، مما
+     * يسبب استبدالاً كاملاً للمستند. عند حذف createdAt من الـ map ثم الكتابة
+     * بدون merge، يُحذف createdAt من Firestore → قواعد v9 ترفض الكتابة
+     * (PERMISSION_DENIED) → Onboarding لا يُحفظ أبدًا لأي حساب جديد.
+     *
+     * الإصلاح: استخدام SetOptions.merge() في كل من users/{uid} و
+     * publicProfiles/{uid} — merge يحتفظ بالحقول الموجودة ويكتب/يحدّث فقط
+     * ما هو موجود في الـ map.
      */
     private suspend fun tryWriteToFirestore(
         userProfile: User,
@@ -509,38 +451,36 @@ class OnboardingViewModel(
                 "daysSmokeFree" to publicProfile.daysSmokeFree,
                 "xp" to publicProfile.xp,
                 "quitDate" to publicProfile.quitDate,
-                // v1.0.8: new accounts start with CLASSIC — Nature unlocks Day 7
                 "avatarFrame" to breathy.com.data.models.AvatarFrame.NONE.id,
                 "premium" to false,
-                // Stamp activity time at creation: profiles created after the
-                // initial-reset cutoff count as real leaderboard users.
                 "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
             val batch = firestore.batch()
-            // v1.0.19 NICKNAME FIX — the v8 ruleset anchors users/{uid} identity:
-            // an UPDATE may not change `createdAt` and must keep the same
-            // `email`. This write used to send createdAt = Timestamp.now() as a
-            // FULL set(), so for every account whose sparse document already
-            // existed (created at sign-up), the rules REJECTED the whole batch —
-            // the onboarding nickname never reached Firestore and the app kept
-            // showing the sign-up fallback nickname (the e-mail prefix).
+
             val userRef = firestore.collection(USERS_COLLECTION).document(userId)
             val existingUser = withTimeoutOrNull(FIRESTORE_WRITE_TIMEOUT_MS) {
                 try { userRef.get().await() } catch (e: Exception) { null }
             }
             val effectiveUserMap = if (existingUser?.exists() == true) {
                 userMap.toMutableMap().apply {
-                    // identity anchors must stay exactly as they were
+                    // identity anchors must stay exactly as they were — merge
+                    // will preserve the existing values in Firestore
                     remove("createdAt")
                     existingUser.getString("email")?.let { this["email"] = it }
                 }
             } else userMap
-            batch.set(userRef, effectiveUserMap)
+
+            // ✅ FIX v1.0.30: SetOptions.merge() — يحافظ على createdAt و
+            // email والحقول الأخرى الموجودة في المستند. بدون merge، set()
+            // يستبدل المستند بالكامل ويحذف أي حقل غير موجود في الـ map.
+            batch.set(userRef, effectiveUserMap, SetOptions.merge())
             batch.set(
                 firestore.collection(PUBLIC_PROFILES_COLLECTION).document(userId),
-                publicMap
+                publicMap,
+                SetOptions.merge()
             )
+
             val result = withTimeoutOrNull(FIRESTORE_WRITE_TIMEOUT_MS) {
                 batch.commit().await()
                 true
@@ -550,15 +490,12 @@ class OnboardingViewModel(
                 false
             } else {
                 Timber.i("$TAG: Onboarding profile saved for uid=%s", userId)
-                // Remote write landed — the local pending copy is no longer needed
                 onboardingLocalStore.clearPendingProfile(userId)
                 true
             }
         } catch (e: CancellationException) {
-            throw e // Propagate cancellation
+            throw e
         } catch (e: Exception) {
-            // Firestore write failed (e.g. rules not deployed yet, permission denied).
-            // Don't block the user — they can still use the app.
             Timber.w(e, "$TAG: Firestore write failed during onboarding — continuing")
             false
         }
@@ -566,7 +503,6 @@ class OnboardingViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        // Cancel any in-flight save job when the ViewModel is destroyed
         saveJob?.cancel()
         Timber.d("$TAG: OnboardingViewModel cleared")
     }
@@ -591,7 +527,7 @@ class OnboardingViewModel(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  ViewModel Factory — manual DI replacing @HiltViewModel
+//  ViewModel Factory
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class OnboardingViewModelFactory(
@@ -614,10 +550,6 @@ class OnboardingViewModelFactory(
 //  Date Picker Helper
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Show a native Android [DatePickerDialog] and invoke [onDateSelected] with
- * the chosen date as epoch millis.
- */
 internal fun showDatePicker(
     context: android.content.Context,
     currentMillis: Long,
@@ -641,9 +573,7 @@ internal fun showDatePicker(
         month,
         day
     ).apply {
-        // Allow selecting today and past dates (quit date can be in the past)
         datePicker.maxDate = System.currentTimeMillis()
-        // Minimum date = 365 days ago (generous window; account is being created now)
         datePicker.minDate = System.currentTimeMillis() - 365L * 24 * 60 * 60 * 1000
     }.show()
 }
@@ -652,17 +582,6 @@ internal fun showDatePicker(
 //  Onboarding Screen — Main Composable
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * 4-step onboarding flow:
- * - Step 1: Welcome + set quit date
- * - Step 2: Choose quit type (instant/gradual) with cards
- * - Step 3: Smoking habits (cigarettes/day, price/pack, cigs/pack)
- * - Step 4: Set nickname + optional profile photo
- *
- * All data is saved to Firestore atomically on completion.
- *
- * @param onNavigateToHome Callback invoked after profile is saved successfully.
- */
 @Composable
 fun OnboardingScreen(
     onNavigateToHome: () -> Unit,
@@ -677,14 +596,12 @@ fun OnboardingScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ── Navigate to home on completion ───────────────────────────────────────
     LaunchedEffect(uiState.isComplete) {
         if (uiState.isComplete) {
             onNavigateToHome()
         }
     }
 
-    // ── Snackbar for error messages ───────────────────────────────────────────
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
             snackbarHostState.showSnackbar(
@@ -695,21 +612,18 @@ fun OnboardingScreen(
         }
     }
 
-    // ── Sync pager with ViewModel step ───────────────────────────────────────
     LaunchedEffect(uiState.currentStep) {
         if (pagerState.currentPage != uiState.currentStep) {
             pagerState.animateScrollToPage(uiState.currentStep)
         }
     }
 
-    // ── Cleanup on dispose ───────────────────────────────────────────────────
     DisposableEffect(Unit) {
         onDispose {
             Timber.d("OnboardingScreen disposed")
         }
     }
 
-    // ── Layout ───────────────────────────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -740,7 +654,6 @@ fun OnboardingScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Progress indicator ────────────────────────────────────────
             LinearProgressIndicator(
                 progress = { (uiState.currentStep + 1).toFloat() / uiState.totalSteps },
                 modifier = Modifier
@@ -753,7 +666,6 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Step indicator text
             Text(
                 text = s("Step %d of %d", "الخطوة %d من %d").format(uiState.currentStep + 1, uiState.totalSteps),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -764,7 +676,6 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // ── Horizontal pager with smooth transitions ──────────────────
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -806,7 +717,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // ── Page indicator dots ───────────────────────────────────────
             PageIndicator(
                 totalPages = uiState.totalSteps,
                 currentPage = uiState.currentStep
@@ -814,7 +724,6 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Navigation buttons ────────────────────────────────────────
             OnboardingNavigation(
                 currentStep = uiState.currentStep,
                 totalSteps = uiState.totalSteps,
@@ -826,11 +735,6 @@ fun OnboardingScreen(
                 onLetsGoClick = viewModel::saveProfile
             )
 
-            // ── v1.0.20 — SKIP pinned to the BOTTOM-LEFT of the screen ────
-            // Own full-width row beneath the nav buttons, start-aligned:
-            // bottom-left in LTR, clearly visible, 48dp tap target, and it
-            // can no longer sit between Back and Next. Hidden on the final
-            // step (Let's Go replaces it) and while the profile is saving.
             if (uiState.currentStep < uiState.totalSteps - 1 && !uiState.isLoading) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -886,7 +790,6 @@ private fun WelcomeStep(
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Welcome illustration with animated glow
         Box(contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
@@ -939,7 +842,6 @@ private fun WelcomeStep(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Date picker field
         OutlinedTextField(
             value = dateFormatter.format(Date(quitDate)),
             onValueChange = {},
@@ -982,7 +884,6 @@ private fun WelcomeStep(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Helpful note
         Text(
             text = s("You can set today's date if you're just starting,\nor a past date if you've already quit.", "يمكنك تحديد تاريخ اليوم إذا كنت تبدأ للتو،\nأو تاريخًا ماضيًا إذا كنت قد أقلعت بالفعل."),
             fontSize = 13.sp,
@@ -1001,7 +902,7 @@ private fun WelcomeStep(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Step 2: Quit Type — Instant vs Gradual with cards
+//  Step 2: Quit Type
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -1037,7 +938,6 @@ private fun QuitTypeStep(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // ── Instant quit card ────────────────────────────────────────────
         QuitTypeCard(
             title = s("Instant Quit", "إقلاع فوري"),
             subtitle = s("Cold Turkey", "التوقف التام"),
@@ -1050,7 +950,6 @@ private fun QuitTypeStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Gradual quit card ────────────────────────────────────────────
         QuitTypeCard(
             title = s("Gradual Reduction", "التقليل التدريجي"),
             subtitle = s("Step by Step", "خطوة بخطوة"),
@@ -1145,7 +1044,7 @@ private fun QuitTypeCard(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Step 3: Smoking Habits & Savings Preview
+//  Step 3: Smoking Habits
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -1191,7 +1090,6 @@ private fun SmokingHabitsStep(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // ── Cigarettes per day stepper ───────────────────────────────────
         Text(
             text = s("Cigarettes per day", "السجائر في اليوم"),
             fontSize = 14.sp,
@@ -1211,7 +1109,6 @@ private fun SmokingHabitsStep(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ── Price per pack ───────────────────────────────────────────────
         Text(
             text = s("Price per pack", "سعر العلبة"),
             fontSize = 14.sp,
@@ -1264,7 +1161,6 @@ private fun SmokingHabitsStep(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ── Cigarettes per pack ──────────────────────────────────────────
         Text(
             text = s("Cigarettes per pack", "السجائر في العلبة"),
             fontSize = 14.sp,
@@ -1313,7 +1209,6 @@ private fun SmokingHabitsStep(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // ── Savings preview card ─────────────────────────────────────────
         if (dailySavings > 0) {
             Column(
                 modifier = Modifier
@@ -1411,14 +1306,9 @@ private fun SavingsItem(label: String, value: String) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Step 4: Profile — Nickname + Optional Photo
+//  Step 4: Age
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Age collection step — REQUIRED. The value is persisted to the user profile
- * and used wherever age-related eligibility applies. Asked exactly once
- * during onboarding; never re-asked afterwards.
- */
 @Composable
 private fun AgeStep(
     age: Int?,
@@ -1458,7 +1348,6 @@ private fun AgeStep(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Age stepper — large touch targets, accessible controls
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(24.dp)
@@ -1474,7 +1363,6 @@ private fun AgeStep(
                 Text("−", style = MaterialTheme.typography.headlineMedium)
             }
 
-            // Age value card
             Card(
                 modifier = Modifier.width(140.dp),
                 shape = RoundedCornerShape(20.dp),
@@ -1527,6 +1415,10 @@ private fun AgeStep(
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Step 5: Profile
+// ═══════════════════════════════════════════════════════════════════════════════
+
 @Composable
 private fun ProfileStep(
     nickname: String,
@@ -1548,12 +1440,6 @@ private fun ProfileStep(
         label = "profileGlow"
     )
 
-    // v1.0.10 — the Android Photo Picker launcher was REMOVED from the
-    // sign-up flow (developer request: no "Add/Change Profile Picture"
-    // anywhere, including onboarding). Every account starts with the
-    // official Day One avatar; pictures change later via the Avatar
-    // Collection only.
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1562,15 +1448,11 @@ private fun ProfileStep(
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
-        // v1.0.10 — UNIFIED AVATAR PREVIEW (static Day One artwork, no
-        // gallery picker): every account starts with the official Day One
-        // picture; the gallery "Add/Change Profile Photo" flow is removed.
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(120.dp)
         ) {
-            // Glow
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -1583,7 +1465,6 @@ private fun ProfileStep(
                     )
             )
 
-            // Unified avatar preview (Day One default artwork)
             breathy.com.ui.components.BreathyAvatar(
                 photoURL = null,
                 frame = breathy.com.data.models.AvatarFrame.NONE,
@@ -1616,7 +1497,6 @@ private fun ProfileStep(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // ── Nickname field ───────────────────────────────────────────────
         Text(
             text = s("Nickname", "الاسم المستعار"),
             fontSize = 14.sp,
@@ -1678,13 +1558,8 @@ private fun ProfileStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // v1.0.10 — the "Add profile photo (optional)" gallery button is
-        // REMOVED. Pictures come exclusively from the unified Avatar
-        // Collection (milestones / Gold shop / ads / Premium).
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Motivational card
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1712,7 +1587,7 @@ private fun ProfileStep(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Page Indicator — Animated stepper dots
+//  Page Indicator
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -1744,7 +1619,7 @@ private fun PageIndicator(totalPages: Int, currentPage: Int) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Navigation Buttons — Back / Skip / Next / Let's Go
+//  Navigation Buttons
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -1763,7 +1638,6 @@ private fun OnboardingNavigation(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // ── Back button ──────────────────────────────────────────────────
         if (currentStep > 0) {
             OutlinedButton(
                 onClick = onBackClick,
@@ -1782,15 +1656,9 @@ private fun OnboardingNavigation(
                 Text(s("Back", "رجوع"), fontSize = 14.sp)
             }
         } else {
-            // Spacer to maintain layout on first step
             Spacer(modifier = Modifier.width(1.dp))
         }
 
-        // ── Skip button — REMOVED from this row in v1.0.20 ────────────
-        // (moved to its own bottom-left row directly beneath the nav
-        // buttons — see OnboardingScreen; this row keeps Back / Next only)
-
-        // ── Next / Let's Go button ───────────────────────────────────────
         if (currentStep < totalSteps - 1) {
             Button(
                 onClick = onNextClick,
@@ -1812,7 +1680,6 @@ private fun OnboardingNavigation(
                 )
             }
         } else {
-            // "Let's Go!" gradient CTA button
             Button(
                 onClick = onLetsGoClick,
                 enabled = canProceed && !isLoading,
