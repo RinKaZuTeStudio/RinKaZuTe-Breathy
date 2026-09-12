@@ -18,8 +18,8 @@ android {
         applicationId = "breathy.com"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 37
-        versionName = "1.0.30"
+        versionCode = 38
+        versionName = "1.0.31"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -118,7 +118,7 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.runtime.ktx)
 
-    // ── Firebase BOM ───────────────────────────────────────────────────────
+    // ── Firebase BOM ────────────────────────────────────────────────────────
     val firebaseBom = platform(libs.firebase.bom)
     implementation(firebaseBom)
     implementation(libs.firebase.auth)
@@ -177,7 +177,7 @@ dependencies {
     // ── ExifInterface (for ImageUploader EXIF orientation) ────────────────
     implementation(libs.exifinterface)
 
-    // ── ML Kit Pose Detection (for pushup counting) ───────────────────────
+    // ── ML Kit Pose Detection (for pushup counting) ────────────────────────
     implementation(libs.mlkit.pose.detection)
     implementation(libs.mlkit.pose.detection.accurate)
 
