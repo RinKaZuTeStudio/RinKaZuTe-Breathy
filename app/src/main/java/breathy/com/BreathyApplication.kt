@@ -15,7 +15,8 @@ import timber.log.Timber
  *
  * Responsibilities:
  * - Initializes Firebase ([FirebaseApp.initializeApp])
- * - Configures Firestore offline persistence and cache size
+ * - Configures Firestore offline persistence and cache size on BOTH the
+ *   default database and the named production database used by AppModule
  * - Initializes Google Mobile Ads before any ad load/show attempt
  * - Enables/disables Crashlytics based on build type
  * - Plants Timber logging trees (debug tree or Crashlytics-forwarding tree)
@@ -101,11 +102,8 @@ class BreathyApplication : Application() {
     }
 
     /**
-     * Configures Firestore with offline persistence enabled and a 100 MB cache.
-     *
-     * Persistence allows the app to read previously fetched data when offline,
-     * which is critical for a quit-smoking tracker that users may consult in
-     * areas with poor connectivity.
+     * Configures Firestore with offline persistence enabled and a 100 MB cache
+     * on every database instance the application actually uses.
      */
     private fun configureFirestore() {
         try {
@@ -113,9 +111,22 @@ class BreathyApplication : Application() {
                 .setPersistenceEnabled(true)
                 .setCacheSizeBytes(FIRESTORE_CACHE_SIZE_BYTES)
                 .build()
+
+            // AppModule uses this named production database. Configure it
+            // explicitly so account/onboarding reads and writes survive process
+            // restarts on the real data source rather than only on the default DB.
+            FirebaseFirestore.getInstance(
+                FirebaseApp.getInstance(),
+                "ai-studio-breathy-34bd5ba5-3577-4eac-963b-2ac3634ce3d7"
+            ).firestoreSettings = settings
+
+            // Keep the default instance configured for legacy/auxiliary paths.
             FirebaseFirestore.getInstance().firestoreSettings = settings
-            Timber.d("Firestore configured: persistence=true, cacheSize=%dMB",
-                FIRESTORE_CACHE_SIZE_BYTES / (1024 * 1024))
+
+            Timber.d(
+                "Firestore configured: persistence=true, named production DB + default, cacheSize=%dMB",
+                FIRESTORE_CACHE_SIZE_BYTES / (1024 * 1024)
+            )
         } catch (e: Exception) {
             Timber.e(e, "Failed to configure Firestore settings")
         }
