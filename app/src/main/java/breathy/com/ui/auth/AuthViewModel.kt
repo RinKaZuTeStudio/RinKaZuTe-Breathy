@@ -1,10 +1,1248 @@
 package breathy.com.ui.auth
 
-// ViewModel classes are now defined inline in their respective screen files:
-// - AuthViewModel is in AuthScreen.kt
-// - AuthViewModelFactory is in AuthScreen.kt
-// - AuthUiState is in AuthScreen.kt
-// - AuthNavigationEvent is in AuthScreen.kt
-//
-// This file is intentionally left as a redirect to prevent import errors
-// during the transition. All auth ViewModel code lives in AuthScreen.kt.
+import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import breathy.com.BreathyApplication
+import breathy.com.data.repository.AuthRepository
+import breathy.com.ui.theme.AccentPrimary
+import breathy.com.ui.theme.AccentPurple
+import breathy.com.ui.theme.AccentSecondary
+import breathy.com.ui.theme.DarkBotanical
+import breathy.com.ui.theme.DeepForest
+import breathy.com.ui.theme.MediumSage
+import breathy.com.ui.theme.NaturalYellow
+import breathy.com.utils.s
+
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
+import timber.log.Timber
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  UI State & Navigation Events
+// ═══════════════════════════════════════════════════════════════════════════════
+
+data class AuthUiState(
+    val email: String = "",
+    val password: String = "",
+    val confirmPassword: String = "",
+    val isSignUpMode: Boolean = false,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val emailError: String? = null,
+    val passwordError: String? = null,
+    val confirmPasswordError: String? = null,
+    val isPasswordVisible: Boolean = false,
+    val isConfirmPasswordVisible: Boolean = false,
+    val passwordResetSent: Boolean = false,
+    val navigationEvent: AuthNavigationEvent? = null
+)
+
+sealed class AuthNavigationEvent {
+    data object NavigateToHome : AuthNavigationEvent()
+    data object NavigateToOnboarding : AuthNavigationEvent()
+    data object NavigateToAgeCompletion : AuthNavigationEvent()
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ViewModel
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class AuthViewModel(
+    private val authRepository: AuthRepository,
+    private val firestore: FirebaseFirestore,
+    private val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore
+) : ViewModel() {
+
+    companion object {
+        private const val TAG = "AuthViewModel"
+        private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+    }
+
+    private val _uiState = MutableStateFlow(AuthUiState())
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private var hasAutoNavigated = false
+
+    private var verificationInFlight: String? = null
+
+    init {
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user ->
+                Timber.d("$TAG: Auth state changed — user=%s", user?.uid ?: "null")
+                if (user != null && !hasAutoNavigated && _uiState.value.navigationEvent == null) {
+                    hasAutoNavigated = true
+                    checkUserProfileAndNavigate(user.uid)
+                }
+            }
+        }
+    }
+
+    fun onEmailChanged(email: String) {
+        _uiState.update {
+            it.copy(email = email, errorMessage = null, emailError = null)
+        }
+    }
+
+    fun onPasswordChanged(password: String) {
+        _uiState.update {
+            it.copy(password = password, errorMessage = null, passwordError = null)
+        }
+    }
+
+    fun onConfirmPasswordChanged(confirmPassword: String) {
+        _uiState.update {
+            it.copy(confirmPassword = confirmPassword, errorMessage = null, confirmPasswordError = null)
+        }
+    }
+
+    fun toggleSignUpMode() {
+        _uiState.update {
+            it.copy(
+                isSignUpMode = !it.isSignUpMode,
+                errorMessage = null,
+                emailError = null,
+                passwordError = null,
+                confirmPasswordError = null,
+                passwordResetSent = false,
+                confirmPassword = "",
+                isConfirmPasswordVisible = false
+            )
+        }
+    }
+
+    fun togglePasswordVisibility() {
+        _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+    }
+
+    fun toggleConfirmPasswordVisibility() {
+        _uiState.update { it.copy(isConfirmPasswordVisible = !it.isConfirmPasswordVisible) }
+    }
+
+    fun signIn() {
+        val state = _uiState.value
+        if (!validateInputs(state, isSignUp = false)) return
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            val result = authRepository.signInWithEmail(state.email.trim(), state.password)
+            _uiState.update { it.copy(isLoading = false) }
+
+            result
+                .onSuccess { user -> checkUserProfileAndNavigate(user.uid) }
+                .onFailure { e ->
+                    val message = mapAuthError(e)
+                    _uiState.update { it.copy(errorMessage = message) }
+                }
+        }
+    }
+
+    fun signUp() {
+        val state = _uiState.value
+        if (!validateInputs(state, isSignUp = true)) return
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            val result = authRepository.signUpWithEmail(
+                state.email.trim(),
+                state.password,
+                ""
+            )
+            _uiState.update { it.copy(isLoading = false) }
+
+            result
+                .onSuccess { user -> checkUserProfileAndNavigate(user.uid) }
+                .onFailure { e ->
+                    val message = mapAuthError(e)
+                    _uiState.update { it.copy(errorMessage = message) }
+                }
+        }
+    }
+
+    fun signInWithGoogle(idToken: String) {
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            val result = authRepository.signInWithGoogle(idToken)
+            _uiState.update { it.copy(isLoading = false) }
+
+            result
+                .onSuccess { user -> checkUserProfileAndNavigate(user.uid) }
+                .onFailure { e ->
+                    val message = mapAuthError(e)
+                    _uiState.update { it.copy(errorMessage = message) }
+                }
+        }
+    }
+
+    fun setExternalError(message: String) {
+        _uiState.update { it.copy(isLoading = false, errorMessage = message) }
+    }
+
+    fun sendPasswordReset() {
+        val state = _uiState.value
+        if (state.email.isBlank()) {
+            _uiState.update {
+                it.copy(
+                    emailError = s("Enter your email to reset your password.", "أدخل بريدك الإلكتروني لإعادة تعيين كلمة المرور."),
+                    errorMessage = s("Please enter your email address to reset your password.", "يُرجى إدخال بريدك الإلكتروني لإعادة تعيين كلمة المرور.")
+                )
+            }
+            return
+        }
+
+        if (!EMAIL_REGEX.matches(state.email.trim())) {
+            _uiState.update {
+                it.copy(
+                    emailError = s("Enter a valid email address.", "أدخل عنوان بريد إلكتروني صالحاً."),
+                    errorMessage = s("Please enter a valid email address.", "يُرجى إدخال عنوان بريد إلكتروني صالح.")
+                )
+            }
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            val result = authRepository.sendPasswordReset(state.email.trim())
+            _uiState.update { it.copy(isLoading = false) }
+
+            result
+                .onSuccess {
+                    _uiState.update { it.copy(passwordResetSent = true) }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(errorMessage = s("Failed to send reset email. Please check your email address.", "تعذّر إرسال بريد إعادة التعيين. يُرجى التحقق من بريدك الإلكتروني."))
+                    }
+                }
+        }
+    }
+
+    fun dismissError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun dismissPasswordResetSent() {
+        _uiState.update { it.copy(passwordResetSent = false) }
+    }
+
+    fun onNavigationHandled() {
+        _uiState.update { it.copy(navigationEvent = null) }
+    }
+
+    private fun checkUserProfileAndNavigate(userId: String) {
+        if (verificationInFlight == userId) {
+            Timber.i("$TAG: uid=%s verification already in flight — ignoring duplicate trigger", userId)
+            return
+        }
+        verificationInFlight = userId
+
+        // Layer 1: local completion flag
+        if (onboardingLocalStore.isCompleted(userId)) {
+            verificationInFlight = null
+            Timber.i("$TAG: uid=%s has LOCAL onboarding flag — navigating to Home (no network needed)", userId)
+            _uiState.update { it.copy(isLoading = false) }
+            retryPendingProfileUpload(userId)
+            _uiState.update {
+                it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                var document: com.google.firebase.firestore.DocumentSnapshot? = null
+                var lastError: Exception? = null
+                for (attempt in 1..3) {
+                    document = withTimeoutOrNull(8_000L) {
+                        try {
+                            firestore.collection("users").document(userId)
+                                .get(com.google.firebase.firestore.Source.SERVER)
+                                .await()
+                        } catch (e: Exception) {
+                            lastError = e
+                            Timber.w(e, "$TAG: Server read failed for uid=%s (attempt %d/3) — trying cache", userId, attempt)
+                            try {
+                                firestore.collection("users").document(userId)
+                                    .get(com.google.firebase.firestore.Source.CACHE)
+                                    .await()
+                            } catch (cacheEx: Exception) {
+                                lastError = cacheEx
+                                Timber.w(cacheEx, "$TAG: Cache read also failed for uid=%s (attempt %d/3)", userId, attempt)
+                                null
+                            }
+                        }
+                    }
+                    if (document != null) break
+                    Timber.w("$TAG: profile verification attempt %d/3 returned nothing for uid=%s", attempt, userId)
+                    if (attempt < 3) kotlinx.coroutines.delay(1_500L)
+                }
+
+                _uiState.update { it.copy(isLoading = false) }
+
+                if (document == null) {
+                    val hasLocal = onboardingLocalStore.isCompleted(userId) ||
+                            onboardingLocalStore.readPendingProfile(userId) != null
+                    if (hasLocal) {
+                        Timber.w("$TAG: uid=%s verification failed after 3 attempts but LOCAL onboarding state exists — going Home", userId)
+                        retryPendingProfileUpload(userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                        }
+                        return@launch
+                    }
+                    val hint = verificationErrorHint(lastError)
+                    Timber.e("$TAG: uid=%s account verification INCONCLUSIVE after 3 attempts — staying on auth with a retryable error%s", userId, hint)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = s(
+                                "We couldn't verify your account. Check your internet connection and sign in again — your profile and progress will be restored.",
+                                "تعذّر التحقق من حسابك. تحقق من اتصال الإنترنت وسجّل الدخول مرة أخرى — سيتم استعادة ملفك الشخصي وتقدّمك."
+                            ) + hint
+                        )
+                    }
+                    return@launch
+                }
+                if (!document.exists()) {
+                    val hasLocal = onboardingLocalStore.isCompleted(userId) ||
+                            onboardingLocalStore.readPendingProfile(userId) != null
+                    if (hasLocal) {
+                        Timber.w("$TAG: uid=%s doc missing on server but LOCAL onboarding state exists — going Home", userId)
+                        retryPendingProfileUpload(userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                        }
+                        return@launch
+                    }
+                }
+
+                val profileComplete = document != null && document.exists()
+                    && document.contains("quitDate")
+                    && document.contains("quitType")
+                    && document.contains("nickname")
+                    && (document.getString("nickname")?.isNotBlank() == true)
+
+                when {
+                    profileComplete -> {
+                        onboardingLocalStore.markCompleted(userId)
+                        retryPendingProfileUpload(userId)
+
+                        val hasAge = (document.getLong("age") ?: 0L) > 0 ||
+                                (onboardingLocalStore.readPendingProfile(userId)?.age ?: 0) > 0
+                        if (!hasAge) {
+                            Timber.i("$TAG: User uid=%s missing age — navigating to age completion", userId)
+                            _uiState.update {
+                                it.copy(navigationEvent = AuthNavigationEvent.NavigateToAgeCompletion)
+                            }
+                        } else {
+                            Timber.i("$TAG: User uid=%s has completed onboarding — navigating to Home", userId)
+                            _uiState.update {
+                                it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                            }
+                        }
+                    }
+
+                    onboardingLocalStore.readPendingProfile(userId) != null -> {
+                        Timber.i("$TAG: uid=%s sparse on server but LOCAL pending profile exists — retrying upload, navigating to Home", userId)
+                        retryPendingProfileUpload(userId)
+                        onboardingLocalStore.markCompleted(userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToHome)
+                        }
+                    }
+
+                    else -> {
+                        if (guardDuplicateProviderBeforeOnboarding()) {
+                            return@launch
+                        }
+                        Timber.i("$TAG: User uid=%s needs onboarding — navigating to Onboarding", userId)
+                        _uiState.update {
+                            it.copy(navigationEvent = AuthNavigationEvent.NavigateToOnboarding)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                val hasLocal = onboardingLocalStore.isCompleted(userId) ||
+                        onboardingLocalStore.readPendingProfile(userId) != null
+                Timber.e(e, "$TAG: Profile verification threw for uid=%s — local state=%s", userId, hasLocal)
+                if (hasLocal) {
+                    retryPendingProfileUpload(userId)
+                    _uiState.update {
+                        it.copy(isLoading = false, navigationEvent = AuthNavigationEvent.NavigateToHome)
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = s(
+                                "We couldn't verify your account. Check your internet connection and sign in again — your profile and progress will be restored.",
+                                "تعذّر التحقق من حسابك. تحقق من اتصال الإنترنت وسجّل الدخول مرة أخرى — سيتم استعادة ملفك الشخصي وتقدّمك."
+                            ) + verificationErrorHint(e)
+                        )
+                    }
+                }
+            } finally {
+                verificationInFlight = null
+            }
+        }
+    }
+
+    private fun verificationErrorHint(e: Exception?): String = when {
+        e == null -> " (error: TIMEOUT)"
+        e is com.google.firebase.firestore.FirebaseFirestoreException ->
+            " (error: ${e.code.name})"
+        else -> " (error: ${e.javaClass.simpleName})"
+    }
+
+    private suspend fun guardDuplicateProviderBeforeOnboarding(): Boolean {
+        val firebaseUser = authRepository.getCurrentUser() ?: return false
+        val email = firebaseUser.email ?: return false
+        val currentProviders = authRepository.currentUserProviderIds()
+        val registered = authRepository.fetchSignInMethods(email)
+        if (registered.isEmpty()) return false
+        val others = registered.filter { it !in currentProviders }
+        if (others.isEmpty()) return false
+        val otherLabel = others.map { providerLabel(it) }.distinct().joinToString(" / ")
+        Timber.w(
+            "$TAG: uid=%s verified-incomplete but email=%s also registered via %s (current=%s) — suppressing onboarding",
+            firebaseUser.uid, email, others, currentProviders
+        )
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                errorMessage = s(
+                    "An account with this email already exists — sign in with $otherLabel to restore your previous profile and progress.",
+                    "يوجد حساب بهذا البريد الإلكتروني بالفعل — سجّل الدخول باستخدام $otherLabel لاستعادة ملفك الشخصي وتقدّمك السابق."
+                )
+            )
+        }
+        return true
+    }
+
+    private fun providerLabel(id: String): String = when (id) {
+        "password" -> s("Email & Password", "البريد وكلمة المرور")
+        "google.com" -> s("Google", "‏Google")
+        else -> id
+    }
+
+    /**
+     * ✅ FIX v1.0.30 — retryPendingProfileUpload
+     *
+     * المشكلة السابقة: كانت تستخدم batch.set(userRef, effectiveUserMap) بدون
+     * SetOptions.merge()، مما يحذف createdAt من المستند عند الكتابة الكاملة.
+     * قواعد Firestore v9 ترفض هذا (identity anchor moved)، فيفشل الرفع 3 مرات،
+     * ثم يُعاد توجيه المستخدم إلى Onboarding في كل مرة.
+     *
+     * الإصلاح: استخدام SetOptions.merge() دائماً حتى تُحدَّث الحقول المطلوبة
+     * فقط، ويبقى createdAt الأصلي سليماً في Firestore.
+     */
+    private fun retryPendingProfileUpload(userId: String) {
+        val pending = onboardingLocalStore.readPendingProfile(userId) ?: return
+        viewModelScope.launch {
+            try {
+                val (userMap, publicMap) = onboardingLocalStore.buildFirestoreMaps(pending)
+                repeat(3) { attempt ->
+                    try {
+                        withTimeoutOrNull(10_000L) {
+                            val userRef = firestore.collection("users").document(userId)
+                            val existing = try {
+                                userRef.get().await()
+                            } catch (e: Exception) { null }
+
+                            // ✅ FIX: لا تحذف createdAt أبداً، ولا تكتب email
+                            // إذا كان موجوداً بالفعل — دع merge يتولى الأمر.
+                            val effectiveUserMap = userMap.toMutableMap().apply {
+                                if (existing?.exists() == true) {
+                                    // حذف createdAt من الـ map فقط (لن يُكتب)
+                                    // merge سيحتفظ بالقيمة الأصلية في Firestore.
+                                    remove("createdAt")
+                                    // نفس المنطق للـ email
+                                    if (existing.contains("email")) {
+                                        remove("email")
+                                    }
+                                }
+                            }
+
+                            val batch = firestore.batch()
+                            // ✅ FIX الأساسي: SetOptions.merge() بدلاً من set() الكامل
+                            batch.set(userRef, effectiveUserMap, SetOptions.merge())
+                            batch.set(
+                                firestore.collection("publicProfiles").document(userId),
+                                publicMap,
+                                SetOptions.merge()
+                            )
+                            batch.commit().await()
+                        } ?: throw java.util.concurrent.TimeoutException()
+                        Timber.i("$TAG: pending onboarding profile uploaded for uid=%s (attempt %d)", userId, attempt + 1)
+                        onboardingLocalStore.clearPendingProfile(userId)
+                        return@launch
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.w(e, "$TAG: pending upload attempt %d failed for uid=%s", attempt + 1, userId)
+                    }
+                    kotlinx.coroutines.delay(5_000L * (attempt + 1))
+                }
+                Timber.w("$TAG: pending profile upload still failing for uid=%s — will retry next launch", userId)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "$TAG: pending profile retry crashed for uid=%s", userId)
+            }
+        }
+    }
+
+    private fun validateInputs(state: AuthUiState, isSignUp: Boolean): Boolean {
+        var valid = true
+
+        if (state.email.isBlank()) {
+            _uiState.update { it.copy(emailError = s("Email is required.", "البريد الإلكتروني مطلوب.")) }
+            valid = false
+        } else if (!EMAIL_REGEX.matches(state.email.trim())) {
+            _uiState.update { it.copy(emailError = s("Enter a valid email address.", "أدخل عنوان بريد إلكتروني صالحاً.")) }
+            valid = false
+        }
+
+        if (state.password.isBlank()) {
+            _uiState.update { it.copy(passwordError = s("Password is required.", "كلمة المرور مطلوبة.")) }
+            valid = false
+        } else if (state.password.length < 6) {
+            _uiState.update { it.copy(passwordError = s("Password must be at least 6 characters.", "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.")) }
+            valid = false
+        }
+
+        if (isSignUp) {
+            if (state.confirmPassword.isBlank()) {
+                _uiState.update { it.copy(confirmPasswordError = s("Please confirm your password.", "يُرجى تأكيد كلمة المرور.")) }
+                valid = false
+            } else if (state.password != state.confirmPassword) {
+                _uiState.update { it.copy(confirmPasswordError = s("Passwords do not match.", "كلمتا المرور غير متطابقتين.")) }
+                valid = false
+            }
+        }
+
+        return valid
+    }
+
+    private fun mapAuthError(exception: Throwable): String {
+        return when (exception) {
+            is FirebaseAuthInvalidUserException ->
+                s("No account found with this email. Please sign up first.", "لا يوجد حساب بهذا البريد الإلكتروني. يُرجى إنشاء حساب أولاً.")
+            is FirebaseAuthInvalidCredentialsException ->
+                s("Invalid email or password. Please try again.", "البريد الإلكتروني أو كلمة المرور غير صحيحة. حاول مرة أخرى.")
+            is FirebaseAuthWeakPasswordException ->
+                s("Password is too weak. Use at least 6 characters with a mix of letters and numbers.", "كلمة المرور ضعيفة جداً. استخدم 6 أحرف على الأقل مع مزيج من الحروف والأرقام.")
+            is FirebaseAuthUserCollisionException ->
+                s("An account with this email already exists. Please sign in instead.", "يوجد حساب بهذا البريد الإلكتروني بالفعل. يُرجى تسجيل الدخول بدلاً من ذلك.")
+            is IllegalArgumentException ->
+                exception.message ?: s("Invalid input. Please check your details.", "بيانات غير صحيحة. يُرجى التحقق من المدخلات.")
+            else -> {
+                Timber.e(exception, "$TAG: Unhandled auth error")
+                exception.localizedMessage ?: s("Authentication failed. Please try again.", "فشلت المصادقة. حاول مرة أخرى.")
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ViewModel Factory
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class AuthViewModelFactory(
+    private val authRepository: AuthRepository,
+    private val firestore: FirebaseFirestore,
+    private val onboardingLocalStore: breathy.com.utils.OnboardingLocalStore
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        require(modelClass.isAssignableFrom(AuthViewModel::class.java)) {
+            "Unknown ViewModel class: ${modelClass.name}"
+        }
+        return AuthViewModel(authRepository, firestore, onboardingLocalStore) as T
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Auth Screen — Main Composable
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun AuthScreen(
+    onNavigateToHome: () -> Unit,
+    onNavigateToOnboarding: () -> Unit,
+    onNavigateToAgeCompletion: () -> Unit = {},
+    onGoogleSignInRequest: () -> Unit = {},
+    googleIdToken: String? = null,
+    onGoogleTokenConsumed: () -> Unit = {},
+    googleSignInError: String? = null,
+    onGoogleErrorConsumed: () -> Unit = {},
+    viewModel: AuthViewModel = run {
+        val context = LocalContext.current
+        val appModule = (context.applicationContext as BreathyApplication).appModule
+        viewModel(factory = AuthViewModelFactory(appModule.authRepository, appModule.firestore, appModule.onboardingLocalStore))
+    }
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(googleIdToken) {
+        if (googleIdToken != null) {
+            viewModel.signInWithGoogle(googleIdToken)
+            onGoogleTokenConsumed()
+        }
+    }
+
+    LaunchedEffect(googleSignInError) {
+        if (googleSignInError != null) {
+            viewModel.setExternalError(googleSignInError)
+            onGoogleErrorConsumed()
+        }
+    }
+
+    LaunchedEffect(uiState.navigationEvent) {
+        when (uiState.navigationEvent) {
+            is AuthNavigationEvent.NavigateToHome -> {
+                onNavigateToHome()
+                viewModel.onNavigationHandled()
+            }
+            is AuthNavigationEvent.NavigateToOnboarding -> {
+                onNavigateToOnboarding()
+                viewModel.onNavigationHandled()
+            }
+            is AuthNavigationEvent.NavigateToAgeCompletion -> {
+                onNavigateToAgeCompletion()
+                viewModel.onNavigationHandled()
+            }
+            null -> { }
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.dismissError()
+        }
+    }
+
+    LaunchedEffect(uiState.passwordResetSent) {
+        if (uiState.passwordResetSent) {
+            snackbarHostState.showSnackbar(
+                message = s("Password reset email sent! Check your inbox.", "تم إرسال بريد إعادة تعيين كلمة المرور! تحقّق من صندوق الوارد."),
+                duration = SnackbarDuration.Long
+            )
+            viewModel.dismissPasswordResetSent()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            Timber.d("AuthScreen disposed")
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.background),
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, 2000f)
+                )
+            )
+    ) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.error,
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp)
+                .padding(top = 60.dp, bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AuthWelcomeHeader(isSignUpMode = uiState.isSignUpMode)
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+            EmailField(
+                email = uiState.email,
+                onEmailChanged = viewModel::onEmailChanged,
+                error = uiState.emailError,
+                imeAction = ImeAction.Next,
+                onImeAction = { focusManager.moveFocus(FocusDirection.Down) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            PasswordField(
+                password = uiState.password,
+                onPasswordChanged = viewModel::onPasswordChanged,
+                isPasswordVisible = uiState.isPasswordVisible,
+                onToggleVisibility = viewModel::togglePasswordVisibility,
+                label = s("Password", "كلمة المرور"),
+                error = uiState.passwordError,
+                imeAction = if (uiState.isSignUpMode) ImeAction.Next else ImeAction.Done,
+                onImeAction = {
+                    if (uiState.isSignUpMode) {
+                        focusManager.moveFocus(FocusDirection.Down)
+                    } else {
+                        keyboardController?.hide()
+                        viewModel.signIn()
+                    }
+                }
+            )
+
+            AnimatedVisibility(
+                visible = uiState.isSignUpMode,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PasswordField(
+                        password = uiState.confirmPassword,
+                        onPasswordChanged = viewModel::onConfirmPasswordChanged,
+                        isPasswordVisible = uiState.isConfirmPasswordVisible,
+                        onToggleVisibility = viewModel::toggleConfirmPasswordVisibility,
+                        label = s("Confirm Password", "تأكيد كلمة المرور"),
+                        error = uiState.confirmPasswordError,
+                        imeAction = ImeAction.Done,
+                        onImeAction = {
+                            keyboardController?.hide()
+                            viewModel.signUp()
+                        }
+                    )
+                }
+            }
+
+            if (!uiState.isSignUpMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = viewModel::sendPasswordReset) {
+                        Text(
+                            text = s("Forgot Password?", "نسيت كلمة المرور؟"),
+                            color = AccentPurple,
+                            fontSize = 13.sp,
+                            textDecoration = TextDecoration.Underline
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            GradientButton(
+                text = if (uiState.isSignUpMode) s("Sign Up", "إنشاء حساب") else s("Sign In", "تسجيل الدخول"),
+                isLoading = uiState.isLoading,
+                onClick = if (uiState.isSignUpMode) viewModel::signUp else viewModel::signIn,
+                contentDescription = if (uiState.isSignUpMode) "Sign up button" else "Sign in button"
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OrDivider()
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            GoogleSignInButton(
+                onClick = onGoogleSignInRequest,
+                isLoading = uiState.isLoading
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            SignUpToggle(
+                isSignUpMode = uiState.isSignUpMode,
+                onToggle = viewModel::toggleSignUpMode
+            )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Welcome Header
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun AuthWelcomeHeader(isSignUpMode: Boolean) {
+    val ringAlpha by rememberInfiniteTransition(label = "breath")
+        .animateFloat(
+            initialValue = 0.55f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 3800, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breathRingAlpha"
+        )
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier.size(72.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .graphicsLayer { alpha = ringAlpha }
+                    .border(width = 1.5.dp, color = MediumSage, shape = CircleShape)
+            )
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .border(width = 2.dp, color = DeepForest.copy(alpha = 0.85f), shape = CircleShape)
+            )
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .align(Alignment.TopCenter)
+                    .background(NaturalYellow, CircleShape)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = s("B R E A T H Y", "B R E A T H Y"),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 3.sp,
+            color = MediumSage
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = if (isSignUpMode) {
+                s("CREATE YOUR ACCOUNT", "أنشئ حسابك")
+            } else {
+                s("WELCOME BACK", "مرحباً بعودتك")
+            },
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+            color = DarkBotanical
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = s(
+                "Breathe in. Breathe out. Your smoke-free journey continues.",
+                "تنفّس بهدوء. رحلتك دون تدخين مستمرة."
+            ),
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = DeepForest.copy(alpha = 0.65f)
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Email Field
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun EmailField(
+    email: String,
+    onEmailChanged: (String) -> Unit,
+    error: String?,
+    imeAction: ImeAction,
+    onImeAction: () -> Unit
+) {
+    OutlinedTextField(
+        value = email,
+        onValueChange = onEmailChanged,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(s("Email", "البريد الإلكتروني"), color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Email,
+                contentDescription = "Email input icon",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        isError = error != null,
+        supportingText = error?.let {
+            {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Email,
+            imeAction = imeAction
+        ),
+        keyboardActions = KeyboardActions(onAny = { onImeAction() }),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = AccentPrimary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+            errorBorderColor = MaterialTheme.colorScheme.error,
+            focusedLabelColor = AccentPrimary,
+            errorLabelColor = MaterialTheme.colorScheme.error,
+            cursorColor = AccentPrimary,
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+            errorTextColor = MaterialTheme.colorScheme.onBackground
+        ),
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Password Field
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun PasswordField(
+    password: String,
+    onPasswordChanged: (String) -> Unit,
+    isPasswordVisible: Boolean,
+    onToggleVisibility: () -> Unit,
+    label: String,
+    error: String?,
+    imeAction: ImeAction,
+    onImeAction: () -> Unit
+) {
+    OutlinedTextField(
+        value = password,
+        onValueChange = onPasswordChanged,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = "$label input icon",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = onToggleVisibility,
+                content = {
+                    Icon(
+                        imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            )
+        },
+        isError = error != null,
+        supportingText = error?.let {
+            {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp
+                )
+            }
+        },
+        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = imeAction
+        ),
+        keyboardActions = KeyboardActions(onAny = { onImeAction() }),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = AccentPrimary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+            errorBorderColor = MaterialTheme.colorScheme.error,
+            focusedLabelColor = AccentPrimary,
+            errorLabelColor = MaterialTheme.colorScheme.error,
+            cursorColor = AccentPrimary,
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+            errorTextColor = MaterialTheme.colorScheme.onBackground
+        ),
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Gradient CTA Button
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun GradientButton(
+    text: String,
+    isLoading: Boolean,
+    onClick: () -> Unit,
+    contentDescription: String = text
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .clip(RoundedCornerShape(14.dp)),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            disabledContainerColor = androidx.compose.ui.graphics.Color.Transparent
+        ),
+        enabled = !isLoading,
+        contentPadding = ButtonDefaults.ContentPadding
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(AccentPrimary, AccentSecondary)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.background,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  "or" Divider
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun OrDivider() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        HorizontalDivider(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            thickness = 1.dp
+        )
+        Text(
+            text = s("or", "أو"),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp
+        )
+        HorizontalDivider(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            thickness = 1.dp
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Google Sign-In Button
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun GoogleSignInButton(
+    onClick: () -> Unit,
+    isLoading: Boolean
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp),
+        enabled = !isLoading,
+        shape = RoundedCornerShape(14.dp),
+        border = ButtonDefaults.outlinedButtonBorder.copy(
+            brush = Brush.horizontalGradient(
+                colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
+            )
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+            disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+        )
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = AccentSecondary,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Text(
+                text = "G",
+                color = AccentSecondary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = s("Continue with Google", "المتابعة عبر Google"),
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Sign In / Sign Up Toggle
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun SignUpToggle(
+    isSignUpMode: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = if (isSignUpMode) s("Already have an account? ", "لديك حساب بالفعل؟ ") else s("Don't have an account? ", "ليس لديك حساب؟ "),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp
+        )
+        Text(
+            text = if (isSignUpMode) s("Sign In", "تسجيل الدخول") else s("Sign Up", "إنشاء حساب"),
+            color = AccentPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textDecoration = TextDecoration.Underline,
+            modifier = Modifier.clickable { onToggle() }
+        )
+    }
+}
