@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -20,7 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,26 +34,31 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import breathy.com.data.repository.UserRepository
 import breathy.com.utils.s
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * One-time profile completion step for accounts created before age was
- * collected during onboarding. Asks for the age ONCE, saves it, and never
- * appears again (the auth check passes once `age > 0` in Firestore).
- *
- * This prevents an infinite onboarding loop: existing users keep ALL their
- * data and only add the missing age value.
- */
 @Composable
 fun AgeCompletionScreen(
     userRepository: UserRepository,
     onNavigateToHome: () -> Unit
 ) {
-    var age by remember { mutableStateOf<Int?>(null) }
+    var age by remember { mutableIntStateOf(30) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var hasSaved by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            errorMessage = s(
+                "You are not signed in. Please log in again.",
+                "أنت غير مسجل الدخول. يرجى تسجيل الدخول مرة أخرى."
+            )
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -60,7 +68,7 @@ fun AgeCompletionScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "\uD83C\uDF3F",
+            text = "🌿",
             style = MaterialTheme.typography.displayMedium
         )
 
@@ -76,7 +84,10 @@ fun AgeCompletionScreen(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = s("Please confirm your age to complete your profile. This is asked only once.", "يرجى تأكيد عمرك لإكمال ملفك الشخصي. يُطلب هذا مرة واحدة فقط."),
+            text = s(
+                "Please confirm your age to complete your profile. This is asked only once.",
+                "يرجى تأكيد عمرك لإكمال ملفك الشخصي. يُطلب هذا مرة واحدة فقط."
+            ),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -84,26 +95,36 @@ fun AgeCompletionScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        // Age stepper
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             OutlinedButton(
-                onClick = { age = ((age ?: 30) - 1).coerceIn(10, 120) },
+                onClick = {
+                    if (!isSaving) {
+                        age = (age - 1).coerceAtLeast(10)
+                        errorMessage = null
+                    }
+                },
+                enabled = !isSaving && age > 10,
                 modifier = Modifier.size(64.dp),
                 shape = CircleShape,
-                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("−", style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    text = "−",
+                    style = MaterialTheme.typography.headlineMedium
+                )
             }
 
             Card(
                 modifier = Modifier.width(140.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
@@ -113,11 +134,11 @@ fun AgeCompletionScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = age?.toString() ?: "—",
+                        text = age.toString(),
                         style = MaterialTheme.typography.headlineLarge,
-                        color = if (age != null) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.primary
                     )
+
                     Text(
                         text = s("years", "سنة"),
                         style = MaterialTheme.typography.bodySmall,
@@ -127,14 +148,23 @@ fun AgeCompletionScreen(
             }
 
             OutlinedButton(
-                onClick = { age = ((age ?: 30) + 1).coerceIn(10, 120) },
+                onClick = {
+                    if (!isSaving) {
+                        age = (age + 1).coerceAtMost(120)
+                        errorMessage = null
+                    }
+                },
+                enabled = !isSaving && age < 120,
                 modifier = Modifier.size(64.dp),
                 shape = CircleShape,
-                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("+", style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    text = "+",
+                    style = MaterialTheme.typography.headlineMedium
+                )
             }
         }
 
@@ -152,38 +182,58 @@ fun AgeCompletionScreen(
 
         Button(
             onClick = {
-                val selectedAge = age
-                if (selectedAge == null) {
-                    errorMessage = s("Please select your age to continue", "يرجى اختيار عمرك للمتابعة")
+                if (isSaving || hasSaved) return@Button
+
+                val auth = FirebaseAuth.getInstance()
+                val currentUser = auth.currentUser
+
+                if (currentUser == null) {
+                    errorMessage = s(
+                        "You are not signed in. Please log in again.",
+                        "أنت غير مسجل الدخول. يرجى تسجيل الدخول مرة أخرى."
+                    )
                     return@Button
                 }
+
                 isSaving = true
                 errorMessage = null
+
+                val uid = currentUser.uid
+
                 scope.launch {
-                    val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-                    if (uid == null) {
-                        isSaving = false
-                        errorMessage = s("You are not signed in. Please log in again.", "أنت غير مسجل الدخول. يرجى تسجيل الدخول مرة أخرى.")
-                        return@launch
-                    }
-                    userRepository.updateAge(uid, selectedAge)
+                    userRepository.updateAge(uid, age)
                         .onSuccess {
-                            Timber.i("AgeCompletionScreen: age saved for uid=%s", uid)
+                            hasSaved = true
+                            isSaving = false
+
+                            Timber.i(
+                                "AgeCompletionScreen: age saved successfully for uid=%s",
+                                uid
+                            )
+
                             onNavigateToHome()
                         }
                         .onFailure { e ->
-                            Timber.e(e, "AgeCompletionScreen: failed to save age")
+                            Timber.e(
+                                e,
+                                "AgeCompletionScreen: failed to save age for uid=%s",
+                                uid
+                            )
+
                             isSaving = false
-                            errorMessage = s("Could not save your age. Please try again.", "تعذر حفظ عمرك. يرجى المحاولة مرة أخرى.")
+                            errorMessage = s(
+                                "Could not save your age. Please try again.",
+                                "تعذر حفظ عمرك. يرجى المحاولة مرة أخرى."
+                            )
                         }
                 }
             },
-            enabled = !isSaving,
+            enabled = !isSaving && !hasSaved,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(24.dp),
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+            colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
@@ -195,7 +245,12 @@ fun AgeCompletionScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text(s("Continue my journey", "أكمل رحلتي"))
+                Text(
+                    text = s(
+                        "Continue my journey",
+                        "أكمل رحلتي"
+                    )
+                )
             }
         }
     }
