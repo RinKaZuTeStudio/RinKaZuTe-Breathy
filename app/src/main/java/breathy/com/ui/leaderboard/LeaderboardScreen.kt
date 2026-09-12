@@ -1022,13 +1022,8 @@ private fun LeaderboardRow(
     isCurrentUser: Boolean,
     onProfileClick: (String) -> Unit
 ) {
-    // CURRENT-USER HIGHLIGHT (spec section 10):
-    // The row layout, size, spacing, avatar size, rank layout and borders are
-    // IDENTICAL to every other row. The ONLY visual difference is a slightly
-    // darker, subtle Breathy background — no shadow, no elevation, no glow,
-    // no thick border, no floating-card effect.
-    val cardColor = if (isCurrentUser) {
-        CurrentUserRowBackground   // slightly darker Breathy background
+    val backgroundColor = if (isCurrentUser) {
+        CurrentUserRowBackground
     } else {
         MaterialTheme.colorScheme.surface
     }
@@ -1037,23 +1032,32 @@ private fun LeaderboardRow(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = "Rank ${entry.rank}: ${entry.nickname}, ${entry.xp} XP"
+                contentDescription =
+                    "Rank ${entry.rank}: ${entry.nickname}, ${entry.xp} XP"
                 role = androidx.compose.ui.semantics.Role.Button
             },
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        ),
         shape = RoundedCornerShape(18.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SoftSage.copy(alpha = 0.5f)),
-        onClick = { onProfileClick(entry.userId) }
+        border = null,
+        onClick = {
+            onProfileClick(entry.userId)
+        }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(
+                    horizontal = 12.dp,
+                    vertical = 10.dp
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Rank number in a soft circle — identical for every row
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -1062,7 +1066,7 @@ private fun LeaderboardRow(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${entry.rank}",
+                    text = entry.rank.toString(),
                     style = TextStyle(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
@@ -1072,11 +1076,12 @@ private fun LeaderboardRow(
                 )
             }
 
-            // Avatar with persisted frame
             breathy.com.ui.components.BreathyAvatar(
                 photoURL = entry.photoURL,
                 frame = entry.avatarFrame,
-                rankTier = breathy.com.data.models.RankTier.forLevel(entry.level),
+                rankTier = breathy.com.data.models.RankTier.forLevel(
+                    entry.level
+                ),
                 size = 44.dp,
                 contentDescription = "${entry.nickname}'s avatar",
                 animated = false,
@@ -1084,12 +1089,12 @@ private fun LeaderboardRow(
                 isPremiumUser = entry.isPremium
             )
 
-            // Nickname and days
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // v1.0.9 — premium subscribers' names glow neon.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     breathy.com.ui.components.PremiumGlowText(
                         text = entry.nickname,
                         enabled = entry.isPremium,
@@ -1099,17 +1104,27 @@ private fun LeaderboardRow(
                         color = themeTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier.weight(
+                            1f,
+                            fill = false
+                        )
                     )
+
                     if (isCurrentUser) {
-                        // Subtle, integrated YOU indicator (spec: keep it small
-                        // and inside the row; identity comes from the darker bg).
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(Modifier.width(6.dp))
+
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(AccentPrimary.copy(alpha = 0.14f))
-                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                                .clip(
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .background(
+                                    AccentPrimary.copy(alpha = 0.12f)
+                                )
+                                .padding(
+                                    horizontal = 5.dp,
+                                    vertical = 1.dp
+                                )
                         ) {
                             Text(
                                 text = s("YOU", "أنت"),
@@ -1122,8 +1137,10 @@ private fun LeaderboardRow(
                             )
                         }
                     }
+
                     if (entry.isPremium) {
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(Modifier.width(4.dp))
+
                         Text(
                             text = "✦",
                             style = MaterialTheme.typography.labelSmall.copy(
@@ -1133,8 +1150,12 @@ private fun LeaderboardRow(
                         )
                     }
                 }
+
                 Text(
-                    text = s("%d days smoke-free", "%d يوم بدون تدخين").format(entry.daysSmokeFree),
+                    text = s(
+                        "%d days smoke-free",
+                        "%d يوم بدون تدخين"
+                    ).format(entry.daysSmokeFree),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = themeTextSecondary,
                         fontSize = 11.sp
@@ -1142,30 +1163,29 @@ private fun LeaderboardRow(
                 )
             }
 
-            // XP pill — identical styling for every row
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
                     .background(VeryLightSage)
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                    .padding(
+                        horizontal = 10.dp,
+                        vertical = 5.dp
+                    )
             ) {
                 Text(
-                    text = s("%d XP", "%d نقاط خبرة").format(entry.xp),
-                    style = TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentSecondary
+                    text = s(
+                        "%d XP",
+                        "%d نقاط خبرة"
+                    ).format(entry.xp),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = GoldDeep,
+                        fontWeight = FontWeight.Bold
                     )
                 )
             }
         }
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  Current User Bottom Bar — YOUR POSITION + YOUR SCORE, fixed at bottom
-// ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
 private fun CurrentUserBottomBar(
