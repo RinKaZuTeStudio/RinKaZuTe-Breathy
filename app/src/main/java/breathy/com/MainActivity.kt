@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import breathy.com.di.AppModule
 import breathy.com.ui.navigation.BreathyNavHost
 import breathy.com.ui.theme.BreathyTheme
+import breathy.com.utils.AdManager
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -26,37 +27,16 @@ import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import timber.log.Timber
 
-/**
- * Single-activity host for the Breathy application.
- *
- * Responsibilities:
- * - Initializes the Google Mobile Ads SDK (AdMob-only serving, v1.0.23)
- * - Re-verifies the Google Play Premium entitlement on start + foreground
- * - Handles Google Sign-In via [GoogleSignInClient]
- * - Requests POST_NOTIFICATIONS permission on Android 13+
- * - Handles deep links from push notifications and URI-based intents
- * - Provides the Compose navigation host wrapped in [BreathyTheme]
- */
 class MainActivity : ComponentActivity() {
 
     private var deepLinkRoute by mutableStateOf<String?>(null)
-
-    /** Google Sign-In ID token, shared with Compose navigation via state. */
     private var googleIdToken by mutableStateOf<String?>(null)
-
-    /**
-     * v1.0.17 — Google Sign-In failure message, surfaced to the Auth screen.
-     * Fixes the production "taps Google Sign-In, picks an account, nothing
-     * happens" report: every failure path now becomes a visible error.
-     */
     private var googleSignInError by mutableStateOf<String?>(null)
 
-    /** Lazy reference to the app-scoped [AppModule] for manual DI. */
     private val appModule: AppModule by lazy {
         (application as BreathyApplication).appModule
     }
 
-    /** Google Sign-In client configured with the default web client ID from Firebase. */
     private val googleSignInClient: GoogleSignInClient by lazy {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
@@ -75,7 +55,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Launcher for Google Sign-In intent. */
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
@@ -86,31 +65,48 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // ── AdMob ads (Google Mobile Ads SDK — v1.0.23 AdMob-only serving) ──
-        appModule.adManager.initialize()
+        // ── AdMob ads (v1.0.30 — AdManager is the SINGLE owner) ──────────
+        // ✅ FIX v1.0.30 — The AdManager now initializes the SDK once and
+        // tracks its own ready state. We hook the AdEventListener here so
+        // we can log every load/show/fail event to Logcat. This is the
+        // only place that needs to call adManager.initialize().
+        try {
+            appModule.adManager.eventListener = object : AdManager.AdEventListener {
+                override fun onAdLoaded(adType: AdManager.AdType) {
+                    Timber.i("AdMob ✅ loaded: %s", adType)
+                }
+                override fun onAdLoadFailed(adType: AdManager.AdType, error: String) {
+                    Timber.w("AdMob ❌ load failed: %s — %s", adType, error)
+                }
+                override fun onAdShown(adType: AdManager.AdType) {
+                    Timber.i("AdMob ▶️ shown: %s", adType)
+                }
+                override fun onAdDismissed(adType: AdManager.AdType) {
+                    Timber.i("AdMob ⏹️ dismissed: %s", adType)
+                }
+                override fun onAdShowFailed(adType: AdManager.AdType, error: String) {
+                    Timber.w("AdMob ❌ show failed: %s — %s", adType, error)
+                }
+            }
+            appModule.adManager.initialize()
+            Timber.i("AdManager.initialize() called from MainActivity")
+        } catch (e: Exception) {
+            Timber.e(e, "AdManager initialization failed in MainActivity")
+        }
 
         // ── Premium entitlement re-check ─────────────────────────────────────
-        // Connect to Google Play Billing and re-verify the subscription on
-        // EVERY app start: active purchase → premium (ads off, premium events
-        // unlocked); expired/cancelled → free behavior resumes. This is the
-        // single startup point that keeps entitlement verified, not cached.
         try {
             appModule.premiumRepository.connectAndRefresh()
         } catch (e: Exception) {
             Timber.e(e, "Premium entitlement check failed at startup")
         }
 
-        // Request notification permission on Android 13+
         requestNotificationPermissionIfNeeded()
-
-        // Handle deep link from intent extras (e.g., from push notifications)
         handleDeepLinkFromIntent(intent)
 
         setContent {
             BreathyTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     BreathyNavHost(
                         deepLinkRoute = deepLinkRoute,
                         onDeepLinkConsumed = { deepLinkRoute = null },
@@ -128,21 +124,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
 
-        // ── App Open ad (v1.0.23 — AdMob App Open, AdMob-only serving) ─────
-        // Paced internally (max one show per 4h) and fully Premium-blocked;
-        // never throws and never blocks navigation.
         try {
             appModule.adManager.maybeShowAppOpenAd(this)
         } catch (e: Exception) {
             Timber.e(e, "App Open ad show failed")
         }
 
-        // ── Premium entitlement re-check on EVERY foreground return ────────
-        // The source of truth is the verified Google Play purchase state.
-        // When the user comes back from subscribing (or cancelling) in Google
-        // Play, the app must reflect the REAL entitlement immediately — never
-        // a cached flag. This closes the "subscribed in Play but the app still
-        // shows Subscribe" synchronization bug.
         try {
             appModule.premiumRepository.recheckEntitlement()
         } catch (e: Exception) {
@@ -155,12 +142,8 @@ class MainActivity : ComponentActivity() {
         handleDeepLinkFromIntent(intent)
     }
 
-    // ── Google Sign-In ─────────────────────────────────────────────────────
-
-    /** Launch the Google Sign-In intent. */
     private fun launchGoogleSignIn() {
         try {
-            // Sign out first to show account picker every time
             googleSignInClient.signOut()
             val signInIntent = googleSignInClient.signInIntent
             googleSignInLauncher.launch(signInIntent)
@@ -169,7 +152,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Handle the result from Google Sign-In. */
     private fun handleGoogleSignInResult(result: ActivityResult) {
         try {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
@@ -179,9 +161,6 @@ class MainActivity : ComponentActivity() {
                 Timber.d("Google Sign-In successful, got idToken")
                 googleIdToken = idToken
             } else {
-                // v1.0.17 — null token means Google rejected the token request
-                // for this build (typically package/sha1 not registered in
-                // Firebase). Never silent: tell the user.
                 Timber.e("Google Sign-In returned null idToken")
                 googleSignInError =
                     "Google sign-in could not be completed (missing ID token). " +
@@ -208,19 +187,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ── Deep Link Handling ──────────────────────────────────────────────────
-
-    /**
-     * Extracts the navigation route from intent extras or data URI.
-     *
-     * Push notifications include a "route" extra that maps directly to a
-     * navigation destination (e.g., "chat/uid123_uid456", "events").
-     * Fallback chain: route → storyId → chatId → eventId → userId → URI path
-     */
     private fun handleDeepLinkFromIntent(intent: Intent?) {
         if (intent == null) return
 
-        // 1. Direct route string from FCM data payload
         val routeExtra = intent.getStringExtra("route")
         if (!routeExtra.isNullOrBlank()) {
             deepLinkRoute = routeExtra
@@ -228,55 +197,39 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        // 2. Story ID (story like/reply notifications)
         val storyId = intent.getStringExtra("storyId")
         if (!storyId.isNullOrBlank()) {
             deepLinkRoute = "storyDetail/$storyId"
-            Timber.d("Deep link route from storyId: storyDetail/$storyId")
             return
         }
 
-        // 3. Chat ID (chat message notifications)
         val chatId = intent.getStringExtra("chatId")
         if (!chatId.isNullOrBlank()) {
             deepLinkRoute = "chat/$chatId"
-            Timber.d("Deep link route from chatId: chat/$chatId")
             return
         }
 
-        // 4. Event ID (event notifications)
         val eventId = intent.getStringExtra("eventId")
         if (!eventId.isNullOrBlank()) {
             deepLinkRoute = "eventChallenge/$eventId"
-            Timber.d("Deep link route from eventId: eventChallenge/$eventId")
             return
         }
 
-        // 5. User ID (friend request / profile notifications)
         val userId = intent.getStringExtra("userId")
         if (!userId.isNullOrBlank()) {
             deepLinkRoute = "publicProfile/$userId"
-            Timber.d("Deep link route from userId: publicProfile/$userId")
             return
         }
 
-        // 6. URI-based deep links (e.g., breathy://app/storyDetail/abc123)
         val uri = intent.data
         if (uri != null) {
             val path = uri.path
             if (!path.isNullOrBlank()) {
                 deepLinkRoute = path.trimStart('/')
-                Timber.d("Deep link route from URI: $deepLinkRoute")
             }
         }
     }
 
-    // ── Permission Handling ─────────────────────────────────────────────────
-
-    /**
-     * Requests the POST_NOTIFICATIONS permission on Android 13 (API 33)+.
-     * Required for the app to show push notifications on those versions.
-     */
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             try {
