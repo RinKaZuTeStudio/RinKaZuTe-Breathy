@@ -41,7 +41,7 @@ billing = "8.3.0"
 # Ads
 levelplay = "9.2.0"
 unityAds = "4.16.0"
-playServicesAds = "24.4.0"
+playServicesAds = "25.4.0"
 
 # Google Sign-In
 playServicesAuth = "21.3.0"
