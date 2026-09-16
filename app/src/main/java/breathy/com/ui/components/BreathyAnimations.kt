@@ -18,6 +18,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -33,13 +34,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.detectTapGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -155,7 +157,7 @@ fun Modifier.shakeOnTrigger(
         animatable.animateTo(
             targetValue = 0f,
             animationSpec = keyframes {
-                durationMillis = durationMillis
+                this.durationMillis = durationMillis
                 0f at 0 with FastOutSlowInEasing
                 -amplitude at (durationMillis * 0.14f).toInt()
                 (amplitude * 0.72f) at (durationMillis * 0.28f).toInt()
@@ -355,7 +357,7 @@ fun BreathingBackdrop(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Tint(
+private fun BoxScope.Tint(
     alignment: Alignment,
     offsetX: Dp,
     offsetY: Dp,
