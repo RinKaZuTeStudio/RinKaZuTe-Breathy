@@ -2,6 +2,7 @@ package breathy.com.ui.auth
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.Canvas
@@ -94,6 +95,14 @@ import breathy.com.ui.theme.DarkBotanical
 import breathy.com.ui.theme.DeepForest
 import breathy.com.ui.theme.MediumSage
 import breathy.com.ui.theme.NaturalYellow
+import breathy.com.ui.components.BreathingBackdrop
+import breathy.com.ui.components.BreathingOrb
+import breathy.com.ui.components.GoogleG
+import breathy.com.ui.components.breathingScale
+import breathy.com.ui.components.entrance
+import breathy.com.ui.components.pressScale
+import breathy.com.ui.components.shakeOnTrigger
+import breathy.com.ui.components.shimmerSweep
 import breathy.com.utils.s
 
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -896,6 +905,8 @@ fun AuthScreen(
                 )
             )
     ) {
+        BreathingBackdrop()
+
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.TopCenter)
@@ -913,12 +924,15 @@ fun AuthScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp)
-                .padding(top = 60.dp, bottom = 32.dp),
+                .padding(top = 40.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            AuthWelcomeHeader(isSignUpMode = uiState.isSignUpMode)
+            AuthWelcomeHeader(
+                isSignUpMode = uiState.isSignUpMode,
+                modifier = Modifier.entrance(index = 0, initialOffsetDp = 26f)
+            )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.height(30.dp))
 
             // ── Email field ───────────────────────────────────────────────
             EmailField(
@@ -926,7 +940,10 @@ fun AuthScreen(
                 onEmailChanged = viewModel::onEmailChanged,
                 error = uiState.emailError,
                 imeAction = ImeAction.Next,
-                onImeAction = { focusManager.moveFocus(FocusDirection.Down) }
+                onImeAction = { focusManager.moveFocus(FocusDirection.Down) },
+                modifier = Modifier
+                    .entrance(index = 1)
+                    .shakeOnTrigger(uiState.emailError)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -947,14 +964,21 @@ fun AuthScreen(
                         keyboardController?.hide()
                         viewModel.signIn()
                     }
-                }
+                },
+                modifier = Modifier
+                    .entrance(index = 2)
+                    .shakeOnTrigger(uiState.passwordError)
             )
 
             // ── Confirm password (sign-up only) ───────────────────────────
             AnimatedVisibility(
                 visible = uiState.isSignUpMode,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
+                enter = expandVertically(
+                    animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(380)),
+                exit = shrinkVertically(
+                    animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(300))
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -969,14 +993,18 @@ fun AuthScreen(
                         onImeAction = {
                             keyboardController?.hide()
                             viewModel.signUp()
-                        }
+                        },
+                        modifier = Modifier.shakeOnTrigger(uiState.confirmPasswordError)
                     )
                 }
             }
 
             // ── Forgot password (sign-in only) ────────────────────────────
-            if (!uiState.isSignUpMode) {
-                Spacer(modifier = Modifier.height(8.dp))
+            AnimatedVisibility(
+                visible = !uiState.isSignUpMode,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(),
+                exit = fadeOut(animationSpec = tween(250)) + shrinkVertically()
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -999,19 +1027,25 @@ fun AuthScreen(
                 text = if (uiState.isSignUpMode) s("Sign Up", "إنشاء حساب") else s("Sign In", "تسجيل الدخول"),
                 isLoading = uiState.isLoading,
                 onClick = if (uiState.isSignUpMode) viewModel::signUp else viewModel::signIn,
-                contentDescription = if (uiState.isSignUpMode) "Sign up button" else "Sign in button"
+                contentDescription = if (uiState.isSignUpMode) "Sign up button" else "Sign in button",
+                modifier = Modifier
+                    .entrance(index = 3)
+                    .pressScale(enabled = !uiState.isLoading)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            OrDivider()
+            OrDivider(Modifier.entrance(index = 4))
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // ── Google Sign-In button ─────────────────────────────────────
             GoogleSignInButton(
                 onClick = onGoogleSignInRequest,
-                isLoading = uiState.isLoading
+                isLoading = uiState.isLoading,
+                modifier = Modifier
+                    .entrance(index = 5)
+                    .pressScale(enabled = !uiState.isLoading)
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -1019,7 +1053,8 @@ fun AuthScreen(
             // ── Toggle sign-in / sign-up ──────────────────────────────────
             SignUpToggle(
                 isSignUpMode = uiState.isSignUpMode,
-                onToggle = viewModel::toggleSignUpMode
+                onToggle = viewModel::toggleSignUpMode,
+                modifier = Modifier.entrance(index = 6)
             )
         }
     }
@@ -1037,47 +1072,16 @@ fun AuthScreen(
  * directly above the email field. No floating shapes, no resizing elements.
  */
 @Composable
-private fun AuthWelcomeHeader(isSignUpMode: Boolean) {
-    // Alpha-only breathing accent (no scale/shape change — the mark itself
-    // never resizes; only the outer ring's opacity gently breathes).
-    val ringAlpha by rememberInfiniteTransition(label = "breath")
-        .animateFloat(
-            initialValue = 0.55f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 3800, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "breathRingAlpha"
-        )
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // ── Breath mark: two thin concentric rings + a small gold dot ────
-        Box(
-            modifier = Modifier.size(72.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Outer ring — soft sage, gently breathing (alpha only)
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .graphicsLayer { alpha = ringAlpha }
-                    .border(width = 1.5.dp, color = MediumSage, shape = CircleShape)
-            )
-            // Inner ring — deep forest green (steady anchor)
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .border(width = 2.dp, color = DeepForest.copy(alpha = 0.85f), shape = CircleShape)
-            )
-            // Gold "morning" dot resting on the outer ring (recovery light)
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .align(Alignment.TopCenter)
-                    .background(NaturalYellow, CircleShape)
-            )
-        }
+private fun AuthWelcomeHeader(
+    isSignUpMode: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // ── Animated brand mark ───────────────────────────────────────────
+        BreathingOrb()
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -1130,12 +1134,13 @@ private fun EmailField(
     onEmailChanged: (String) -> Unit,
     error: String?,
     imeAction: ImeAction,
-    onImeAction: () -> Unit
+    onImeAction: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
         value = email,
         onValueChange = onEmailChanged,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         label = { Text(s("Email", "البريد الإلكتروني"), color = MaterialTheme.colorScheme.onSurfaceVariant) },
         leadingIcon = {
             Icon(
@@ -1188,12 +1193,13 @@ private fun PasswordField(
     label: String,
     error: String?,
     imeAction: ImeAction,
-    onImeAction: () -> Unit
+    onImeAction: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
         value = password,
         onValueChange = onPasswordChanged,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         label = { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant) },
         leadingIcon = {
             Icon(
@@ -1255,11 +1261,12 @@ private fun GradientButton(
     text: String,
     isLoading: Boolean,
     onClick: () -> Unit,
-    contentDescription: String = text
+    contentDescription: String = text,
+    modifier: Modifier = Modifier
 ) {
     Button(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(54.dp)
             .clip(RoundedCornerShape(14.dp)),
@@ -1278,7 +1285,8 @@ private fun GradientButton(
                         colors = listOf(AccentPrimary, AccentSecondary)
                     ),
                     shape = RoundedCornerShape(14.dp)
-                ),
+                )
+                .shimmerSweep(active = !isLoading),
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
@@ -1304,9 +1312,9 @@ private fun GradientButton(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun OrDivider() {
+private fun OrDivider(modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
@@ -1339,11 +1347,12 @@ private fun OrDivider() {
 @Composable
 private fun GoogleSignInButton(
     onClick: () -> Unit,
-    isLoading: Boolean
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(54.dp),
         enabled = !isLoading,
@@ -1358,8 +1367,7 @@ private fun GoogleSignInButton(
             disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
         )
     ) {
-        // Google "G" letter as a simple text representation.
-        // Replace with R.drawable.ic_google once the vector asset is added.
+        // Canvas-drawn Google "G" glyph (replaces the plain letter).
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
@@ -1367,12 +1375,7 @@ private fun GoogleSignInButton(
                 strokeWidth = 2.dp
             )
         } else {
-            Text(
-                text = "G",
-                color = AccentSecondary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
+            GoogleG(size = 20.dp)
         }
         Spacer(modifier = Modifier.width(12.dp))
         Text(
@@ -1391,9 +1394,11 @@ private fun GoogleSignInButton(
 @Composable
 private fun SignUpToggle(
     isSignUpMode: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
+        modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
