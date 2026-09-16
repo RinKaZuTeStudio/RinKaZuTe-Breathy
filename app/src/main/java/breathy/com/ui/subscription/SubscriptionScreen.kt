@@ -57,6 +57,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import breathy.com.BreathyApplication
 import breathy.com.data.repository.PremiumRepository
+import breathy.com.ui.components.breathingScale
+import breathy.com.ui.components.entrance
+import breathy.com.ui.components.pressScale
+import breathy.com.ui.components.shimmerSweep
 import breathy.com.ui.theme.BreathyGradients
 import breathy.com.ui.theme.BreathyPalette
 import breathy.com.ui.theme.BreathyBorders
@@ -183,6 +187,7 @@ fun SubscriptionScreen(
             Box(
                 modifier = Modifier
                     .size(88.dp)
+                    .breathingScale(minScale = 0.97f, maxScale = 1.03f, cycleMillis = 5200)
                     .background(
                         brush = androidx.compose.ui.graphics.Brush.linearGradient(BreathyGradients.premium),
                         shape = CircleShape
@@ -198,7 +203,8 @@ fun SubscriptionScreen(
                 text = s("More support. Less distraction.", "دعم أكثر، تشتيت أقل."),
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
-                color = BreathyPalette.textPrimary
+                color = BreathyPalette.textPrimary,
+                modifier = Modifier.entrance(index = 1)
             )
 
             Spacer(Modifier.height(8.dp))
@@ -210,14 +216,17 @@ fun SubscriptionScreen(
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
-                color = BreathyPalette.textSecondary
+                color = BreathyPalette.textSecondary,
+                modifier = Modifier.entrance(index = 2)
             )
 
             Spacer(Modifier.height(24.dp))
 
             // ── Benefits card ───────────────────────────────────────────
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .entrance(index = 3),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = BreathyPalette.pureWhite),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -463,7 +472,9 @@ fun SubscriptionScreen(
             } else {
                 // ── Price + purchase ────────────────────────────────────
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .entrance(index = 4),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = BreathyPalette.pureWhite
@@ -558,24 +569,37 @@ fun SubscriptionScreen(
                     enabled = !premiumState.isPurchasing && !premiumState.isPreparingPurchase,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
+                        .height(54.dp)
+                        .pressScale(
+                            pressedScale = 0.97f,
+                            enabled = !premiumState.isPurchasing && !premiumState.isPreparingPurchase
+                        ),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = BreathyPalette.deepForest,
                         contentColor = BreathyPalette.warmWhite
                     )
                 ) {
-                    if (premiumState.isPurchasing || premiumState.isPreparingPurchase) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
-                            strokeWidth = 2.dp,
-                            color = BreathyPalette.warmWhite
-                        )
-                    } else {
-                        Text(
-                            text = s("Subscribe with Google Play", "اشترك عبر Google Play"),
-                            fontWeight = FontWeight.Bold
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .shimmerSweep(
+                                active = !premiumState.isPurchasing && !premiumState.isPreparingPurchase
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (premiumState.isPurchasing || premiumState.isPreparingPurchase) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.dp,
+                                color = BreathyPalette.warmWhite
+                            )
+                        } else {
+                            Text(
+                                text = s("Subscribe with Google Play", "اشترك عبر Google Play"),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 

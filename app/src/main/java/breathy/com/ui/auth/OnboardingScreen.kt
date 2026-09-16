@@ -109,6 +109,11 @@ import breathy.com.data.models.User
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
 import breathy.com.ui.theme.AccentSecondary
+import breathy.com.ui.components.BreathingBackdrop
+import breathy.com.ui.components.breathingScale
+import breathy.com.ui.components.entrance
+import breathy.com.ui.components.pressScale
+import breathy.com.ui.components.shimmerSweep
 import breathy.com.utils.s
 
 import com.google.firebase.Timestamp
@@ -635,6 +640,8 @@ fun OnboardingScreen(
                 )
             )
     ) {
+        BreathingBackdrop()
+
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.TopCenter)
@@ -673,8 +680,6 @@ fun OnboardingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             HorizontalPager(
                 state = pagerState,
@@ -806,7 +811,9 @@ private fun WelcomeStep(
                 imageVector = Icons.Default.LocalFireDepartment,
                 contentDescription = "Welcome — fire icon representing your determination",
                 tint = AccentPrimary,
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier
+                    .size(72.dp)
+                    .breathingScale(minScale = 0.94f, maxScale = 1.04f, cycleMillis = 4200)
             )
         }
 
@@ -985,6 +992,7 @@ private fun QuitTypeCard(
                 color = borderColor,
                 shape = RoundedCornerShape(16.dp)
             )
+            .pressScale(pressedScale = 0.98f)
             .clickable { onClick() }
             .padding(20.dp)
     ) {
@@ -1027,7 +1035,9 @@ private fun QuitTypeCard(
                     imageVector = Icons.Default.Check,
                     contentDescription = "Selected",
                     tint = accentColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .entrance(durationMillis = 300)
                 )
             }
         }
@@ -1641,7 +1651,9 @@ private fun OnboardingNavigation(
         if (currentStep > 0) {
             OutlinedButton(
                 onClick = onBackClick,
-                modifier = Modifier.height(48.dp),
+                modifier = Modifier
+                    .height(48.dp)
+                    .pressScale(pressedScale = 0.96f),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1663,7 +1675,9 @@ private fun OnboardingNavigation(
             Button(
                 onClick = onNextClick,
                 enabled = canProceed && !isLoading,
-                modifier = Modifier.height(48.dp),
+                modifier = Modifier
+                    .height(48.dp)
+                    .pressScale(pressedScale = 0.96f, enabled = canProceed && !isLoading),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentPrimary,
@@ -1685,7 +1699,8 @@ private fun OnboardingNavigation(
                 enabled = canProceed && !isLoading,
                 modifier = Modifier
                     .height(52.dp)
-                    .clip(RoundedCornerShape(14.dp)),
+                    .clip(RoundedCornerShape(14.dp))
+                    .pressScale(pressedScale = 0.97f, enabled = canProceed && !isLoading),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent,
                     disabledContainerColor = Color.Transparent,
@@ -1701,7 +1716,8 @@ private fun OnboardingNavigation(
                                 colors = listOf(AccentPrimary, AccentSecondary)
                             ),
                             shape = RoundedCornerShape(14.dp)
-                        ),
+                        )
+                        .shimmerSweep(active = canProceed && !isLoading),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isLoading) {

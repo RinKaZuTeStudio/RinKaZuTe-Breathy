@@ -96,6 +96,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import breathy.com.ui.components.NetworkImage
 import breathy.com.BreathyApplication
 import breathy.com.data.models.CopingMethod
+import breathy.com.ui.components.BreathEasing
+import breathy.com.ui.components.breathingScale
+import breathy.com.ui.components.entrance
+import breathy.com.ui.components.pressScale
 import breathy.com.ui.theme.AccentOrange
 import breathy.com.ui.theme.AccentPrimary
 import breathy.com.ui.theme.AccentPurple
@@ -396,7 +400,9 @@ fun HomeScreen(
                     // Shown to EVERYONE — subscribers included: it is a reward
                     // placement users opt into for Gold, never an interruption.
                     breathy.com.ui.components.GoldAdsCard(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .entrance(index = 4)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -407,7 +413,9 @@ fun HomeScreen(
                     // ── Featured Event (canonical artwork, spec §21) ────────
                     FeaturedEventCard(
                         onClick = onNavigateToEvents,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .entrance(index = 5)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -415,7 +423,9 @@ fun HomeScreen(
                     HealthTimeline(
                         milestones = uiState.healthMilestones,
                         daysSmokeFree = uiState.daysSmokeFree,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .entrance(index = 6)
                     )
 
                     Spacer(modifier = Modifier.height(80.dp)) // Bottom padding for FAB
@@ -705,7 +715,7 @@ private fun FeaturedEventCard(
 ) {
     breathy.com.ui.components.EventBannerCard(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.pressScale(pressedScale = 0.98f),
         ctaLabel = s("View Events", "عرض الفعاليات")
     )
 }
@@ -738,14 +748,16 @@ private fun HeroStatCard(
         initialValue = 0.05f,
         targetValue = 0.13f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000),
+            animation = tween(3600, easing = BreathEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow_alpha"
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .breathingScale(minScale = 0.995f, maxScale = 1.0f, cycleMillis = 6200),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
@@ -1033,18 +1045,18 @@ private fun CravingFAB(
     val infiniteTransition = rememberInfiniteTransition(label = "fab_pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.05f,
+        targetValue = 1.06f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000),
+            animation = tween(1600, easing = BreathEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "fab_pulse_scale"
     )
     val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.4f,
+        initialValue = 0.18f,
+        targetValue = 0.42f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000),
+            animation = tween(1600, easing = BreathEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "fab_glow_alpha"
