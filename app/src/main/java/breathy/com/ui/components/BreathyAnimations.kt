@@ -339,19 +339,19 @@ fun BreathingBackdrop(modifier: Modifier = Modifier) {
             alignment = Alignment.TopStart,
             offsetX = (-48).dp, offsetY = (-64).dp,
             size = 240.dp, scale = driftA, blurRadius = 56.dp,
-            brush = Brush.radialGradient(listOf(SoftSage.copy(alpha = 0.55f), Color.Transparent))
+            brush = Brush.radialGradient(listOf(SoftSage.copy(alpha = 0.75f), Color.Transparent))
         )
         Tint(
             alignment = Alignment.TopEnd,
             offsetX = 32.dp, offsetY = (-24).dp,
             size = 200.dp, scale = driftB, blurRadius = 60.dp,
-            brush = Brush.radialGradient(listOf(SoftSky.copy(alpha = 0.6f), Color.Transparent))
+            brush = Brush.radialGradient(listOf(SoftSky.copy(alpha = 0.8f), Color.Transparent))
         )
         Tint(
             alignment = Alignment.BottomCenter,
             offsetX = (-20).dp, offsetY = 80.dp,
             size = 260.dp, scale = driftC, blurRadius = 64.dp,
-            brush = Brush.radialGradient(listOf(SoftSage.copy(alpha = 0.35f), Color.Transparent))
+            brush = Brush.radialGradient(listOf(SoftSage.copy(alpha = 0.5f), Color.Transparent))
         )
     }
 }
@@ -371,7 +371,7 @@ private fun BoxScope.Tint(
             .align(alignment)
             .offset(x = offsetX, y = offsetY)
             .size(size)
-            .graphicsLayer { scaleX = scale; scaleY = scale; alpha = 0.55f }
+            .graphicsLayer { scaleX = scale; scaleY = scale; alpha = 0.75f }
             .blur(blurRadius)
             .background(brush)
     )

@@ -745,8 +745,8 @@ private fun HeroStatCard(
     val infiniteTransition = rememberInfiniteTransition(label = "hero_glow")
     val glowAlpha by infiniteTransition.animateFloat(
         // v1.0.11: glow REDUCED — it used to shine over the number itself.
-        initialValue = 0.05f,
-        targetValue = 0.13f,
+        initialValue = 0.12f,
+        targetValue = 0.26f,
         animationSpec = infiniteRepeatable(
             animation = tween(3600, easing = BreathEasing),
             repeatMode = RepeatMode.Reverse
@@ -757,7 +757,7 @@ private fun HeroStatCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .breathingScale(minScale = 0.995f, maxScale = 1.0f, cycleMillis = 6200),
+            .breathingScale(minScale = 0.97f, maxScale = 1.03f, cycleMillis = 5200),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(16.dp)
@@ -875,7 +875,7 @@ private fun DailyRewardBanner(
     val infiniteTransition = rememberInfiniteTransition(label = "reward_pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.02f,
+        targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
             animation = tween(800),
             repeatMode = RepeatMode.Reverse

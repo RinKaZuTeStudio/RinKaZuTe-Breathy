@@ -187,7 +187,7 @@ fun SubscriptionScreen(
             Box(
                 modifier = Modifier
                     .size(88.dp)
-                    .breathingScale(minScale = 0.97f, maxScale = 1.03f, cycleMillis = 5200)
+                    .breathingScale(minScale = 0.95f, maxScale = 1.05f, cycleMillis = 5200)
                     .background(
                         brush = androidx.compose.ui.graphics.Brush.linearGradient(BreathyGradients.premium),
                         shape = CircleShape
