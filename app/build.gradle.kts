@@ -18,8 +18,8 @@ android {
         applicationId = "breathy.com"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 45
-        versionName = "1.0.36"
+        versionCode = 46
+        versionName = "1.0.37"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -148,6 +148,12 @@ dependencies {
     // ── Google Mobile Ads SDK (v1.0.23 — replaces the retired Unity Ads /
     //    LevelPlay mediation stack; AdMob-only serving) ────────────────────
     implementation(libs.play.services.ads)
+
+    // ── User Messaging Platform — Google's REQUIRED consent flow before
+    //    serving ads in the EEA / UK / CH. The GMA SDK reads the consent
+    //    state UMP persists, so this both unblocks ad serving in those
+    //    regions and keeps the app policy-compliant. ──────────────────────
+    implementation(libs.user.messaging.platform)
 
     // ── Google Sign-In ──────────────────────────────────────────────────────
     implementation(libs.play.services.auth)

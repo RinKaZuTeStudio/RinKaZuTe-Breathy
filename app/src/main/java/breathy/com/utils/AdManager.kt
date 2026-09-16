@@ -13,6 +13,8 @@ import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.android.ump.ConsentRequestParameters
+import com.google.android.ump.UserMessagingPlatform
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -239,24 +241,76 @@ class AdManager(
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Initialize the Google Mobile Ads SDK once during app startup
-     * (MainActivity.onCreate) and then load every format. Rewarded ads load
+     * Initialize advertising once during app startup (MainActivity.onCreate).
+     *
+     * Google requires a certified consent flow (User Messaging Platform)
+     * before serving ads to users in the EEA / UK / CH. This requests consent
+     * FIRST, then — once the consent sheet is dismissed, is not required for
+     * the user's region, or fails — initializes the Google Mobile Ads SDK and
+     * loads every format. The GMA SDK reads the consent state UMP persisted,
+     * so ads personalise correctly.
+     *
+     * Consent can NEVER block the app: every path (success, not-required,
+     * request failure, exception) falls through to [startMobileAds], so a
+     * transient UMP problem never becomes "no ads ever". Rewarded ads load
      * for EVERYONE (Premium included) — rewarded is the voluntary reward
      * mechanic and stays available to subscribers.
      */
-    fun initialize() {
+    fun initialize(activity: Activity) {
         if (!isMobileAdsInitializing.compareAndSet(false, true)) return
+
+        val params = ConsentRequestParameters.Builder().build()
+        val consentInformation = UserMessagingPlatform.getConsentInformation(context)
+
+        try {
+            consentInformation.requestConsentInfoUpdate(
+                activity,
+                params,
+                {
+                    // Consent info gathered. Google shows its own sheet ONLY
+                    // when the user's region requires it; elsewhere this is a
+                    // silent pass-through.
+                    UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { formError ->
+                        if (formError != null) {
+                            Timber.w("UMP consent form error: %s — proceeding with ads", formError.message)
+                        }
+                        startMobileAds()
+                    }
+                },
+                { requestError ->
+                    // Consent request failed (offline, UMP unreachable). Never
+                    // hold ads hostage — initialize and let the SDK honour any
+                    // previously stored consent.
+                    Timber.w("UMP consent request failed: %s — proceeding with ads", requestError.message)
+                    startMobileAds()
+                }
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "UMP consent request threw — initializing ads without it")
+            startMobileAds()
+        }
+    }
+
+    /**
+     * Initialize the Google Mobile Ads SDK and load every ad format. Called by
+     * [initialize] once the UMP consent flow has resolved in any way.
+     */
+    private fun startMobileAds() {
         try {
             MobileAds.initialize(context) { status ->
-                if (!isMobileAdsReady.compareAndSet(false, true)) return@initialize
-                Timber.i(
-                    "Google Mobile Ads initialized (adapters=%d) — loading AdMob inventory",
-                    status.adapterStatusMap.size
-                )
-                loadRewardedAd()
-                loadPictureRewardedAd()
-                loadInterstitialAd()
-                loadAppOpenAd()
+                // compareAndSet guards a one-time load of every format; the
+                // inverted condition avoids returning from inside this
+                // (non-inline) SDK callback.
+                if (isMobileAdsReady.compareAndSet(false, true)) {
+                    Timber.i(
+                        "Google Mobile Ads initialized (adapters=%d) — loading AdMob inventory",
+                        status.adapterStatusMap.size
+                    )
+                    loadRewardedAd()
+                    loadPictureRewardedAd()
+                    loadInterstitialAd()
+                    loadAppOpenAd()
+                }
             }
         } catch (e: Exception) {
             isMobileAdsInitializing.set(false)

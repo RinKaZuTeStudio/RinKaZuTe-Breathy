@@ -42,6 +42,9 @@ billing = "8.3.0"
 levelplay = "9.2.0"
 unityAds = "4.16.0"
 playServicesAds = "25.4.0"
+# User Messaging Platform — Google's certified consent flow, REQUIRED to serve
+# ads to users in the EEA / UK / CH (policy compliance + zero-fill fix).
+userMessagingPlatform = "3.0.0"
 
 # Google Sign-In
 playServicesAuth = "21.3.0"
@@ -124,6 +127,11 @@ billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", versi
 # AdMob (v1.0.23 — Google Mobile Ads SDK replaces the retired Unity Ads /
 # LevelPlay mediation stack)
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
+
+# User Messaging Platform (UMP) — Google-certified consent flow. The Google
+# Mobile Ads SDK reads the consent state UMP stores, so ads personalise
+# correctly and serve in EEA / UK / CH regions where consent is mandatory.
+user-messaging-platform = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "userMessagingPlatform" }
 
 # Google Sign-In
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }

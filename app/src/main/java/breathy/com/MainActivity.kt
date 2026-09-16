@@ -70,6 +70,9 @@ class MainActivity : ComponentActivity() {
         // tracks its own ready state. We hook the AdEventListener here so
         // we can log every load/show/fail event to Logcat. This is the
         // only place that needs to call adManager.initialize().
+        // v1.0.37 — initialize() now runs the UMP (User Messaging Platform)
+        // consent flow first — Google requires it before serving ads in the
+        // EEA / UK / CH. It needs this Activity to host the consent sheet.
         try {
             appModule.adManager.eventListener = object : AdManager.AdEventListener {
                 override fun onAdLoaded(adType: AdManager.AdType) {
@@ -88,7 +91,7 @@ class MainActivity : ComponentActivity() {
                     Timber.w("AdMob ❌ show failed: %s — %s", adType, error)
                 }
             }
-            appModule.adManager.initialize()
+            appModule.adManager.initialize(this)
             Timber.i("AdManager.initialize() called from MainActivity")
         } catch (e: Exception) {
             Timber.e(e, "AdManager initialization failed in MainActivity")
